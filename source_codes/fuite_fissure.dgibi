@@ -1,0 +1,665 @@
+* fichier :  fuite_fissure.dgibi
+************************************************************************
+* Section : Mecanique Endommagement
+************************************************************************
+*   Test fuite_fissure.dgibi: Jeux de données         *
+*    ----------------------------------------         *
+*                                                     *
+*******************************************************
+*****   CALCUL DU DEBIT DE FUITE D'UN             *****
+*****   MELANGE D'AIR SEC                         *****
+*****   A TRAVERS UNE FISSURE TRAVERSANTE         *****
+*****   POUR UNE DIFFERENCE DE PRESSION IMPOSEE   *****
+*****   écoulement monodimensionnel, diphasique   *****
+*****   homogène, en régime permanent             *****
+*******************************************************
+*****   AUTEUR   : HELENE SIMON                   *****
+*****   DATE     : 26/10/2005                     *****
+*******************************************************
+***mode
+* 14. FISSURE 
+* =========== 
+ 
+*      -------------------------------------------------------
+*     | Noms des materiaux pour la formulation FISSURE       |
+*      -------------------------------------------------------
+
+*      | ('PARF')  | ('MASS')   | ('POISEU_BLASIUS')
+*      | ('REEL')  | ('FILM')   | ('POISEU_COLEBROOK')
+*                               | ('FROTTEMENT1')
+*                               | ('FROTTEMENT2')
+*                               | ('FROTTEMENT3')
+*                               | ('FROTTEMENT4')
+
+*     * choix de la loi de comportement pour la vapeur d'eau
+*      | 'PARF' : gaz parfait
+*      | 'REEL' : gaz reel
+*     * choix du modele de condensation
+*      | 'MASS' : condensation en masse (la vapeur condensee est
+*      transportee par le fluide)
+*      | 'FILM' : condensation en film (la vapeur condensee est
+*      transportee par le fluide.
+*      condensation en masse (mot-cle MASS): la vapeur condensee forme
+*      un film qui adhere a la paroi, dont l'epaisseur ne modifie pas
+*      l'ouverture de la fissure.
+*     * choix de la loi de frottement
+*      | ('POISEU_BLASIUS')   : ecoulement dans un canal rectangulaire lisse
+*      | ('POISEU_COLEBROOK') : ecoulement dans un canal rectangulaire rugueux
+*      | ('FROTTEMENTi') : loi a coefficients choisis par l'utilisateur
+*     *les valeurs par defaut sont : PARF MASS POISEU_BLASIUS
+
+
+* 12. FISSURE 
+* =========== 
+ 
+
+*      Notations : f : coefficient de frottement
+*                  e : ouverture en entree de fissure
+*                  RE : nombre de Reynolds
+*                  REC : nombre de Reynolds critique
+
+  
+* 12.1 loi POISEU_BLASIUS 
+* ----------------------- 
+*    -------------------------------------------------------
+*    | Parametres pour la loi de frottement POISEU_BLASIUS |
+*    -------------------------------------------------------
+*      C'est la loi par defaut pour la formulation FISSURE.
+*      En regime laminaire : f=96/RE
+*      En regime turbulent lisse : f=0.316*RE^(-0.25) (Blasius)
+*      Le nombre de Reynolds critique REC vaut 2042 (intersection entre
+*      ces 2 fonctions)
+
+*      'RUGO': rugosite (m)
+*              RUGO/2e doit etre inferieur a 1e-4
+
+  
+* 12.2 loi POISEU_COLEBROOK 
+* ------------------------- 
+*    --------------------------------------------------------
+*    | Parametres pour la loi de frottement POISEU_COLEBROOK |
+*    --------------------------------------------------------
+*      f = max(96/RE;Colebrook)
+*      Formule implicite de Colebrook  :
+*      1/sqrt(f) = -2 log(RUGO/2e/3.7+2.51/RE/sqrt(f)) (log base 10)
+*      Le nombre de Reynolds critique varie avec la rugosite
+
+*      'RUGO': rugosite (m)
+*              RUGO/2e doit etre superieur ou egal a 1e-4
+
+  
+* 12.3 loi FROTTEMENT1 
+* -------------------- 
+*    -------------------------------------------------------
+*    | Parametres pour la loi de frottement FROTTEMENT1    |
+*    -------------------------------------------------------
+*      En regime laminaire : f=k/RE
+*      En regime turbulent : f=(a+bRE^c)^d
+
+*      'REC': nombre de Reynolds critique donne par l utilisateur
+*      'FK': k
+*      'FA': a
+*      'FB': b
+*      'FC': c
+*      'FD': d
+
+
+  
+* 12.4 loi FROTTEMENT2 
+* -------------------- 
+*    -------------------------------------------------------
+*    | Parametres pour la loi de frottement FROTTEMENT2    |
+*    -------------------------------------------------------
+*      En regime laminaire : f=k/RE
+*      En regime turbulent : f=a(b+clogRE)^d
+
+*      'REC': nombre de Reynolds critique donne par l utilisateur
+*      'FK': k
+*      'FA': a
+*      'FB': b
+*      'FC': c
+*      'FD': d
+
+  
+* 12.5 loi FROTTEMENT3 
+* -------------------- 
+*    -------------------------------------------------------
+*    | Parametres pour la loi de frottement FROTTEMENT3    |
+*    -------------------------------------------------------
+*      FROT3 : k*Colebrook sur toute la gamme de Reynolds
+
+*      'RUGO': rugosite (m)
+*              RUGO/2e doit etre superieur ou egal a 1e-4
+*      'FK': k
+
+  
+* 12.6 loi FROTTEMENT4 
+* -------------------- 
+*    -------------------------------------------------------
+*    | Parametres pour la loi de frottement FROTTEMENT4    |
+*    -------------------------------------------------------
+*      FROT4 : k*(max(96/RE;Colebrook))
+
+*      'RUGO': rugosite (m)
+*              RUGO/2e doit etre superieur ou egal a 1e-4
+*      'FK': k
+**********************************************************
+*  'P'    :  pression        (Pa)
+*  'PV'   :  pression vapeur (Pa)
+*  'TF'   :  temperature     (°C)
+*  'X     :  titre
+*  'U'    :  vitesse         (m/s)
+*  'H'    :  coefficient d'echange (W/m2/K)
+*  'Q'    :  debit total     (kg/s)
+*  'QA'   :  debit air       (kg/s)
+*  'QE'   :  debit eau (liquide+vapeur) (kg/s)
+*  'RE'   :  nombre de Reynolds
+*  'F'    :  densite de puissance echangee entre le fluide et
+*            la paroi (W/m2)
+
+
+OPTI 'ECHO' 1 'DIME' 2 'ELEM' QUA4 ;
+********** Reading CSV files of crack surface ****** 
+
+DEBP CSV_LIRE re_ti*'ENTIER' re_crpa*'ENTIER' re_smfa*'FLOTTANT' re_numspa*'ENTIER' re_opmin*'FLOTTANT' ;
+    re_opmin = ENTI (re_opmin*1.0e6) ;
+    re_smfa = ENTI (re_smfa*100) ;
+    st_nom_x = (CHAI 'xrange_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    st_nom_y = (CHAI 'yrange_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    st_nom_zmax = (CHAI 'zfit_zmax_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    st_nom_zmin = (CHAI 'zfit_zmin_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    co_po_x = LIRE 'CSV' (CHAI st_nom_x) 'SEPA' ',' ;
+    co_po_y = LIRE 'CSV' (CHAI st_nom_y) 'SEPA' ',' ;
+    co_po_zmax = LIRE 'CSV' (CHAI st_nom_zmax) 'SEPA' ',' ;
+    co_po_zmin = LIRE 'CSV' (CHAI st_nom_zmin) 'SEPA' ',' ;
+    co_po_zmean = TABLE ; 
+    co_po_cr_open = TABLE ; 
+    M = DIME co_po_zmax ;
+    REPETER bouj (M) ; 
+        j = &bouj ; 
+        co_po_zmean . j = 0.5 * ( (co_po_zmax . j) + (co_po_zmin . j) ) ;
+        co_po_cr_open . j = (co_po_zmax . j) - (co_po_zmin . j) ;
+    FIN bouj ;
+FINP co_po_x co_po_y co_po_zmax co_po_zmin co_po_zmean co_po_cr_open;
+
+************************** Main Program *******************************
+***** Parameters for reading MATLAB CSV files *****
+re_ti = 85 ; 
+re_crpa = 1 ;
+re_smfa = 0.05 ;
+re_numspa = 50 ;
+re_opmin = 1.e-6 ;
+re_tol = 1.e-10 ; 
+num_elem_y = 20 ; 
+
+**conditions limites
+temp_wall = 25.0 ;
+P_aval = 101325.0 ; 
+P_am = 5e5 ;
+step_P = 2.5e5 ;
+P_amont = PROG P_aval PAS step_P P_am ;
+T_in = 25.0 ;
+T_fin = 50.0 ;
+step_T = 25.0 ;
+temp_amont = PROG T_in PAS step_T T_fin ;
+P_steam_amont = 0.0 ;
+
+***** Dfine the center and the radius of the holes (if any) *****
+re_cx = PROG  ; 
+re_cy = PROG  ; 
+re_cr = PROG  ;
+
+* mot_mode_user = CHAI 'POISEU_COLEBROOK' ;
+* mot_mode_user = CHAI 'POISEU_BLASIUS' ;
+* mot_mode_user = CHAI 'POISEU_GELAIN_2008' ;
+mot_mode_user = CHAI 'POISEU_GELAIN_2012' ;
+* mot_mode_user = CHAI 'POISEU_RIZKALLA' ;
+* mot_mode_user = CHAI 'FROTTEMENT1' ;
+* mot_mode_user = CHAI 'FROTTEMENT2' ;
+* mot_mode_user = CHAI 'FROTTEMENT3' ;
+* mot_mode_user = CHAI 'FROTTEMENT4' ;
+************************ choix de gaz *******************************
+mot_gaz = CHAI 'PARF' ;
+* mot_gaz = 'REEL' ;
+************************ choix de condensation  *******************************
+mot_cond = CHAI 'MASS' ;
+* mot_cond = 'FILM' ;
+**************************************************** Preprocessing ***************************************************************
+******** Step1: Read DEAP crack surface coordinates ***************
+co_po_x co_po_y co_po_zmax co_po_zmin co_po_zmean co_po_cr_open = CSV_LIRE re_ti re_crpa re_smfa re_numspa re_opmin ;
+
+***** Make a loop on points to creat the rest of sub-surfaces added to the main crack surface *****
+num_y = DIME (co_po_x . 1) ;
+num_x = DIME co_po_x ;
+****** 
+table_points = TABLE ;
+
+
+REPETER boui (num_x) ;
+   i = &boui ;
+
+   table_points.i = TABLE ; 
+
+   REPETER bouj (num_y) ;
+      j = &bouj ;
+      co_x0 = EXTR (co_po_x . i) j ;
+      co_y0 = EXTR (co_po_y . i) j ;
+      co_z0 = EXTR (co_po_zmean . i) j ;
+      point_i_j = co_y0 co_z0 ;
+      table_points.i.j = point_i_j ;
+   FIN bouj ;
+FIN boui ;
+
+******** Step2:Create lines along y direction and their corresponding crack openings and extents ***************
+
+
+tabl_fiss = TABLE ;
+tabl_fiss.'LI' = TABLE ; 
+tabl_fiss.'OUV' = TABLE ; 
+tabl_fiss.'ETEN' = TABLE ;
+
+name_op_min = ENTI (re_opmin*1.0e6) ;
+name_sm_fa = ENTI (re_smfa*100) ;
+
+num_holes = DIME re_cx ;
+
+REPETER boui (num_x) ;
+   i = &boui ;
+
+**lines along y direction
+   lines_y = VIDE 'MAILLAGE' ;
+   prog_ouvi = PROG ;
+   prog_etendui = PROG ;
+
+   REPETER bouj (num_y-1) ;
+      j = &bouj ;
+      p0 = table_points.i.j ;
+      p1 = table_points.i.(j+1) ;
+
+      Lij_1 = DROI num_elem_y p0 p1 ; 
+
+      lines_y = lines_y ET Lij_1 ;
+* extract crack opening along the line
+      co_cr_open0 = EXTR (co_po_cr_open . i) j ;
+      co_cr_open1 = EXTR (co_po_cr_open . i) (j+1) ;
+
+      co_x0 = EXTR (co_po_x . i) j ;
+      co_y0 = EXTR (co_po_y . i) j ;
+      co_z0 = EXTR (co_po_zmean . i) j ;
+      co_x1 = EXTR (co_po_x . i) (j+1) ;
+      co_y1 = EXTR (co_po_y . i) (j+1) ;
+      co_z1 = EXTR (co_po_zmean . i) (j+1) ;
+
+      SI (NON (EGA num_holes 0)) ;
+         REPETER bouh (num_holes) ;
+            hi = &bouh ;
+            re_rhi = EXTR re_cr hi ;
+            re_xhi = EXTR re_cx hi ;
+            re_yhi = EXTR re_cy hi ;
+
+            cond0 = (co_x0 > (re_xhi - re_rhi)) ET (co_x0 < (re_xhi + re_rhi)) ET
+                     (co_y0 > (re_yhi - re_rhi)) ET (co_y0 < (re_yhi + re_rhi)) ;
+
+            cond1 = (co_x1 > (re_xhi - re_rhi)) ET (co_x1 < (re_xhi + re_rhi)) ET
+                     (co_y1 > (re_yhi - re_rhi)) ET (co_y1 < (re_yhi + re_rhi)) ;
+
+
+            SI (cond0) ;
+               co_cr_open0 = 1.0e-7 ;
+            FINSI ;
+            SI (cond1) ;
+               co_cr_open1 = 1.0e-7 ;  
+            FINSI ;
+
+         FIN bouh ;
+      FINSI ;
+
+      SI (EGA co_cr_open1 co_cr_open0) ; 
+         prog_temp = PROG num_elem_y*co_cr_open0  ;
+      SINON ;
+         pas_temp = (co_cr_open1 - co_cr_open0)/num_elem_y ;
+         prog_temp = PROG co_cr_open0 PAS pas_temp co_cr_open1 ;
+         prog_temp = ENLE prog_temp ( DIME prog_temp ) ;
+      FINSI ;
+
+
+      SI (EGA j (num_y - 1)) ;
+         prog_temp = prog_temp ET (PROG co_cr_open1) ;
+      FINSI ;
+      prog_ouvi = prog_ouvi ET prog_temp ; 
+*extract the extent along the line
+      SI (EGA i 1) ;
+         co_x0 = EXTR (co_po_x . i) j ;
+         co_y0 = EXTR (co_po_y . i) j ;
+         co_z0 = EXTR (co_po_zmean . i) j ;
+
+         co_x1 = EXTR (co_po_x . i) (j+1) ;
+         co_y1 = EXTR (co_po_y . i) (j+1) ;
+         co_z1 = EXTR (co_po_zmean . i) (j+1) ;
+
+         co_x0_1 = EXTR (co_po_x . (i+1)) j ;
+         co_y0_1 = EXTR (co_po_y . (i+1)) j ;
+         co_z0_1 = EXTR (co_po_zmean . (i+1)) j ;
+
+         co_x1_1 = EXTR (co_po_x . (i+1)) (j+1) ;
+         co_y1_1 = EXTR (co_po_y . (i+1)) (j+1) ;
+         co_z1_1 = EXTR (co_po_zmean . (i+1)) (j+1) ;
+
+         tort1 = ( ( ( (co_x0_1 - co_x0)**2.0 ) + ( (co_y0_1 - co_y0)**2.0 ) + ( (co_z0_1 - co_z0)**2.0 ) )**0.5 ) ;
+         tort2 = ( ( ( (co_x1_1 - co_x1)**2.0 ) + ( (co_y1_1 - co_y1)**2.0 ) + ( (co_z1_1 - co_z1)**2.0 ) )**0.5 ) ;
+
+         SI (EGA tort1 tort2) ; 
+            etendui = PROG num_elem_y*tort1  ;
+         SINON ;
+            pas_etendui = (tort2 - tort1)/num_elem_y ;
+            etendui = PROG tort1 PAS pas_etendui tort2 ;
+            etendui = ENLE etendui ( DIME etendui ) ;
+         FINSI ;
+
+
+         SI (EGA j (num_y - 1)) ;
+            etendui = etendui ET (PROG tort2) ; 
+         FINSI ; 
+         prog_etendui = prog_etendui ET (etendui * 0.5) ;
+      FINSI ;
+
+      SI (EGA i num_x) ;
+         co_x0 = EXTR (co_po_x . i) j ;
+         co_y0 = EXTR (co_po_y . i) j ;
+         co_z0 = EXTR (co_po_zmean . i) j ;
+
+         co_x1 = EXTR (co_po_x . i) (j+1) ;
+         co_y1 = EXTR (co_po_y . i) (j+1) ;
+         co_z1 = EXTR (co_po_zmean . i) (j+1) ;
+
+         co_x0_1 = EXTR (co_po_x . (i-1)) j ;
+         co_y0_1 = EXTR (co_po_y . (i-1)) j ;
+         co_z0_1 = EXTR (co_po_zmean . (i-1)) j ;
+
+         co_x1_1 = EXTR (co_po_x . (i-1)) (j+1) ;
+         co_y1_1 = EXTR (co_po_y . (i-1)) (j+1) ;
+         co_z1_1 = EXTR (co_po_zmean . (i-1)) (j+1) ;
+
+         tort1 = ( ( ( (co_x0_1 - co_x0)**2.0 ) + ( (co_y0_1 - co_y0)**2.0 ) + ( (co_z0_1 - co_z0)**2.0 ) )**0.5 ) ;
+         tort2 = ( ( ( (co_x1_1 - co_x1)**2.0 ) + ( (co_y1_1 - co_y1)**2.0 ) + ( (co_z1_1 - co_z1)**2.0 ) )**0.5 ) ;
+
+         SI (EGA tort1 tort2) ; 
+            etendui = PROG num_elem_y*tort1  ;
+         SINON ;
+            pas_etendui = (tort2 - tort1)/num_elem_y ;
+            etendui = PROG tort1 PAS pas_etendui tort2 ;
+            etendui = ENLE etendui ( DIME etendui ) ;
+         FINSI ;
+
+         SI (EGA j (num_y - 1)) ;
+            etendui = etendui ET (PROG tort2) ; 
+         FINSI ; 
+         prog_etendui = prog_etendui ET (etendui * 0.5) ;
+      FINSI ;
+
+      SI (NON (EGA i num_x) ET (NON (EGA i 1))) ;
+         co_x0 = EXTR (co_po_x . i) j ;
+         co_y0 = EXTR (co_po_y . i) j ;
+         co_z0 = EXTR (co_po_zmean . i) j ;
+
+         co_x1 = EXTR (co_po_x . i) (j+1) ;
+         co_y1 = EXTR (co_po_y . i) (j+1) ;
+         co_z1 = EXTR (co_po_zmean . i) (j+1) ;
+
+         co_x0_1 = EXTR (co_po_x . (i-1)) j ;
+         co_y0_1 = EXTR (co_po_y . (i-1)) j ;
+         co_z0_1 = EXTR (co_po_zmean . (i-1)) j ;
+
+         co_x1_1 = EXTR (co_po_x . (i-1)) (j+1) ;
+         co_y1_1 = EXTR (co_po_y . (i-1)) (j+1) ;
+         co_z1_1 = EXTR (co_po_zmean . (i-1)) (j+1) ;
+
+         co_x0p1 = EXTR (co_po_x . (i+1)) j ;
+         co_y0p1 = EXTR (co_po_y . (i+1)) j ;
+         co_z0p1 = EXTR (co_po_zmean . (i+1)) j ;
+
+         co_x1p1 = EXTR (co_po_x . (i+1)) (j+1) ;
+         co_y1p1 = EXTR (co_po_y . (i+1)) (j+1) ;
+         co_z1p1 = EXTR (co_po_zmean . (i+1)) (j+1) ;
+
+         tort1 = ( ( ( (co_x0_1 - co_x0)**2.0 ) + ( (co_y0_1 - co_y0)**2.0 ) + ( (co_z0_1 - co_z0)**2.0 ) )**0.5 ) ;
+         tort2 = ( ( ( (co_x1_1 - co_x1)**2.0 ) + ( (co_y1_1 - co_y1)**2.0 ) + ( (co_z1_1 - co_z1)**2.0 ) )**0.5 ) ;
+         tort1p1 = ( ( ( (co_x0p1 - co_x0)**2.0 ) + ( (co_y0p1 - co_y0)**2.0 ) + ( (co_z0p1 - co_z0)**2.0 ) )**0.5 ) ;
+         tort2p1 = ( ( ( (co_x1p1 - co_x1)**2.0 ) + ( (co_y1p1 - co_y1)**2.0 ) + ( (co_z1p1 - co_z1)**2.0 ) )**0.5 ) ;
+
+
+         SI (EGA tort1 tort2) ; 
+            etendui = PROG num_elem_y*tort1  ;
+         SINON ;
+            pas_etendui = (tort2 - tort1)/num_elem_y ;
+            etendui = PROG tort1 PAS pas_etendui tort2 ;
+            etendui = ENLE etendui ( DIME etendui ) ;
+         FINSI ;
+
+         SI (EGA tort1p1 tort2p1) ; 
+            etendui_p1 = PROG num_elem_y*tort1p1  ;
+         SINON ;
+            pas_etendui_p1 = (tort2p1 - tort1p1)/num_elem_y ;
+            etendui_p1 = PROG tort1p1 PAS pas_etendui_p1 tort2p1 ;
+            etendui_p1 = ENLE etendui_p1 ( DIME etendui_p1 ) ;
+         FINSI ;
+
+         SI (EGA j (num_y - 1)) ;
+            etendui = etendui ET (PROG tort2) ; 
+            etendui_p1 = etendui_p1 ET (PROG tort2p1) ;
+         FINSI ; 
+         etenduif = (etendui + etendui_p1) * 0.5 ;
+         prog_etendui = prog_etendui ET etenduif ;
+      FINSI ;
+
+
+   FIN bouj ;
+   tabl_fiss.'LI'.i = lines_y ; 
+   tabl_fiss.'OUV'.i = prog_ouvi ; 
+   tabl_fiss.'ETEN'.i = prog_etendui ;
+
+FIN boui ;
+
+********** FISSURE calculation for each line along y and Postprocessing  ******************************************************************
+
+REPETER boui (num_x) ;
+   i = &boui ;
+   tabl_fiss.i = TABLE ;
+
+   lines_y = tabl_fiss.'LI'.i ;
+   prog_ouvi = tabl_fiss.'OUV'.i ;
+   prog_etendui = tabl_fiss.'ETEN'.i ;
+   coor_yi = EXTR (COOR lines_y 1) 'VALE' 'SCAL' ;
+   coor_zi = EXTR (COOR lines_y 2) 'VALE' 'SCAL' ;
+   xi =  EXTR (co_po_x . i) 1  ;
+   coor_xi = PROG (DIME coor_yi)*(xi) ;
+   ev_openi = EVOL 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'OUVI' prog_ouvi ;
+   ev_etendi = EVOL 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'ETENI' prog_etendui ;
+   ev_xi = EVOL 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'XI' coor_xi ;
+   ev_yi = EVOL 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'YI' coor_yi ;
+   ev_zi = EVOL 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'ZI' coor_zi ;
+   
+
+   @EXCEL1 ev_openi (CHAI 'ouvi'i'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+   @EXCEL1 ev_etendi (CHAI 'etendi'i'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+   @EXCEL1 ev_xi (CHAI 'xi'i'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+   @EXCEL1 ev_yi (CHAI 'yi'i'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+   @EXCEL1 ev_zi (CHAI 'zi'i'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+
+   tabl_fiss.i.'P' = TABLE ;
+
+
+   ep = MANU 'CHPO' (CHAN 'POI1' lines_y) 1 'OUV' prog_ouvi 'NATU' 'DIFFUS';
+   etp = MANU 'CHPO' (CHAN 'POI1' lines_y) 1 'ETEN' prog_etendui 'NATU' 'DIFFUS';
+   tp = MANU 'CHPO' lines_y  1 'T' temp_wall 'NATU' 'DIFFUS' ;
+
+
+
+*champ de prop materielles
+   SI (EGA mot_mode_user 'POISEU_BLASIUS') ;
+      mot_mode = CHAI 'POISEU_BLASIUS' ;
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      MAT1 = MATE MO1 'RUGO' 0.0  ;
+   FINSI ;
+   SI (EGA mot_mode_user 'POISEU_COLEBROOK') ;
+      mot_mode = CHAI 'POISEU_COLEBROOK' ;
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      re_rugo = 40.0e-6 ;
+      MAT1 = MATE MO1 'RUGO' re_rugo  ;
+   FINSI ;
+   SI (EGA mot_mode_user 'POISEU_GELAIN_2008') ;
+      mot_mode = CHAI 'FROTTEMENT2' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      re_rec = 10.0 ;
+      re_fk = 96.0 ;
+      d1 = 6.7683 ; 
+      re_fa = 2.11**d1 ; 
+      re_fb = 1.0 ;
+      re_fc = 0.5 ;
+      re_fd = -1.0*d1 ;
+      MAT1 = MATE MO1 'REC' re_rec 'FK' re_fk 'FA' re_fa 'FB' re_fb 'FC' re_fc 'FD' re_fd ;
+   FINSI ;
+   
+
+   SI (EGA mot_mode_user 'POISEU_GELAIN_2012') ;
+      mot_mode = CHAI 'FROTTEMENT1' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      re_rec = 10.0 ;
+      re_fk = 96.0 ;
+      re_fa = 192.0*((ep/etp)**0.5) ;
+      re_fb = 96.0 ;
+      re_fc = -1.0 ;
+      re_fd = 1.0 ;
+      MAT1 = MATE MO1 'REC' re_rec 'FK' re_fk 'FA' re_fa 'FB' re_fb 'FC' re_fc 'FD' re_fd ;
+   FINSI ;
+   
+   SI (EGA mot_mode_user 'POISEU_RIZKALLA') ;
+      mot_mode = CHAI 'FROTTEMENT1' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      Rk = 2.907*(10.0**7)*((ep**3.0)**0.428) ; 
+      xsi = 0.133/((ep**3.0)**0.081) ;
+      re_rec = 10.0 ;
+      re_fk = 96.0 ;
+      re_fa = 0.0 ;
+      re_fb = Rk ;
+      re_fc = -1.0 ;
+      re_fd = xsi ;
+      MAT1 = MATE MO1 'REC' re_rec 'FK' re_fk 'FA' re_fa 'FB' re_fb 'FC' re_fc 'FD' re_fd ;
+   FINSI ;
+
+   SI (EGA mot_mode_user 'FROTTEMENT1') ;
+      mot_mode = CHAI 'FROTTEMENT1' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      re_rec = 2042 ;
+      re_fk = 96.0 ;
+      re_fa = 0.316 ;
+      re_fb = 2.0e-6 ;
+      re_fc = -0.25 ;
+      re_fd = 2.0 ;
+      MAT1 = MATE MO1 'REC' re_rec 'FK' re_fk 'FA' re_fa 'FB' re_fb 'FC' re_fc 'FD' re_fd ;
+   FINSI ;
+   SI (EGA mot_mode_user 'FROTTEMENT2') ;
+      mot_mode = CHAI 'FROTTEMENT2' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;     
+      re_rec = 2042 ;
+      re_fk = 96.0 ;
+      re_fa = 0.316 ;
+      re_fb = 2.0 ;
+      re_fc = -0.25 ;
+      re_fd = 2.0 ;
+      MAT1 = MATE MO1 'REC' re_rec 'FK' re_fk 'FA' re_fa 'FB' re_fb 'FC' re_fc 'FD' re_fd ;
+   FINSI ;
+   SI (EGA mot_mode_user 'FROTTEMENT3') ;
+      mot_mode = CHAI 'FROTTEMENT3' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      re_rugo = 40e-6 ;
+      re_fk = 0.5 ;
+      MAT1 = MATE MO1 'RUGO' re_rugo 'FK' re_fk ;
+   FINSI ;
+   SI (EGA mot_mode_user 'FROTTEMENT4') ;
+      mot_mode = CHAI 'FROTTEMENT4' ; 
+      MO1 = MODE lines_y FISSURE mot_gaz mot_cond mot_mode;
+      re_rugo = 40e-6 ;
+      re_fk = 0.5 ;
+      MAT1 = MATE MO1 'RUGO' re_rugo 'FK' re_fk ;
+   FINSI ;
+
+*conditions aux limites
+
+   num_pre = DIME P_amont ;
+   num_temp = DIME temp_amont ;
+   REPETER pre_bou num_pre ;
+      k = &pre_bou ;
+      tabl_fiss.i.'P' .k = TABLE ;
+      tabl_fiss.i.'P' .k.'T' = TABLE ;
+      REPETER temp_bou num_temp ;
+         m = &temp_bou ;
+         tabl_fiss.i.'P' .k.'T'.m = TABLE ;
+
+
+         Pressure_amont = EXTR P_amont k ;
+         Tempreture_amont = EXTR temp_amont m ;
+
+         TAB_CL = table ;
+         TAB_CL.'PRESSION_TOTALE_AMONT' = Pressure_amont ;
+         TAB_CL.'PRESSION_VAPEUR_AMONT' = P_steam_amont ;
+         TAB_CL.'TEMPERATURE_AMONT' = Tempreture_amont ;
+         TAB_CL.'PRESSION_TOTALE_AVAL' = P_aval ;
+         TAB_CL.'TEMPERATURE_PAROI' = tp ;
+         TAB_CL.'OUVERTURE' =  ep ;
+         TAB_CL.'ETENDUE' = etp ;
+         resi = FISS MO1 MAT1 TAB_CL ;
+         tabl_fiss.i.'P' .k.'T'.m = resi ;
+      
+
+         p_val = EXTR resi 'VALE' 'P' ; 
+         pv_val = EXTR resi 'VALE' 'PV' ; 
+         tf_val = EXTR resi 'VALE' 'TF' ; 
+         x_val = EXTR resi 'VALE' 'X' ; 
+         u_val = EXTR resi 'VALE' 'U' ; 
+         h_val = EXTR resi 'VALE' 'H' ; 
+         q_val = EXTR resi 'VALE' 'Q' ; 
+         qa_val = EXTR resi 'VALE' 'QA' ; 
+         qe_val = EXTR resi 'VALE' 'QE' ; 
+         re_val = EXTR resi 'VALE' 'RE' ; 
+         f_val = EXTR resi 'VALE' 'F' ; 
+
+         EV1 = EVOL 'VERT' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'PRESSURE' p_val ;
+         EV2 = EVOL 'VERT' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'PRESSURE_VAPOR' pv_val ;
+         EV3 = EVOL 'CYAN' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'TEMPERATURE' tf_val ;
+         EV4 = EVOL 'CYAN' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'X' x_val ;
+         EV5 = EVOL 'ROSE' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'VELOCITY' u_val ;
+         EV6 = EVOL 'ORAN' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'ENTHALPY' h_val ;
+         EV7= EVOL 'ROUGE' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'FLOW' q_val ;
+         EV8= EVOL 'ROUGE' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'FLOW_A' qa_val ;
+         EV9= EVOL 'ROUGE' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'FLOW_E' qe_val ;
+         EV10 = EVOL 'BRUN' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'RE' re_val ;
+         EV11 = EVOL 'OR' 'MANU' 'N' (PROG (DIME prog_ouvi)*(1.0)) 'VAPOR_FRACTION' f_val ;
+         Pressure_amont = ENTI Pressure_amont;
+         Tempreture_amont = ENTI Tempreture_amont;
+
+         @EXCEL1 EV1 (CHAI 'P_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV2 (CHAI 'PV_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV3 (CHAI 'TF_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV4 (CHAI 'X_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV5 (CHAI 'U_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV6 (CHAI 'H_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV7 (CHAI 'Q_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV8 (CHAI 'QA_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV9 (CHAI 'QE_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV10 (CHAI 'RE_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+         @EXCEL1 EV11 (CHAI 'F_P'i'_'Pressure_amont'_T'i'_'Tempreture_amont'_ti're_ti'_crpa're_crpa'_smfa'name_sm_fa'_numsp're_numspa'_opmin'name_op_min'.txt') ; 
+
+
+      FIN temp_bou ;
+   FIN pre_bou ;
+
+FIN boui ;
+
+FIN ;
+ 
+
+ 
+
+ 
+
