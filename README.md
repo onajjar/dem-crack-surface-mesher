@@ -98,7 +98,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-To recreate the exact Python package versions used for the recorded baseline runs, install with the committed constraints:
+To recreate the recorded top-level Python package versions used for the baseline runs, install with the committed constraints:
 
 ```powershell
 python -m pip install -r requirements.txt -c constraints-baseline.txt
