@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-07-10",
+  "status": "completed_with_solver_notice",
+  "entrypoint": "castem_pipeline_gui_t13.App._run",
+  "environment": {
+    "operating_system": "Windows 11",
+    "python": "3.13.5",
+    "tk": "8.6",
+    "numpy": "2.1.3",
+    "matplotlib": "3.10.0",
+    "h5py": "3.12.1",
+    "cast3m": "2025.0 (launcher version 25)"
+  },
+  "parameters": {
+    "re_ti": 60,
+    "re_crpa": 1,
+    "re_smfa": 0.05,
+    "re_numspa": 50,
+    "re_opmin": 0.000001,
+    "nelem_x": 1,
+    "nelem_y": 1,
+    "nelem_z": 1,
+    "re_tol": 1e-10,
+    "re_fact_z": 1.05,
+    "holes_enabled": false,
+    "opti_med": 0,
+    "opti_stl": 0,
+    "opti_visu": 0,
+    "merge_bdfs": true
+  },
+  "execution": {
+    "command_form": "cmd.exe /c <resolved-castem-launcher> castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi",
+    "gui_elapsed_seconds": 10.774,
+    "cast3m_reported_elapsed_seconds": 4.82,
+    "process_return_code": 0,
+    "cast3m_error_level": 0,
+    "dialogs": []
+  },
+  "solver_notices": [
+    "Cast3M reported a signalling IEEE_INVALID_FLAG after its normal level-0 stop. The generated mesh is preserved as execution evidence, not as a numerical or mesh-quality validation."
+  ],
+  "combined_bdf_summary": {
+    "bytes": 2742398,
+    "lines": 50021,
+    "grid_cards": 15000,
+    "chexa_cards": 4802,
+    "cquad4_cards": 5194,
+    "pshell_cards": 6,
+    "sha256": "67151e7608887c6a65ad93118bc4867e961f1bdd32712ff37658d7b66cf7304b"
+  },
+  "published_artifacts": [
+    {
+      "path": "castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi",
+      "bytes": 22280,
+      "sha256": "bd44c5507730f9e4b62dfd2fe3e5dee402ad40e9317320eeddc057321a573237"
+    },
+    {
+      "path": "combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf",
+      "bytes": 2742398,
+      "sha256": "67151e7608887c6a65ad93118bc4867e961f1bdd32712ff37658d7b66cf7304b"
+    }
+  ],
+  "generated_but_not_published": [
+    {
+      "path": "castem_mesh_v.bdf",
+      "bytes": 2138761,
+      "sha256": "2010e055e1df052b94747ee75a1384bf85ceb96a410b93e114de48d53e8aca6d"
+    },
+    {
+      "path": "castem_mesh_surf_min.bdf",
+      "bytes": 1759403,
+      "sha256": "4aa660838bf255ef3f92546a5a195921e57cd281f99b9e8b156078d84f37350b"
+    },
+    {
+      "path": "castem_mesh_surf_max.bdf",
+      "bytes": 1759403,
+      "sha256": "2e05b56c5322b3cc8a8b843ec288d44c8114caa1a3e583b6ab85a6a575b29ec3"
+    },
+    {
+      "path": "castem_mesh_surf_mean.bdf",
+      "bytes": 1759403,
+      "sha256": "e821c32dc6b78e8d41b07f947de0fb76f0df9bbe57a182ad886ada5d9b4cc7e9"
+    },
+    {
+      "path": "castem_mesh_surf_xmin.bdf",
+      "bytes": 1625829,
+      "sha256": "22ed3d1c6f05167e767fe7052a000d560d0131ac24ddfab7cc58ca07870e2de7"
+    },
+    {
+      "path": "castem_mesh_surf_xmax.bdf",
+      "bytes": 1625829,
+      "sha256": "597a73aff10d368dabab86831143af0efdf5f0730dff92ffe1e5f6cbf5602be1"
+    },
+    {
+      "path": "castem_mesh_surf_ymin.bdf",
+      "bytes": 1625829,
+      "sha256": "f2320c7582608ec974262aa85b0fd6d746c9c346d02b74a112b2974be7450b39"
+    },
+    {
+      "path": "castem_mesh_surf_ymax.bdf",
+      "bytes": 1625829,
+      "sha256": "319289516d16e90d38946a9e9151b773308a89d29f5e2b44481b7046cf00ca08"
+    }
+  ],
+  "validation_scope": [
+    "The immutable source SHA-256 manifest matched before and after execution.",
+    "The GUI copied inputs, patched DGIBI, launched Cast3M, received return code 0, and completed its integrated BDF merge.",
+    "No FISS calculation, CFX import, mesh-quality analysis, or numerical-result validation was performed."
+  ]
+}

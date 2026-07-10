@@ -4,3 +4,14 @@ source_codes/castem_tool.dgibi -text
 source_codes/fiss.eso -text
 source_codes/fuite_fissure.dgibi -text
 source_codes/merge_surface_bdf.py -text
+examples/input/*.csv -text
+examples/output/*.bdf -text
+examples/output/*.dgibi -text
+examples/output/*.json -text
+examples/multiple-holes/*.json -text
+examples/multiple-holes/output/*.bdf -text
+examples/multiple-holes/output/*.dgibi -text
+examples/multiple-holes/output/*.json -text
+docs/assets/*.png binary
+docs/assets/*.gif binary
+docs/workflow.mmd -text

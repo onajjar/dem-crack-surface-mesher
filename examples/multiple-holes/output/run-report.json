@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-07-10",
+  "status": "completed_with_solver_notice",
+  "entrypoint": "castem_pipeline_gui_t13.App._run",
+  "environment": {
+    "operating_system": "Windows 11",
+    "python": "3.13.5",
+    "tk": "8.6",
+    "numpy": "2.1.3",
+    "matplotlib": "3.10.0",
+    "h5py": "3.12.1",
+    "meshio": "5.3.5",
+    "pyvista": "0.46.4",
+    "pillow": "11.1.0",
+    "vtk": "9.5.2",
+    "cast3m": "2025.0 (launcher version 25)"
+  },
+  "parameters_file": "examples/multiple-holes/parameters.json",
+  "parameters": {
+    "re_ti": 60,
+    "re_crpa": 1,
+    "re_smfa": 0.05,
+    "re_numspa": 50,
+    "re_opmin": 0.000001,
+    "nelem_x": 1,
+    "nelem_y": 1,
+    "nelem_z": 1,
+    "re_tol": 1e-10,
+    "re_fact_z": 1.05,
+    "num_el_fill": 5,
+    "re_fact_hole": 5.0,
+    "holes_enabled": true,
+    "holes": [
+      {
+        "cx": -0.2,
+        "cy": 0.2,
+        "r": 0.07
+      },
+      {
+        "cx": 0.2,
+        "cy": -0.2,
+        "r": 0.07
+      }
+    ],
+    "opti_med": 0,
+    "opti_stl": 0,
+    "opti_visu": 0,
+    "merge_bdfs": true
+  },
+  "execution": {
+    "command_form": "cmd.exe /c <resolved-castem-launcher> castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi",
+    "gui_elapsed_seconds": 18.162,
+    "cast3m_reported_elapsed_seconds": 12.63,
+    "process_return_code": 0,
+    "cast3m_error_level": 0,
+    "dialogs": []
+  },
+  "solver_notices": [
+    "Cast3M reported a signalling IEEE_INVALID_FLAG after its normal level-0 stop. The generated mesh is preserved as execution evidence, not as a numerical or mesh-quality validation."
+  ],
+  "input_sha256": {
+    "xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv": "e921f1c90d704df8e981ccb85a75b2ac2a50ec742a193341064cc1e3d04c7a09",
+    "yrange_ti60_crpa1_smfa5_numsp50_opmin1.csv": "89f2f63aa4707b761582a4a15ff8709071ebcec87332ee27ac2437c837f9a682",
+    "zfit_zmax_ti60_crpa1_smfa5_numsp50_opmin1.csv": "cb2fb2db6d2d8e6af00da6f34a98cb521a3e23c4b9fda6ecba0022f9c36c55c5",
+    "zfit_zmin_ti60_crpa1_smfa5_numsp50_opmin1.csv": "6b38423281dad212107b29630271760169b49610f43ba30f0cf9b33c4c6417b4"
+  },
+  "volume_bdf_summary": {
+    "bytes": 2253241,
+    "lines": 41728,
+    "grid_cards": 15672,
+    "chexa_cards": 5190,
+    "rendered_surface_cells": 5710,
+    "sha256": "9774f8373ba14085d3f35e937d09a2bf25fd7c330c44f92cecdb88c2bdc98d26"
+  },
+  "combined_bdf_summary": {
+    "bytes": 2917106,
+    "lines": 53181,
+    "grid_cards": 15672,
+    "chexa_cards": 5190,
+    "cquad4_cards": 5710,
+    "pshell_cards": 8,
+    "sha256": "eb1bae01c0c98f03fa6be9685751d4a36abcb03c913b106765c937600a8a8ca8"
+  },
+  "hole_surface_evidence": [
+    {
+      "source": "castem_mesh_surf_trou_1.bdf",
+      "cquad4_cards": 64,
+      "unique_surface_nodes": 96,
+      "requested_xy_center": [-0.2, 0.2],
+      "surface_node_xy_centroid": [-0.198639049875, 0.20081067659375],
+      "radius_from_requested_center_range": [0.0699999995187798, 0.0700000005304559],
+      "radius_from_centroid_range": [0.0684176627929877, 0.0715826015010834],
+      "sha256": "010b8cf21130724489b4bea136b95669b90dcd6ea50fee17fc1a94ccadf57961"
+    },
+    {
+      "source": "castem_mesh_surf_trou_2.bdf",
+      "cquad4_cards": 64,
+      "unique_surface_nodes": 96,
+      "requested_xy_center": [0.2, -0.2],
+      "surface_node_xy_centroid": [0.198639049875, -0.20081067659375],
+      "radius_from_requested_center_range": [0.0699999995187798, 0.0700000005304559],
+      "radius_from_centroid_range": [0.0684176627929877, 0.0715826015010834],
+      "sha256": "261539d9d162439006de502f58f5ced5875444721e8fa27eb741dfb647c60c55"
+    }
+  ],
+  "published_artifacts": [
+    {
+      "path": "examples/multiple-holes/output/castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi",
+      "bytes": 22308,
+      "sha256": "36df24e1400ae1c9100d66c2f26e24e59eca2ba2c59d03edc008ef5d614454d4"
+    },
+    {
+      "path": "examples/multiple-holes/output/combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf",
+      "bytes": 2917106,
+      "sha256": "eb1bae01c0c98f03fa6be9685751d4a36abcb03c913b106765c937600a8a8ca8"
+    },
+    {
+      "path": "docs/assets/multiple-holes-mesh-preview.png",
+      "bytes": 413785,
+      "dimensions": [1600, 1000],
+      "sha256": "76275526a59ed69e758a0aad6f2ce3f69804b17eef3323f85ba3bec8b5d05f3a"
+    }
+  ],
+  "generated_but_not_published": [
+    {
+      "path": "castem_mesh_v.bdf",
+      "bytes": 2253241,
+      "sha256": "9774f8373ba14085d3f35e937d09a2bf25fd7c330c44f92cecdb88c2bdc98d26"
+    },
+    {
+      "path": "castem_mesh_surf_trou_1.bdf",
+      "bytes": 1696433,
+      "sha256": "010b8cf21130724489b4bea136b95669b90dcd6ea50fee17fc1a94ccadf57961"
+    },
+    {
+      "path": "castem_mesh_surf_trou_2.bdf",
+      "bytes": 1696433,
+      "sha256": "261539d9d162439006de502f58f5ced5875444721e8fa27eb741dfb647c60c55"
+    }
+  ],
+  "immutable_source_verification": {
+    "status": "matched_before_and_after",
+    "manifest": "BASELINE_SHA256SUMS",
+    "verified_files": [
+      "bpm_cfx.ico",
+      "castem_pipeline_gui_t13.py",
+      "source_codes/castem_tool.dgibi",
+      "source_codes/fiss.eso",
+      "source_codes/fuite_fissure.dgibi",
+      "source_codes/merge_surface_bdf.py"
+    ]
+  },
+  "validation_scope": [
+    "The immutable source SHA-256 manifest matched before and after execution.",
+    "The GUI copied inputs, patched DGIBI, launched Cast3M, received return code 0, and completed its integrated BDF merge.",
+    "The patched DGIBI contains exactly two requested circle definitions and Cast3M exported two corresponding hole-surface BDF files.",
+    "No FISS calculation, CFX import, mesh-quality analysis, or numerical-result validation was performed."
+  ]
+}
