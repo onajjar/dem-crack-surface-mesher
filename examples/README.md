@@ -61,3 +61,17 @@ The `output/` directory contains the generated DGIBI, a 2.74 MB combined BDF, an
 The recorded process returned `0` and Cast3M stopped at error level `0`, but the solver also emitted an `IEEE_INVALID_FLAG` notice. Treat the output as execution evidence only; no mesh-quality, numerical, or downstream CFD-import validation was performed.
 
 Cast3M and a compatible `FISS` operator are external requirements. If they are unavailable, the GUI and static tests can still be launched, but mesh/flow results must not be inferred or fabricated.
+
+## Run the documented multiple-hole example
+
+From repo root, run:
+
+```powershell
+python scripts\run_multiple_holes_example.py
+```
+
+If `_runtime\multiple-holes-output` already exists from a prior run, rerun with:
+
+```powershell
+python scripts\run_multiple_holes_example.py --clean
+```

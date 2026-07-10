@@ -9,8 +9,10 @@ before and after the run.
 from __future__ import annotations
 
 import hashlib
+import argparse
 import json
 import os
+import shutil
 import re
 import sys
 import time
@@ -83,15 +85,37 @@ def relative_inventory() -> list[dict[str, Any]]:
     ]
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Execute the immutable two-hole example with baseline inputs."
+    )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help=(
+            "Delete and recreate the runtime output directory before execution. "
+            "Useful for rerunning after a previous generated run."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     existing_run_entries = [
         path for path in OUTPUT.iterdir()
         if path.name != ".mplconfig"
     ] if OUTPUT.exists() else []
+    if args.clean and OUTPUT.exists():
+        if existing_run_entries:
+            shutil.rmtree(OUTPUT)
+            existing_run_entries = []
+        else:
+            OUTPUT.mkdir(parents=True, exist_ok=True)
     if existing_run_entries:
         raise RuntimeError(
             "Refusing to reuse the non-empty isolated runtime directory: "
-            "_runtime/multiple-holes-output"
+            "_runtime/multiple-holes-output. Use --clean to remove existing files and rerun."
         )
     OUTPUT.mkdir(parents=True, exist_ok=True)
     MPLCONFIG.mkdir(parents=True, exist_ok=True)
