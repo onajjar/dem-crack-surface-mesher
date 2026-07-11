@@ -6,7 +6,7 @@ A Windows desktop pipeline that turns four structured crack-surface CSV grids in
 
 > **Baseline status:** `v0.1.0-baseline` is a pre-refactor publication of the current T13 program. The GUI and every file in `source_codes/` are preserved byte-for-byte. Documentation, examples, verification, and CI are additive; computational behavior is intentionally unchanged.
 
-![The unchanged T13 Tkinter interface with blank path fields](docs/assets/gui-screenshot.png)
+![Scientific workbench showing real two-hole mesh controls and the bulk inflated mode](docs/assets/scientific-workbench.png)
 
 ## What it does
 
@@ -72,6 +72,68 @@ The same CSV quartet was also run through the unchanged GUI with two circular ho
 
 The two-hole run carried the same `IEEE_INVALID_FLAG` notice and the same validation boundary as the no-hole run. See the [multiple-hole guide](examples/multiple-holes/README.md) for exact GUI values, a machine-readable configuration, reproduction commands, published output checksums, and the sanitized run report.
 
+### Scientific launcher and accelerated hole path
+
+`castem_pipeline_gui_scientific.py` is the single launcher for the enhanced workflow. It keeps the immutable T13 GUI and every file in `source_codes/` unchanged, while offering both the original reference mode and the fast bulk Python hole mode from one interface.
+
+```powershell
+python castem_pipeline_gui_scientific.py
+```
+
+For enabled holes, Python detects the same outer/circle contours, constructs all radial layers with vectorized interpolation, and writes complete lower/upper/mean `CQUAD4` fill meshes to three small NASTRAN BDF files. Cast3M bulk-loads them with `LIRE 'NAS'`; the generated DGIBI contains no per-point `POIN` statements and does not call the expensive `REGL`, `INT_COMP`, or `DISPLACE` hole path. Reused working directories are isolated by archiving prior fixed-name mesh artifacts, and the GUI verifies the complete expected output manifest before reporting success.
+
+`num_el_fill` sets the radial layer count. `re_fact_hole` is enforced as the outermost-to-hole-adjacent cell-width ratio using a geometric progression. With the documented `num_el_fill=5` and `re_fact_hole=5`, the outer-to-hole layer fractions are `0, 0.382406, 0.638136, 0.809153, 0.923519, 1`, giving an exact outer/inner width ratio of 5.
+
+A standalone two-hole reproduction remains available for automated verification:
+
+```powershell
+python scripts\run_python_holes_example.py --clean
+```
+
+On the documented 50 × 50 CSV input with two holes and Cast3M 25, the real controlled benchmark produced valid volume meshes with identical `CQUAD4`/`CHEXA` element counts:
+
+| `nelem_x = nelem_y` | Baseline | Scientific bulk path | Speed-up |
+|---:|---:|---:|---:|
+| 1 | 17.900 s | 9.645 s | 1.86× |
+| 2 | 63.403 s | 15.722 s | 4.03× |
+| 4 | 247.458 s | 36.806 s | 6.72× |
+
+Python preparation itself took at most 0.022 s, detected 32 boundary points per hole, and wrote 384 nodes plus 320 quads per fill surface. Recreate all six measurements with `--clean`, or retain the verified baseline cases and refresh only the scientific cases with `--reuse-baseline`:
+
+```powershell
+python scripts\benchmark_hole_optimization.py --clean
+python scripts\benchmark_hole_optimization.py --reuse-baseline
+```
+
+This is an optimization, not a claim of byte-identical output: the non-planar 3D hole fill is a Python-generated `CQUAD4` mesh rather than Cast3M's planar `CERC`/`REGL` construction followed by displacement. Validate mesh quality and downstream CFD behavior for your geometry before production use. See the [method](docs/python-hole-interpolation.md) and [provisional verification](docs/provisional-verification.md).
+
+### Real mesh comparison
+
+The following image is rendered directly from the independently generated r=1 benchmark BDFs—not synthetic geometry. It uses matched cameras for the reference and optimized cases, with overall top views, enlarged first-hole inflation details, and isometric views.
+
+![Actual Cast3M BDF comparison: baseline reference on the left and scientific bulk-hole run on the right](docs/assets/mesh-comparison-baseline-vs-python-holes.png)
+
+At this refinement, both exports contain 5,190 `HEXA8` volume cells and 2,595 maximum-surface `CQUAD4` cells. The scientific export contains fewer BDF nodes (10,864 vs 15,672), retains all five inflated radial layers, and completed in 9.645 s rather than 17.900 s. These are visual and exported-cell-count comparisons only; they do not prove numerical equivalence or mesh quality.
+
+Regenerate the image from the actual benchmark outputs:
+
+```powershell
+python -m pip install -r requirements-visuals.txt -c constraints-baseline.txt
+python scripts\render_hole_mesh_comparison.py
+```
+
+### Scientific workbench
+
+The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; supports a complete documented-configuration loader, mode-aware preflight, real XY-grid/hole and inflation-profile previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, and access to the BDF comparison image.
+
+```powershell
+python castem_pipeline_gui_scientific.py
+```
+
+![Scientific workbench: mesh and hole controls](docs/assets/scientific-workbench.png)
+
+See [docs/scientific-workbench.md](docs/scientific-workbench.md) for use, scope, and safety notes.
+
 ## Requirements
 
 | Component | Requirement | Purpose |
@@ -120,20 +182,22 @@ $env:GMSH_PATH = 'path\to\gmsh.exe'
 
 ## Quick start
 
-Launch the application from the repository root so the existing icon is discoverable:
+Launch the scientific application from the repository root so the existing icon and documented examples are discoverable:
 
 ```powershell
-python castem_pipeline_gui_t13.py
+python castem_pipeline_gui_scientific.py
 ```
+
+The immutable `castem_pipeline_gui_t13.py` remains available when an exact historical-baseline run is required.
 
 Then:
 
-1. Choose `source_codes\castem_tool.dgibi` as the mesh template.
+1. Choose **Load documented example**, or select `source_codes\castem_tool.dgibi` as the mesh template.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
 3. Select the four files in `examples\input` in their matching `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin` fields.
 4. Keep the example naming parameters at `re_ti=60`, `re_crpa=1`, `re_smfa=0.05`, `re_numspa=50`, and `re_opmin=1e-6`.
-5. Review mesh density, hole, export, merge, and Gmsh options. The example walkthrough uses `nelem_x=1`, `nelem_y=1`, `nelem_z=1`, and no holes.
-6. Select **Run converter** and monitor the log.
+5. Review mesh density, holes, inflation, export, merge, and Gmsh options. For holes, choose the reference mode or **Bulk Python hole mesh — fast + inflated**.
+6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
 See [examples/README.md](examples/README.md) for the shared input/output policy, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md) for the two-hole walkthrough.
 
@@ -207,7 +271,10 @@ The template builds lines through the crack, derives local opening and extent, a
 
 ```text
 .
-├── castem_pipeline_gui_t13.py   # unchanged baseline GUI
+├── castem_pipeline_gui_scientific.py    # primary enhanced launcher
+├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
+├── python_hole_interpolation.py         # bulk inflated fill generation
+├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
 ├── source_codes/                # unchanged Cast3M and helper sources
 ├── examples/
@@ -216,6 +283,9 @@ The template builds lines through the crack, derives local opening and extent, a
 │   └── multiple-holes/          # verified two-hole configuration/output
 ├── docs/
 │   ├── assets/                  # authentic screenshots and diagrams
+│   ├── provisional-verification.md
+│   ├── python-hole-interpolation.md
+│   ├── scientific-workbench.md
 │   ├── source-audit.md
 │   └── workflow.mmd
 ├── scripts/                     # baseline verification and visual tooling
@@ -241,6 +311,13 @@ python -m pytest -q
 
 These checks validate source preservation and Python syntax. They do not replace a licensed Cast3M execution or numerical validation.
 
+With Cast3M installed, also run the optimized-hole integration example and the measured comparison:
+
+```powershell
+python scripts\run_python_holes_example.py --clean
+python scripts\benchmark_hole_optimization.py --clean
+```
+
 ### Rebuild documentation visuals
 
 The visual tools are intentionally separate from the GUI runtime dependencies:
@@ -254,9 +331,10 @@ On a Windows desktop with Cast3M available, `python scripts\capture_demo.py` dri
 
 ## Limitations and known baseline behavior
 
-- This is an intentionally unrefactored Windows baseline; there is no headless CLI or packaging layer.
+- The immutable T13 implementation remains an intentionally unrefactored Windows baseline. The scientific workbench and reproducible example runners are additive, not a packaging layer or general-purpose headless CLI.
+- The scientific bulk-hole path is additive. Its common rectilinear interpolation is vectorized; the robust bilinear-inversion fallback for curvilinear structured grids still searches cells per query point. Its `CQUAD4` fill is not numerically or node-for-node equivalent to the preserved Cast3M planar-arc/displacement construction.
 - Cast3M and Gmsh are external applications and are not installed by `requirements.txt`.
-- CSV schema and physical consistency are not validated by the GUI before solver execution.
+- The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.
 - The integrated BDF merger imports `CQUAD4` boundary cards, assigns one `PSHELL` per surface file, and excludes the mean surface. It is not a general-purpose BDF merger.
 - **FISS model parameters:** the patcher replaces only the first matching assignment in the template's Main Program. Because the supplied FISS template repeats material variables in multiple model blocks, some entered overrides can affect an earlier inactive block while the selected model retains a hard-coded value. This behavior is preserved and must be verified in the generated `.dgibi` before relying on a study.
 - Enabling **View mesh in Gmsh** also writes `opti_visu=1`; the supplied Cast3M template performs its own `TRAC` operation before the GUI opens Gmsh.

@@ -75,3 +75,13 @@ If `_runtime\multiple-holes-output` already exists from a prior run, rerun with:
 ```powershell
 python scripts\run_multiple_holes_example.py --clean
 ```
+
+## Run the accelerated multiple-hole path
+
+The scientific bulk-hole implementation preserves the published baseline sources, creates all inflated radial rings in Python, writes three complete `CQUAD4` BDF surfaces, and removes the expensive Cast3M `REGL`/`INT_COMP`/`DISPLACE` hole pass. Use `castem_pipeline_gui_scientific.py` for interactive work; the script below is its non-interactive documented reproduction.
+
+```powershell
+python scripts\run_python_holes_example.py --clean
+```
+
+The script writes only ignored files under `_runtime\python-holes-output`. It reports the Cast3M return code, detected contour points, generated fill topology, radial fractions, preparation time, and whether `castem_mesh_v.bdf` was produced. For the method, real multi-size comparison, and element-orientation audit, see [the optimization note](../docs/python-hole-interpolation.md) and [provisional verification](../docs/provisional-verification.md).

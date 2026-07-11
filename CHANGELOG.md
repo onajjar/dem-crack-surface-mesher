@@ -4,7 +4,14 @@ All notable repository-level changes are documented here. This project follows t
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- A single scientific launcher with preflight validation, XY geometry preview, reference/bulk solver modes, streamed status, and separated mesh/FISS workflows.
+- Vectorized rectilinear interpolation and complete lower/upper/mean NASTRAN hole-fill meshes imported by Cast3M with `LIRE 'NAS'`.
+- Explicit geometric hole inflation controlled by `num_el_fill` and `re_fact_hole`, plus topology and orientation checks.
+- A reproducible Cast3M comparison benchmark, focused tests, provisional verification report, and real BDF-based mesh comparison assets.
+- A compatibility redirect from the earlier Python-hole launcher to the scientific workbench.
+- Mode-aware preflight, complete documented-example loading, dirty-state tracking, mutually exclusive mesh/FISS runs, stale-output archival, and fresh-output manifest verification.
 
 ## [0.1.0-baseline] - 2026-07-10
 
