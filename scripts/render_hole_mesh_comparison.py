@@ -247,10 +247,17 @@ def _compose_final_image(
         baseline.hexahedra == python.hexahedra
         and baseline.max_surface_quads == python.max_surface_quads
     )
-    equivalence = (
-        f"Exported cell counts: {'identical' if same_export_counts else 'different'} for this run "
-        f"({baseline.hexahedra:,} HEXA8; {baseline.max_surface_quads:,} max-surface CQUAD4)."
-    )
+    if same_export_counts:
+        equivalence = (
+            "Exported cell counts: identical for this run "
+            f"({baseline.hexahedra:,} HEXA8; {baseline.max_surface_quads:,} max-surface CQUAD4)."
+        )
+    else:
+        equivalence = (
+            "Exported cell counts: reference "
+            f"{baseline.hexahedra:,} HEXA8 / {baseline.max_surface_quads:,} CQUAD4; conformal "
+            f"{python.hexahedra:,} HEXA8 / {python.max_surface_quads:,} CQUAD4."
+        )
     draw.text((44, footer_top + 20), equivalence, font=_font(18, bold=True), fill="#17314a")
     if baseline_seconds is not None and python_seconds is not None and speedup is not None:
         runtime = (

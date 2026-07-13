@@ -12,6 +12,9 @@ All notable repository-level changes are documented here. This project follows t
 - A reproducible Cast3M comparison benchmark, focused tests, provisional verification report, and real BDF-based mesh comparison assets.
 - A compatibility redirect from the earlier Python-hole launcher to the scientific workbench.
 - Mode-aware preflight, complete documented-example loading, dirty-state tracking, mutually exclusive mesh/FISS runs, stale-output archival, and fresh-output manifest verification.
+- Conformal hole-fill angular subdivision that matches each surrounding `nelem_x`/`nelem_y` edge count and removes the 1-to-2 hanging-node interface.
+- A one-click scientific-workbench action for opening the generated combined or volume BDF in Gmsh.
+- A no-interface INI runner covering mesh, multiple holes, exports, merge/Gmsh controls, and optional FISS execution.
 
 ## [0.1.0-baseline] - 2026-07-10
 

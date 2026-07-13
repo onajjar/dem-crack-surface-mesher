@@ -1,6 +1,6 @@
 # Provisional verification — scientific bulk-hole path
 
-Verification date: 2026-07-11. Host: Windows, Python 3.13.5, Cast3M annual version 2025 (launcher version `25`). These measurements apply to the documented 50 × 50 CSV quartet and two holes `(-0.20, 0.20, 0.07)` and `(0.20, -0.20, 0.07)`.
+Verification date: 2026-07-13. Host: Windows, Python 3.13.5, Cast3M annual version 2025 (launcher version `25`). These measurements apply to the documented 50 × 50 CSV quartet and two holes `(-0.20, 0.20, 0.07)` and `(0.20, -0.20, 0.07)`.
 
 This is implementation evidence, not scientific validation.
 
@@ -8,31 +8,61 @@ This is implementation evidence, not scientific validation.
 
 - `python -B scripts\verify_baseline.py`: all 6 immutable files matched their committed SHA-256 values.
 - `python -B -m compileall -q .`: passed.
-- `python -B -m pytest -q -p no:cacheprovider tests`: 15 tests passed.
+- `python -B -m pytest -q -p no:cacheprovider tests`: 18 tests passed.
+- `python -B castem_pipeline_headless.py examples\scientific-run.ini --validate-only`: passed and reported 64 angular points for each of the two refinement-2 holes without starting a GUI or Cast3M.
 - The derived optimized DGIBI contains three `LIRE 'NAS'` mesh imports and no generated per-node `POIN` statements.
 - Its hole-fill replacement contains no `REGL (-1*num_el_fill)`, `INT_COMP surf_zmin_comp`, or `DISPLACE surf_zmin` call.
 
+## Conformal interface verification
+
+The reported mismatch was reproduced from `work1111`: the Python fill used 32 angular edges per hole, while `nelem_x = nelem_y = 2` split the matching Cast3M square contour into 64 edges. The former implementation projected only the 32 coarse contour corners and did not apply the background-edge subdivision.
+
+The corrected implementation subdivides every contour segment by the same structured-grid refinement before projecting it onto the circle. For the same two-hole case:
+
+| Topology check, per hole | Previous file | Corrected refinement 2 |
+|---|---:|---:|
+| Hole-wall edges | 32 | 64 |
+| Matching square-contour edges | 64 | 64 |
+| Boundary edges near the hole | 128 | 64 |
+| Unmatched interface edges | 96 | 0 |
+
+In the previous final surface, the 96 extra boundary edges per hole exposed the non-conformal square/fill interface. In the corrected final surface, all 64 boundary edges near each hole are the physical hole wall; no square/fill interface remains in the boundary-edge set.
+
+With the user's exact `nelem_x = nelem_y = 2` and `num_el_fill = 20` settings, each generated fill surface has 64 angular points per hole, 2,688 nodes, and 2,560 `CQUAD4` cells across the two holes.
+
 ## Real Cast3M integration
 
-The final hardened-code rerun, `python -B scripts\run_python_holes_example.py --clean --output _runtime\final-bulk-hole-integration`, completed with process return code `0`, Cast3M error level `0`, and a generated volume BDF.
+The corrected run,
 
-For each of the lower, upper, and mean fill surfaces, Python wrote:
+```powershell
+python -B scripts\run_python_holes_example.py --clean --refinement 2 --output _runtime\conformal-hole-r2
+```
+
+completed with process return code `0`, Cast3M error level `0`, and a generated volume BDF.
 
 | Quantity | Value |
 |---|---:|
-| Detected contour nodes per hole | 32 |
+| Detected contour nodes per hole | 64 |
 | Rings per hole | 6 |
 | Radial cells per hole | 5 |
-| Nodes across two holes | 384 |
-| `CQUAD4` cells across two holes | 320 |
-| Python preparation time | 0.019746 s |
-| Cast3M time | 8.982857 s |
+| Nodes per fill surface | 768 |
+| `CQUAD4` cells per fill surface | 640 |
+| Python preparation time | 0.026474 s |
+| Cast3M time | 13.488335 s |
+| Final surface quads | 9,740 |
+| Final volume hexes | 19,480 |
 
-Cast3M preserved all 32 radial edges in every transition and all 160 annular quads per hole.
+The complete committed INI was also executed through the no-interface launcher:
+
+```powershell
+python -B castem_pipeline_headless.py examples\scientific-run.ini
+```
+
+It returned `0`, reported Cast3M error level `0`, detected `[64, 64]` angular points, found no missing expected outputs, and created the named combined BDF. The headless process measured 15.231634 s on this run; timing variation relative to the controlled benchmark is expected.
 
 ## Inflation evidence
 
-With `num_el_fill=5` and `re_fact_hole=5`, the mean hole-outward radii measured from the final Cast3M maximum surface were:
+The radial inflation check was retained at refinement 1. With `num_el_fill = 5` and `re_fact_hole = 5`, the mean hole-outward radii measured from the final Cast3M maximum surface were:
 
 ```text
 0.0700000000
@@ -59,13 +89,15 @@ The corresponding mean radial widths were:
 
 ## Element-orientation checks
 
+The retained refinement-1 integration check found:
+
 - All 320 generated fill quads had positive signed XY area; minimum signed area was `1.4567e-5`.
 - All 1,280 annular corner Jacobians were positive.
 - All 2,595 quads on the final maximum surface were positive and non-zero.
 - All 5,190 volume `HEXA8` center Jacobians were positive.
 - All 41,520 volume corner Jacobians were positive; none had mixed or zero signs.
 
-These orientation checks detect inverted or collapsed elements in this run. They do not replace a full mesh-quality study.
+These orientation checks detect inverted or collapsed elements in that run. They do not replace a full mesh-quality study.
 
 ## Run isolation checks
 
@@ -76,16 +108,16 @@ These orientation checks detect inverted or collapsed elements in this run. They
 
 ## Controlled timing comparison
 
-Reference measurements were retained from the complete verified benchmark; the scientific cases were then rerun with `--reuse-baseline` after the bulk-import change.
+Reference measurements were retained from the complete verified benchmark; the scientific cases were rerun after conformal angular subdivision was added.
 
-| `nelem_x = nelem_y` | Reference Cast3M | Scientific bulk path | Speed-up | Surface quads | Volume hexes |
-|---:|---:|---:|---:|---:|---:|
-| 1 | 17.900062 s | 9.645498 s | 1.856× | 2,595 | 5,190 |
-| 2 | 63.403486 s | 15.721796 s | 4.033× | 9,420 | 18,840 |
-| 4 | 247.457748 s | 36.806058 s | 6.723× | 36,720 | 73,440 |
+| `nelem_x = nelem_y` | Reference Cast3M | Scientific conformal path | Speed-up | Angular edges per hole | Scientific surface quads | Scientific volume hexes |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 17.900062 s | 9.729355 s | 1.840× | 32 | 2,595 | 5,190 |
+| 2 | 63.403486 s | 14.037808 s | 4.517× | 64 | 9,740 | 19,480 |
+| 4 | 247.457748 s | 40.639917 s | 6.089× | 128 | 37,680 | 75,360 |
 
-At every refinement, the reference and scientific exports had identical surface-quad and volume-hex counts. Python preparation took at most 0.021470 s in the controlled benchmark.
+At refinement 1, the reference and scientific exports retain the same element counts. At refinements 2 and 4, the scientific path intentionally adds the angular subdivisions required to make the hole-fill interface conformal; therefore its counts are higher than the old non-conformal reference. Python preparation took at most 0.053138 s in the controlled benchmark.
 
 ## Known signal and validation boundary
 
-The optimized Cast3M log contains `IEEE_INVALID_FLAG`; the unchanged reference run contains the same signal, so it is not attributed to the bulk import. Neither this comparison nor matching cell counts proves coordinate equivalence, mesh-quality equivalence, numerical accuracy, FISS equivalence, or downstream CFD compatibility.
+The optimized Cast3M log contains `IEEE_INVALID_FLAG`; the unchanged reference run contains the same signal, so it is not attributed to the bulk import. This comparison does not prove numerical accuracy, FISS equivalence, mesh-quality equivalence, or suitability for a particular downstream CFD solver. A solver-specific mesh check remains required before production CFD use.

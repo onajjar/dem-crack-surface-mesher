@@ -84,4 +84,15 @@ The scientific bulk-hole implementation preserves the published baseline sources
 python scripts\run_python_holes_example.py --clean
 ```
 
-The script writes only ignored files under `_runtime\python-holes-output`. It reports the Cast3M return code, detected contour points, generated fill topology, radial fractions, preparation time, and whether `castem_mesh_v.bdf` was produced. For the method, real multi-size comparison, and element-orientation audit, see [the optimization note](../docs/python-hole-interpolation.md) and [provisional verification](../docs/provisional-verification.md).
+The script writes only ignored files under `_runtime\python-holes-output`. It reports the Cast3M return code, detected contour points, generated fill topology, radial fractions, preparation time, and whether `castem_mesh_v.bdf` was produced. The hole-ring angular count follows `nelem_x` and `nelem_y`, so the circular and square sides of every fill interface have the same number of edges. In the scientific GUI, use **Open generated mesh in Gmsh** on the Run / results tab to inspect an existing combined or volume BDF without rerunning Cast3M. For the method, real multi-size comparison, and element-orientation audit, see [the optimization note](../docs/python-hole-interpolation.md) and [provisional verification](../docs/provisional-verification.md).
+
+## Run without the GUI
+
+[`scientific-run.ini`](scientific-run.ini) contains the complete documented two-hole configuration, including mesh, export, merge, Gmsh, and FISS options. Validate or execute it from the repository root:
+
+```powershell
+python castem_pipeline_headless.py examples\scientific-run.ini --validate-only
+python castem_pipeline_headless.py examples\scientific-run.ini
+```
+
+Relative paths are interpreted from the INI file. Edit `operation = mesh` to `fiss` or `both` when the optional FISS calculation is required.

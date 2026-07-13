@@ -12,6 +12,7 @@
    - **Bulk Python hole mesh — fast + inflated** vectorizes the common interpolation path, writes complete lower/upper/mean `CQUAD4` fill meshes, and lets Cast3M read them with `LIRE 'NAS'`.
 5. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
 6. In **Run & results**, validate again and launch Cast3M. The live solver log and run state are streamed without blocking the interface.
+7. Use **Open generated mesh in Gmsh** to open the exact combined BDF for the current naming parameters, the newest combined BDF, or the volume BDF without rerunning Cast3M.
 
 The no-hole path remains the preserved baseline regardless of the selected hole mode. The previous `castem_pipeline_gui_python_holes.py` entry point is retained only as a compatibility wrapper and redirects to this workbench.
 
@@ -21,6 +22,8 @@ Changing a tracked path or parameter marks the validation state as stale. Mesh a
 
 The bulk mode constructs every radial ring explicitly before writing the BDF. The live normalized profile in the hole panel previews those cell edges. With `num_el_fill=5` and `re_fact_hole=5`, it produces five cells whose widths grow geometrically away from the hole, with a measured outermost/hole-adjacent ratio of `4.99999988` after Cast3M import in the documented test.
 
+Angular subdivisions follow `nelem_x` and `nelem_y` edge by edge. For example, refinement 2 produces 64 square-interface edges and 64 circular edges per hole; it does not leave a 32-to-64 hanging-node transition.
+
 See [Bulk inflated hole meshing](python-hole-interpolation.md) for the algorithm and [Provisional verification](provisional-verification.md) for the real integration, orientation, and timing evidence.
 
 ## FISS
@@ -29,19 +32,19 @@ The **FISS flow** tab retains the same configured input variables and invokes th
 
 ## Mesh comparison
 
-The **Open mesh comparison** action opens `docs/assets/mesh-comparison-baseline-vs-python-holes.png` when it exists. Recreate it only from independent real reference and scientific BDF outputs:
+The **Open mesh comparison** action opens the refinement-2 conformality comparison at `docs/assets/mesh-comparison-r2-conformal.png` when it exists. Recreate it only from independent real reference and scientific BDF outputs:
 
 ```powershell
 python scripts\benchmark_hole_optimization.py --clean
 python -m pip install -r requirements-visuals.txt -c constraints-baseline.txt
-python scripts\render_hole_mesh_comparison.py
+python scripts\render_hole_mesh_comparison.py --refinement 2 --output docs\assets\mesh-comparison-r2-conformal.png
 ```
 
 To retain the already verified reference cases and rerun only the scientific cases:
 
 ```powershell
 python scripts\benchmark_hole_optimization.py --reuse-baseline
-python scripts\render_hole_mesh_comparison.py
+python scripts\render_hole_mesh_comparison.py --refinement 2 --output docs\assets\mesh-comparison-r2-conformal.png
 ```
 
 The renderer reports exported BDF cell counts and visual geometry. It does not certify numerical equivalence, physical correctness, CFD compatibility, or general mesh quality.

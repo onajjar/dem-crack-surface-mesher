@@ -80,7 +80,7 @@ The two-hole run carried the same `IEEE_INVALID_FLAG` notice and the same valida
 python castem_pipeline_gui_scientific.py
 ```
 
-For enabled holes, Python detects the same outer/circle contours, constructs all radial layers with vectorized interpolation, and writes complete lower/upper/mean `CQUAD4` fill meshes to three small NASTRAN BDF files. Cast3M bulk-loads them with `LIRE 'NAS'`; the generated DGIBI contains no per-point `POIN` statements and does not call the expensive `REGL`, `INT_COMP`, or `DISPLACE` hole path. Reused working directories are isolated by archiving prior fixed-name mesh artifacts, and the GUI verifies the complete expected output manifest before reporting success.
+For enabled holes, Python detects the same outer/circle contours, subdivides every fill-boundary edge with the matching `nelem_x`/`nelem_y` background count, constructs all radial layers with vectorized interpolation, and writes complete lower/upper/mean `CQUAD4` fill meshes to three small NASTRAN BDF files. Cast3M bulk-loads them with `LIRE 'NAS'`; the generated DGIBI contains no per-point `POIN` statements and does not call the expensive `REGL`, `INT_COMP`, or `DISPLACE` hole path. Reused working directories are isolated by archiving prior fixed-name mesh artifacts, and the GUI verifies the complete expected output manifest before reporting success.
 
 `num_el_fill` sets the radial layer count. `re_fact_hole` is enforced as the outermost-to-hole-adjacent cell-width ratio using a geometric progression. With the documented `num_el_fill=5` and `re_fact_hole=5`, the outer-to-hole layer fractions are `0, 0.382406, 0.638136, 0.809153, 0.923519, 1`, giving an exact outer/inner width ratio of 5.
 
@@ -90,15 +90,15 @@ A standalone two-hole reproduction remains available for automated verification:
 python scripts\run_python_holes_example.py --clean
 ```
 
-On the documented 50 × 50 CSV input with two holes and Cast3M 25, the real controlled benchmark produced valid volume meshes with identical `CQUAD4`/`CHEXA` element counts:
+On the documented 50 × 50 CSV input with two holes and Cast3M 25, the conformal bulk-hole benchmark produced:
 
-| `nelem_x = nelem_y` | Baseline | Scientific bulk path | Speed-up |
-|---:|---:|---:|---:|
-| 1 | 17.900 s | 9.645 s | 1.86× |
-| 2 | 63.403 s | 15.722 s | 4.03× |
-| 4 | 247.458 s | 36.806 s | 6.72× |
+| `nelem_x = nelem_y` | Reference | Scientific bulk | Speed-up | Angular edges/hole |
+|---:|---:|---:|---:|---:|
+| 1 | 17.900 s | 9.729 s | 1.84× | 32 |
+| 2 | 63.403 s | 14.038 s | 4.52× | 64 |
+| 4 | 247.458 s | 40.640 s | 6.09× | 128 |
 
-Python preparation itself took at most 0.022 s, detected 32 boundary points per hole, and wrote 384 nodes plus 320 quads per fill surface. Recreate all six measurements with `--clean`, or retain the verified baseline cases and refresh only the scientific cases with `--reuse-baseline`:
+Python preparation took at most 0.054 s. The angular count now scales with the background edge refinement, deliberately adding cells for `r>1`: the scientific r=2 export has 9,740 surface quads and 19,480 volume hexes, versus 9,420 and 18,840 in the nonconformal reference construction. Recreate all six measurements with `--clean`, or retain the verified baseline cases and refresh only the scientific cases with `--reuse-baseline`:
 
 ```powershell
 python scripts\benchmark_hole_optimization.py --clean
@@ -113,18 +113,23 @@ The following image is rendered directly from the independently generated r=1 be
 
 ![Actual Cast3M BDF comparison: baseline reference on the left and scientific bulk-hole run on the right](docs/assets/mesh-comparison-baseline-vs-python-holes.png)
 
-At this refinement, both exports contain 5,190 `HEXA8` volume cells and 2,595 maximum-surface `CQUAD4` cells. The scientific export contains fewer BDF nodes (10,864 vs 15,672), retains all five inflated radial layers, and completed in 9.645 s rather than 17.900 s. These are visual and exported-cell-count comparisons only; they do not prove numerical equivalence or mesh quality.
+At this r=1 refinement, both exports contain 5,190 `HEXA8` volume cells and 2,595 maximum-surface `CQUAD4` cells. The scientific export contains fewer BDF nodes (10,864 vs 15,672), retains all five inflated radial layers, and completed in 9.729 s rather than 17.900 s. At higher refinement, the scientific path intentionally adds angular hole cells to remain conformal. These comparisons do not prove numerical equivalence or general mesh quality.
+
+The r=2 comparison below shows the corrected 64-edge circular interface. The additional scientific cells are intentional: they replace the former 32-to-64 hanging-node transition with equal edge counts.
+
+![Actual refinement-2 comparison: former nonconformal reference on the left and corrected conformal scientific mesh on the right](docs/assets/mesh-comparison-r2-conformal.png)
 
 Regenerate the image from the actual benchmark outputs:
 
 ```powershell
 python -m pip install -r requirements-visuals.txt -c constraints-baseline.txt
 python scripts\render_hole_mesh_comparison.py
+python scripts\render_hole_mesh_comparison.py --refinement 2 --output docs\assets\mesh-comparison-r2-conformal.png
 ```
 
 ### Scientific workbench
 
-The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; supports a complete documented-configuration loader, mode-aware preflight, real XY-grid/hole and inflation-profile previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, and access to the BDF comparison image.
+The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; supports a complete documented-configuration loader, mode-aware preflight, real XY-grid/hole and inflation-profile previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, a one-click **Open generated mesh in Gmsh** action, and access to the BDF comparison image.
 
 ```powershell
 python castem_pipeline_gui_scientific.py
@@ -132,7 +137,20 @@ python castem_pipeline_gui_scientific.py
 
 ![Scientific workbench: mesh and hole controls](docs/assets/scientific-workbench.png)
 
+![Scientific workbench: run controls including one-click Gmsh opening](docs/assets/scientific-workbench-run-results.png)
+
 See [docs/scientific-workbench.md](docs/scientific-workbench.md) for use, scope, and safety notes.
+
+### Headless text-file runner
+
+The same scientific mesh and FISS settings can be supplied in a plain INI file, with no Tk window:
+
+```powershell
+python castem_pipeline_headless.py examples\scientific-run.ini --validate-only
+python castem_pipeline_headless.py examples\scientific-run.ini
+```
+
+The committed configuration lists every path, naming, mesh, hole, export, merge, Gmsh, and FISS option. Paths are resolved relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set `open_gmsh = true` only when a Gmsh window is wanted. See the [headless runner guide](docs/headless-runner.md).
 
 ## Requirements
 
@@ -273,6 +291,7 @@ The template builds lines through the crack, derives local opening and extent, a
 .
 ├── castem_pipeline_gui_scientific.py    # primary enhanced launcher
 ├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
+├── castem_pipeline_headless.py          # INI-driven no-interface runner
 ├── python_hole_interpolation.py         # bulk inflated fill generation
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
@@ -280,9 +299,11 @@ The template builds lines through the crack, derives local opening and extent, a
 ├── examples/
 │   ├── input/                   # existing 50 × 50 CSV quartet
 │   ├── output/                  # verified no-hole run artifacts
+│   ├── scientific-run.ini       # complete headless configuration
 │   └── multiple-holes/          # verified two-hole configuration/output
 ├── docs/
 │   ├── assets/                  # authentic screenshots and diagrams
+│   ├── headless-runner.md
 │   ├── provisional-verification.md
 │   ├── python-hole-interpolation.md
 │   ├── scientific-workbench.md
@@ -331,7 +352,7 @@ On a Windows desktop with Cast3M available, `python scripts\capture_demo.py` dri
 
 ## Limitations and known baseline behavior
 
-- The immutable T13 implementation remains an intentionally unrefactored Windows baseline. The scientific workbench and reproducible example runners are additive, not a packaging layer or general-purpose headless CLI.
+- The immutable T13 implementation remains an intentionally unrefactored Windows baseline. The scientific workbench and INI runner are additive Windows launchers, not a cross-platform packaging layer.
 - The scientific bulk-hole path is additive. Its common rectilinear interpolation is vectorized; the robust bilinear-inversion fallback for curvilinear structured grids still searches cells per query point. Its `CQUAD4` fill is not numerically or node-for-node equivalent to the preserved Cast3M planar-arc/displacement construction.
 - Cast3M and Gmsh are external applications and are not installed by `requirements.txt`.
 - The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.

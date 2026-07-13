@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import os
+import subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -31,7 +32,7 @@ from python_hole_interpolation import (
 ROOT = Path(__file__).resolve().parent
 DOCUMENTED_INPUT = ROOT / "examples" / "input"
 DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
-COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-baseline-vs-python-holes.png"
+COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
 
 
 class ScientificApp(PythonHoleInterpolationApp):
@@ -365,8 +366,10 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.mesh_run_button = ttk.Button(action, text="Run mesh converter", style="Primary.TButton", command=self._run_from_workbench)
         self.mesh_run_button.grid(row=2, column=0, sticky="ew", pady=3)
         ttk.Button(action, text="Open working directory", style="Quiet.TButton", command=self._open_workdir).grid(row=3, column=0, sticky="ew", pady=(8, 3))
-        ttk.Button(action, text="Open mesh comparison", style="Quiet.TButton", command=self._open_mesh_comparison).grid(row=4, column=0, sticky="ew", pady=3)
-        ttk.Label(action, textvariable=self.run_summary_var, style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=5, column=0, sticky="w", pady=(16, 0))
+        self.gmsh_open_button = ttk.Button(action, text="Open generated mesh in Gmsh", style="Quiet.TButton", command=self._open_mesh_in_gmsh)
+        self.gmsh_open_button.grid(row=4, column=0, sticky="ew", pady=3)
+        ttk.Button(action, text="Open mesh comparison", style="Quiet.TButton", command=self._open_mesh_comparison).grid(row=5, column=0, sticky="ew", pady=3)
+        ttk.Label(action, textvariable=self.run_summary_var, style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=6, column=0, sticky="w", pady=(16, 0))
 
         progress = self._card(tab, "Run state")
         progress.grid(row=0, column=1, sticky="new", pady=(0, 10))
@@ -680,8 +683,18 @@ class ScientificApp(PythonHoleInterpolationApp):
                 if not params.holes:
                     raise ValueError("Enable holes only after adding at least one circle.")
                 if self.solver_mode_var.get() == "python":
-                    rings = detect_circle_rings(x, y, params.holes, tolerance=params.re_tol)
-                    details.append("Detected circle points: " + ", ".join(str(len(ring.xy)) for ring in rings))
+                    rings = detect_circle_rings(
+                        x,
+                        y,
+                        params.holes,
+                        tolerance=params.re_tol,
+                        nelem_x=params.nelem_x,
+                        nelem_y=params.nelem_y,
+                    )
+                    details.append(
+                        "Conformal edges (circle = square interface): "
+                        + ", ".join(str(len(ring.xy)) for ring in rings)
+                    )
                 else:
                     details.append(f"Reference holes: {len(params.holes)}")
             elif operation == "mesh":
@@ -796,6 +809,8 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.mesh_run_button.configure(state=state)
         if hasattr(self, "fiss_run_button"):
             self.fiss_run_button.configure(state=state)
+        if hasattr(self, "gmsh_open_button"):
+            self.gmsh_open_button.configure(state=state)
 
     def _finish_operation(self, successful: bool, status: str, summary: str) -> None:
         self.progress.stop()
@@ -895,6 +910,46 @@ class ScientificApp(PythonHoleInterpolationApp):
             os.startfile(str(COMPARISON_IMAGE))
         except OSError as exc:
             messagebox.showerror("Mesh comparison", str(exc))
+
+    def _open_mesh_in_gmsh(self) -> None:
+        """Open the preferred existing run artifact without launching Cast3M."""
+
+        try:
+            raw_workdir = self.workdir_var.get().strip()
+            if not raw_workdir:
+                raise ValueError("Select a working directory first.")
+            workdir = Path(raw_workdir).expanduser().resolve()
+            if not workdir.is_dir():
+                raise FileNotFoundError(f"Working directory does not exist: {workdir}")
+
+            candidates: list[Path] = []
+            try:
+                params = self._read_params()
+                candidates.append(
+                    workdir
+                    / (
+                        f"combined_ti{params.re_ti}_crpa{params.re_crpa}_smfa{params.re_smfa_int}_"
+                        f"numsp{params.re_numspa}_opmin{params.re_opmin_int}.bdf"
+                    )
+                )
+            except (TypeError, ValueError):
+                pass
+            candidates.extend(
+                sorted(workdir.glob("combined*.bdf"), key=lambda path: path.stat().st_mtime, reverse=True)
+            )
+            candidates.append(workdir / "castem_mesh_v.bdf")
+            mesh = next((path for path in candidates if path.is_file()), None)
+            if mesh is None:
+                raise FileNotFoundError("No combined BDF or castem_mesh_v.bdf exists in the selected working directory.")
+
+            gmsh_exe = baseline.resolve_gmsh_exe()
+            subprocess.Popen([str(gmsh_exe), str(mesh)], cwd=str(workdir))
+        except Exception as exc:
+            messagebox.showerror("Open mesh in Gmsh", str(exc))
+            return
+
+        self._log(f"Opened in Gmsh: {mesh.name}\n")
+        self.run_summary_var.set(f"Opened {mesh.name} in Gmsh.")
 
 
 def main() -> None:

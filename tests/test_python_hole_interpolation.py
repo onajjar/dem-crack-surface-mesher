@@ -87,6 +87,24 @@ def test_documented_multiple_holes_produce_expected_circle_rings() -> None:
         assert np.allclose(radii, hole.r, rtol=0.0, atol=1.0e-12)
 
 
+def test_hole_ring_matches_refined_background_edge_count() -> None:
+    x, y, _zmin, _zmax = load_surface_csvs(
+        INPUT / "xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "yrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmin_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmax_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+    )
+    holes = (baseline.Hole(-0.20, 0.20, 0.07), baseline.Hole(0.20, -0.20, 0.07))
+
+    rings = detect_circle_rings(x, y, holes, nelem_x=2, nelem_y=2)
+
+    assert [len(ring.outer_xy) for ring in rings] == [64, 64]
+    assert [len(ring.xy) for ring in rings] == [64, 64]
+    for ring, hole in zip(rings, holes, strict=True):
+        radii = np.hypot(ring.xy[:, 0] - hole.cx, ring.xy[:, 1] - hole.cy)
+        assert np.allclose(radii, hole.r, rtol=0.0, atol=1.0e-12)
+
+
 def test_hole_inflation_has_requested_outer_to_inner_size_ratio() -> None:
     fractions = radial_layer_fractions(num_layers=5, inflation_factor=5.0)
     widths = np.diff(fractions)

@@ -90,6 +90,63 @@ def _quantized_xy(x: float, y: float, tolerance: float) -> tuple[int, int]:
     return (int(round(x / tolerance)), int(round(y / tolerance)))
 
 
+def _edge_subdivision_count(
+    start: np.ndarray,
+    end: np.ndarray,
+    grid_locations: dict[tuple[int, int], list[tuple[int, int]]],
+    *,
+    nelem_x: int,
+    nelem_y: int,
+    tolerance: float,
+) -> int:
+    """Match one ordered contour edge to its structured-grid subdivision."""
+
+    start_locations = grid_locations.get(_quantized_xy(*start, tolerance), ())
+    end_locations = grid_locations.get(_quantized_xy(*end, tolerance), ())
+    same_row: list[int] = []
+    same_column: list[int] = []
+    for start_row, start_column in start_locations:
+        for end_row, end_column in end_locations:
+            if start_row == end_row and start_column != end_column:
+                same_row.append(abs(end_column - start_column) * nelem_x)
+            if start_column == end_column and start_row != end_row:
+                same_column.append(abs(end_row - start_row) * nelem_y)
+    if same_row or same_column:
+        return min((*same_row, *same_column))
+
+    # The angular ordering should normally connect source-grid neighbours. A
+    # geometric fallback keeps mildly curvilinear/duplicated coordinate grids
+    # usable while retaining the axis-specific Cast3M subdivision intent.
+    delta = np.abs(end - start)
+    return nelem_x if delta[0] >= delta[1] else nelem_y
+
+
+def _subdivide_ordered_contour(
+    points: np.ndarray,
+    grid_locations: dict[tuple[int, int], list[tuple[int, int]]],
+    *,
+    nelem_x: int,
+    nelem_y: int,
+    tolerance: float,
+) -> np.ndarray:
+    """Insert the same edge nodes that Cast3M creates on the background grid."""
+
+    blocks: list[np.ndarray] = []
+    for index, start in enumerate(points):
+        end = points[(index + 1) % len(points)]
+        count = _edge_subdivision_count(
+            start,
+            end,
+            grid_locations,
+            nelem_x=nelem_x,
+            nelem_y=nelem_y,
+            tolerance=tolerance,
+        )
+        fractions = np.arange(count, dtype=float)[:, np.newaxis] / count
+        blocks.append((1.0 - fractions) * start + fractions * end)
+    return np.vstack(blocks)
+
+
 def detect_circle_rings(
     x: np.ndarray,
     y: np.ndarray,
@@ -97,6 +154,8 @@ def detect_circle_rings(
     *,
     tolerance: float = 1.0e-10,
     margin: float = 1.05,
+    nelem_x: int = 1,
+    nelem_y: int = 1,
 ) -> tuple[CircleRing, ...]:
     """Replicate the baseline ``CR_SURF`` + ``CIRC_INT`` boundary selection.
 
@@ -105,7 +164,9 @@ def detect_circle_rings(
     side of the fill region.  ``CIRC_INT`` de-duplicates those corners, orders
     them by angle, and radially projects them onto the circle.  Only the final
     projected XY coordinates are needed here; their Z coordinates are
-    evaluated in Python.
+    evaluated in Python. Each ordered outer edge is subdivided exactly as the
+    corresponding Cast3M background-grid edge, preventing hanging nodes when
+    ``nelem_x`` or ``nelem_y`` is greater than one.
     """
 
     if x.shape != y.shape:
@@ -114,6 +175,8 @@ def detect_circle_rings(
         raise ValueError("tolerance must be positive.")
     if margin <= 0.0:
         raise ValueError("margin must be positive.")
+    if nelem_x < 1 or nelem_y < 1:
+        raise ValueError("nelem_x and nelem_y must be >= 1.")
 
     normalized_holes: list[tuple[float, float, float]] = []
     for index, hole in enumerate(holes, start=1):
@@ -129,6 +192,13 @@ def detect_circle_rings(
         return ()
 
     rows, cols = x.shape
+    grid_locations: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for row in range(rows):
+        for col in range(cols):
+            grid_locations.setdefault(
+                _quantized_xy(float(x[row, col]), float(y[row, col]), tolerance),
+                [],
+            ).append((row, col))
     candidates: list[dict[tuple[int, int], tuple[float, float]]] = [
         {} for _ in normalized_holes
     ]
@@ -173,6 +243,13 @@ def detect_circle_rings(
         points = np.asarray(boundary, dtype=float)
         angles = np.arctan2(points[:, 1] - cy, points[:, 0] - cx)
         points = points[np.argsort(angles, kind="stable")]
+        points = _subdivide_ordered_contour(
+            points,
+            grid_locations,
+            nelem_x=nelem_x,
+            nelem_y=nelem_y,
+            tolerance=tolerance,
+        )
         direction = points - np.array((cx, cy), dtype=float)
         distance = np.hypot(direction[:, 0], direction[:, 1])
         if np.any(distance <= tolerance):
@@ -480,12 +557,21 @@ def prepare_hole_fill_meshes(
     *,
     num_layers: int,
     inflation_factor: float,
+    nelem_x: int = 1,
+    nelem_y: int = 1,
     tolerance: float = 1.0e-10,
 ) -> HoleFillMeshSet:
     """Generate and write complete min/max/mean inflated hole-fill meshes."""
 
     x, y, zmin, zmax = load_surface_csvs(csv_x, csv_y, csv_zmin, csv_zmax)
-    rings = detect_circle_rings(x, y, holes, tolerance=tolerance)
+    rings = detect_circle_rings(
+        x,
+        y,
+        holes,
+        tolerance=tolerance,
+        nelem_x=nelem_x,
+        nelem_y=nelem_y,
+    )
     fractions = radial_layer_fractions(num_layers, inflation_factor)
     zmean = 0.5 * (zmin + zmax)
     min_mesh = _build_surface_fill_mesh(x, y, zmin, rings, fractions)
@@ -596,6 +682,8 @@ def build_python_holes_dgibi(
         hole_mesh_directory,
         num_layers=int(getattr(params, "num_el_fill")),
         inflation_factor=float(getattr(params, "re_fact_hole")),
+        nelem_x=int(getattr(params, "nelem_x")),
+        nelem_y=int(getattr(params, "nelem_y")),
         tolerance=float(getattr(params, "re_tol", 1.0e-10)),
     )
     return replace_hole_interpolation_block(patched, mesh_files), mesh_files

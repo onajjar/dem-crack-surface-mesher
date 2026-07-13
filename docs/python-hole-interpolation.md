@@ -13,15 +13,20 @@ The accelerated path moves the bounded fill construction to Python and gives Cas
 For every configured hole, the implementation:
 
 1. Reproduces the T13 `CR_SURF`/`CIRC_INT` outer-corner selection and angular ordering.
-2. Projects that ordered contour radially onto the requested circle.
-3. Constructs all radial rings at once with NumPy broadcasting.
-4. Evaluates `zmin`, `zmax`, and their mean at all ring nodes. The common rectilinear-grid path uses vectorized cell lookup and bilinear interpolation; structured curvilinear grids use the more conservative cell-search fallback.
-5. Builds all `CQUAD4` connectivity and validates finite coordinates, connectivity bounds, non-zero area, and consistent orientation.
-6. Writes complete `python_hole_fill_min.bdf`, `python_hole_fill_max.bdf`, and `python_hole_fill_mean.bdf` files.
-7. Replaces only the derived run program's expensive hole-correction block with three `LIRE 'NAS'` imports and merges the imported meshes into the corresponding Cast3M surfaces.
-8. Archives fixed-name artifacts from a prior run before launching Cast3M, then verifies the complete expected output manifest before the GUI reports success.
+2. Subdivides every ordered outer edge with the same `nelem_x` or `nelem_y` count that Cast3M uses on the adjacent background cell.
+3. Projects every subdivided outer node radially onto the requested circle, giving the circle and square interface identical angular counts.
+4. Constructs all radial rings at once with NumPy broadcasting.
+5. Evaluates `zmin`, `zmax`, and their mean at all ring nodes. The common rectilinear-grid path uses vectorized cell lookup and bilinear interpolation; structured curvilinear grids use the more conservative cell-search fallback.
+6. Builds all `CQUAD4` connectivity and validates finite coordinates, connectivity bounds, non-zero area, and consistent orientation.
+7. Writes complete `python_hole_fill_min.bdf`, `python_hole_fill_max.bdf`, and `python_hole_fill_mean.bdf` files.
+8. Replaces only the derived run program's expensive hole-correction block with three `LIRE 'NAS'` imports and merges the imported meshes into the corresponding Cast3M surfaces.
+9. Archives fixed-name artifacts from a prior run before launching Cast3M, then verifies the complete expected output manifest before the GUI reports success.
 
 The source template on disk is never edited.
+
+## Conformal angular subdivision
+
+The original fast path projected only the coarse 32-point outer contour. With `nelem_x=nelem_y=2`, Cast3M placed 64 edges on the surrounding background boundary but the fill retained 32, producing hanging nodes. The corrected path inserts the background subdivisions first and then projects them onto the circle. The documented holes therefore use 32, 64, and 128 angular edges for refinements 1, 2, and 4 respectively.
 
 ## Radial inflation
 
