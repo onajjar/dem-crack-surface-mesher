@@ -25,7 +25,7 @@ def main() -> int:
     # Keep the capture clear of unrelated desktop notifications while retaining
     # a representative, comfortably sized application viewport.
     app.geometry("1400x860+20+30")
-    app._load_documented_example()
+    app._load_shape_gallery()
     app.notebook.select(app.mesh_tab)
     app.update_idletasks()
     app.deiconify()

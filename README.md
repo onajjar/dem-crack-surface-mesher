@@ -6,7 +6,7 @@ A Windows desktop pipeline that turns four structured crack-surface CSV grids in
 
 > **Baseline status:** `v0.1.0-baseline` is a pre-refactor publication of the current T13 program. The GUI and every file in `source_codes/` are preserved byte-for-byte. Documentation, examples, verification, and CI are additive; computational behavior is intentionally unchanged.
 
-![Scientific workbench showing real two-hole mesh controls and the bulk inflated mode](docs/assets/scientific-workbench.png)
+![Scientific workbench showing dynamic circle, rectangle, triangle, and regular-polygon controls](docs/assets/scientific-workbench.png)
 
 ## What it does
 
@@ -15,7 +15,7 @@ A Windows desktop pipeline that turns four structured crack-surface CSV grids in
 - Patches parameters only inside the marked `Main Program` section of a `.dgibi` template.
 - Invokes Cast3M through its Windows batch launcher and streams solver output into the GUI.
 - Creates a crack volume mesh and named boundary-surface meshes in NASTRAN BDF format.
-- Supports zero, one, or multiple circular through-holes with per-hole center/radius inputs.
+- Supports zero, one, or multiple through-holes. The scientific mode accepts circles, rotated rectangles, rotated equilateral triangles, and regular polygons with any integer side count ≥ 3.
 - Optionally exports MED/STL, combines volume and boundary BDF cards, and opens the selected mesh in Gmsh.
 - Runs a separate, optional `FISS` flow calculation from the same four surface grids and post-processes solver text results into plots or HDF5.
 
@@ -80,7 +80,7 @@ The two-hole run carried the same `IEEE_INVALID_FLAG` notice and the same valida
 python castem_pipeline_gui_scientific.py
 ```
 
-For enabled holes, Python detects the same outer/circle contours, subdivides every fill-boundary edge with the matching `nelem_x`/`nelem_y` background count, constructs all radial layers with vectorized interpolation, and writes complete lower/upper/mean `CQUAD4` fill meshes to three small NASTRAN BDF files. Cast3M bulk-loads them with `LIRE 'NAS'`; the generated DGIBI contains no per-point `POIN` statements and does not call the expensive `REGL`, `INT_COMP`, or `DISPLACE` hole path. Reused working directories are isolated by archiving prior fixed-name mesh artifacts, and the GUI verifies the complete expected output manifest before reporting success.
+For enabled holes, Python detects each outer contour, subdivides every fill-boundary edge with the matching `nelem_x`/`nelem_y` background count, projects the refined rays onto the selected circle or polygonal wall, constructs all radial layers with vectorized interpolation, and writes complete lower/upper/mean `CQUAD4` fill meshes to three small NASTRAN BDF files. Cast3M bulk-loads them with `LIRE 'NAS'`; the generated DGIBI contains no per-point `POIN` statements and does not call the expensive `REGL`, `INT_COMP`, or `DISPLACE` hole path. Reused working directories are isolated by archiving prior fixed-name mesh artifacts, and the GUI verifies the complete expected output manifest before reporting success.
 
 `num_el_fill` sets the radial layer count. `re_fact_hole` is enforced as the outermost-to-hole-adjacent cell-width ratio using a geometric progression. With the documented `num_el_fill=5` and `re_fact_hole=5`, the outer-to-hole layer fractions are `0, 0.382406, 0.638136, 0.809153, 0.923519, 1`, giving an exact outer/inner width ratio of 5.
 
@@ -126,6 +126,21 @@ python -m pip install -r requirements-visuals.txt -c constraints-baseline.txt
 python scripts\render_hole_mesh_comparison.py
 python scripts\render_hole_mesh_comparison.py --refinement 2 --output docs\assets\mesh-comparison-r2-conformal.png
 ```
+
+### Generalized hole shapes
+
+The enhanced Python mode changes each row's active controls according to its shape:
+
+| Shape | Per-hole controls |
+|---|---|
+| Circle | center, radius |
+| Rectangle | center, width, height, rotation |
+| Equilateral triangle | center, side length, rotation |
+| Regular polygon | center, side count, circumradius, rotation |
+
+![Real Cast3M mesh containing a circle, rotated rectangle, triangle, and regular hexagon](docs/assets/all-hole-shapes-mesh.png)
+
+This image is rendered from the real four-shape Cast3M volume BDF. Its final maximum surface has matching square/hole-wall counts of `44=44`, `56=56`, `56=56`, and `56=56`, with zero residual square/fill boundary edges for every shape. Reproduce it with [the all-shapes INI](examples/shaped-holes/all-shapes.ini) or select **Load all shape examples** in the workbench.
 
 ### Scientific workbench
 
@@ -262,7 +277,7 @@ With the supplied mesh template, a successful run writes:
 | `castem_mesh_surf_min.bdf`, `castem_mesh_surf_max.bdf` | Lower and upper crack surfaces. |
 | `castem_mesh_surf_mean.bdf` | Mean surface; intentionally excluded from the integrated merge. |
 | `castem_mesh_surf_xmin.bdf`, `..._xmax.bdf`, `..._ymin.bdf`, `..._ymax.bdf` | Side boundaries. |
-| `castem_mesh_surf_trou_{n}.bdf` | One boundary per configured circular hole. |
+| `castem_mesh_surf_trou_{n}.bdf` | One boundary per configured hole. |
 | `combined_ti...bdf` | Optional merged volume and boundary BDF. |
 | `castem_mesh_v.med` | Optional MED volume mesh. |
 | `castem_mesh_surf_*.stl` | Optional triangulated surface exports. |
@@ -300,6 +315,7 @@ The template builds lines through the crack, derives local opening and extent, a
 │   ├── input/                   # existing 50 × 50 CSV quartet
 │   ├── output/                  # verified no-hole run artifacts
 │   ├── scientific-run.ini       # complete headless configuration
+│   ├── shaped-holes/            # circle/rectangle/triangle/polygon gallery
 │   └── multiple-holes/          # verified two-hole configuration/output
 ├── docs/
 │   ├── assets/                  # authentic screenshots and diagrams
@@ -354,6 +370,8 @@ On a Windows desktop with Cast3M available, `python scripts\capture_demo.py` dri
 
 - The immutable T13 implementation remains an intentionally unrefactored Windows baseline. The scientific workbench and INI runner are additive Windows launchers, not a cross-platform packaging layer.
 - The scientific bulk-hole path is additive. Its common rectilinear interpolation is vectorized; the robust bilinear-inversion fallback for curvilinear structured grids still searches cells per query point. Its `CQUAD4` fill is not numerically or node-for-node equivalent to the preserved Cast3M planar-arc/displacement construction.
+- Generalized shapes are convex and center-star-shaped: circles, rectangles, equilateral triangles, and regular polygons. Arbitrary concave polygons, free-form splines, and user-supplied vertex lists are not yet supported.
+- Non-circular holes require the scientific Python mode. The preserved T13 reference mode and preserved FISS path remain circle-only.
 - Cast3M and Gmsh are external applications and are not installed by `requirements.txt`.
 - The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.
 - The integrated BDF merger imports `CQUAD4` boundary cards, assigns one `PSHELL` per surface file, and excludes the mean surface. It is not a general-purpose BDF merger.

@@ -1,6 +1,6 @@
 # Bulk inflated hole meshing
 
-The scientific launcher uses a Python-generated surface mesh for the circular-hole fill only. The immutable T13 GUI and every file under `source_codes/` remain unchanged.
+The scientific launcher uses a Python-generated surface mesh for circle, rectangle, equilateral-triangle, and regular-polygon fills. The immutable T13 GUI and every file under `source_codes/` remain unchanged.
 
 ## Why this path exists
 
@@ -12,9 +12,9 @@ The accelerated path moves the bounded fill construction to Python and gives Cas
 
 For every configured hole, the implementation:
 
-1. Reproduces the T13 `CR_SURF`/`CIRC_INT` outer-corner selection and angular ordering.
+1. Reproduces the T13 outer-corner selection and angular ordering using a conservative bounding square.
 2. Subdivides every ordered outer edge with the same `nelem_x` or `nelem_y` count that Cast3M uses on the adjacent background cell.
-3. Projects every subdivided outer node radially onto the requested circle, giving the circle and square interface identical angular counts.
+3. Projects every subdivided outer node along its center ray onto the requested circle or convex polygonal boundary, giving the hole wall and square interface identical counts.
 4. Constructs all radial rings at once with NumPy broadcasting.
 5. Evaluates `zmin`, `zmax`, and their mean at all ring nodes. The common rectilinear-grid path uses vectorized cell lookup and bilinear interpolation; structured curvilinear grids use the more conservative cell-search fallback.
 6. Builds all `CQUAD4` connectivity and validates finite coordinates, connectivity bounds, non-zero area, and consistent orientation.
@@ -26,7 +26,18 @@ The source template on disk is never edited.
 
 ## Conformal angular subdivision
 
-The original fast path projected only the coarse 32-point outer contour. With `nelem_x=nelem_y=2`, Cast3M placed 64 edges on the surrounding background boundary but the fill retained 32, producing hanging nodes. The corrected path inserts the background subdivisions first and then projects them onto the circle. The documented holes therefore use 32, 64, and 128 angular edges for refinements 1, 2, and 4 respectively.
+The original fast path projected only the coarse outer contour. With `nelem_x=nelem_y=2`, Cast3M could place twice as many edges on the surrounding background boundary as the fill, producing hanging nodes. The corrected path inserts the background subdivisions first and then projects them onto the selected wall. The final four-shape verification reported exact pairs of `44=44`, `56=56`, `56=56`, and `56=56`, with no residual square/fill boundary edges.
+
+## Supported geometry
+
+- Circle: radius.
+- Rectangle: width, height, and in-plane rotation.
+- Equilateral triangle: side length and in-plane rotation.
+- Regular polygon: integer side count ≥ 3, circumradius, and in-plane rotation.
+
+All shapes use a center point and must be fully contained in the source grid. The projection requires a convex, center-star-shaped boundary; arbitrary concave or free-form geometry is outside the current implementation.
+
+Positive rotations are counter-clockwise. Rectangle rotation is measured from the +X width axis; triangle and regular-polygon rotation is the angular position of their first vertex from +X.
 
 ## Radial inflation
 
@@ -65,6 +76,13 @@ Select **Bulk Python hole mesh — fast + inflated** in the mesh mode control. F
 
 ```powershell
 python scripts\run_python_holes_example.py --clean
+```
+
+For all supported shapes together:
+
+```powershell
+python castem_pipeline_headless.py examples\shaped-holes\all-shapes.ini
+python scripts\verify_shape_interfaces.py
 ```
 
 Benchmark the reference and scientific modes with:

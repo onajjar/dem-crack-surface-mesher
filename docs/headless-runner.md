@@ -10,7 +10,7 @@ Copy [the complete example configuration](../examples/scientific-run.ini), edit 
 python castem_pipeline_headless.py path\to\run.ini --validate-only
 ```
 
-Validation checks the INI schema, referenced files, numeric bounds, FISS setup, CSV matrices, circle detection, and refined angular counts. It does not require or start Cast3M.
+Validation checks the INI schema, referenced files, numeric bounds, FISS setup, CSV matrices, shape projection, and refined angular counts. It does not require or start Cast3M.
 
 Run the configured operation:
 
@@ -28,7 +28,16 @@ The process streams Cast3M output to the terminal, writes `castem-console.log`, 
 - `mode = python` uses the accelerated conformal inflated-hole fill.
 - `mode = reference` uses the preserved Cast3M hole construction.
 
-Each `holeN` entry is `center_x, center_y, radius`; any number of consecutively or non-consecutively numbered holes can be listed. At refinement 2, the documented configuration validates as 64 angular points per hole.
+Any number of consecutively or non-consecutively numbered holes can be listed:
+
+```ini
+hole1 = circle, cx, cy, radius
+hole2 = rectangle, cx, cy, width, height, rotation_degrees
+hole3 = triangle, cx, cy, side_length, rotation_degrees
+hole4 = regular_polygon, cx, cy, sides, circumradius, rotation_degrees
+```
+
+The legacy three-number circle shorthand remains valid. Non-circular shapes require `mode = python`; the preserved reference and FISS paths remain circle-only. See the [runnable all-shapes example](../examples/shaped-holes/all-shapes.ini).
 
 ## Output safety
 

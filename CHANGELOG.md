@@ -15,6 +15,7 @@ All notable repository-level changes are documented here. This project follows t
 - Conformal hole-fill angular subdivision that matches each surrounding `nelem_x`/`nelem_y` edge count and removes the 1-to-2 hanging-node interface.
 - A one-click scientific-workbench action for opening the generated combined or volume BDF in Gmsh.
 - A no-interface INI runner covering mesh, multiple holes, exports, merge/Gmsh controls, and optional FISS execution.
+- Generalized conformal holes for circles, rotated rectangles, equilateral triangles, and regular polygons, with shape-dependent GUI/INI parameters and a real four-shape Cast3M example.
 
 ## [0.1.0-baseline] - 2026-07-10
 

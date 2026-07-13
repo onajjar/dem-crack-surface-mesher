@@ -14,6 +14,7 @@ DEFAULT_OUTPUT = ROOT / "docs" / "assets" / "mesh-preview.png"
 ALLOWED_RUNTIMES = (
     ROOT / "_runtime" / "demo-output",
     ROOT / "_runtime" / "multiple-holes-output",
+    ROOT / "_runtime" / "all-hole-shapes",
 )
 
 sys.dont_write_bytecode = True

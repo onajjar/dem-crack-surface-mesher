@@ -12,12 +12,17 @@ from castem_pipeline_gui_python_holes import (
     expected_mesh_output_names,
 )
 from python_hole_interpolation import (
+    HoleGeometry,
     SurfaceFillMesh,
     build_python_holes_dgibi,
     detect_circle_rings,
+    detect_hole_rings,
     generated_program_uses_python_holes,
+    hole_boundary_vertices,
     interpolate_surface,
     load_surface_csvs,
+    parse_hole_spec,
+    prepare_hole_fill_meshes,
     radial_layer_fractions,
     validate_surface_fill_mesh,
 )
@@ -56,7 +61,7 @@ def test_curvilinear_interpolation_rejects_singular_cell() -> None:
     y = np.zeros((2, 2))
     z = np.array(((0.0, 10.0), (100.0, 110.0)))
 
-    with pytest.raises(ValueError, match="Could not locate circle point"):
+    with pytest.raises(ValueError, match="Could not locate hole-boundary point"):
         interpolate_surface(x, y, z, np.array(((0.2, 0.0),)))
 
 
@@ -103,6 +108,83 @@ def test_hole_ring_matches_refined_background_edge_count() -> None:
     for ring, hole in zip(rings, holes, strict=True):
         radii = np.hypot(ring.xy[:, 0] - hole.cx, ring.xy[:, 1] - hole.cy)
         assert np.allclose(radii, hole.r, rtol=0.0, atol=1.0e-12)
+
+
+def _distance_to_polygon_edges(points: np.ndarray, vertices: np.ndarray) -> np.ndarray:
+    starts = vertices
+    edges = np.roll(vertices, -1, axis=0) - starts
+    relative = points[:, np.newaxis, :] - starts[np.newaxis, :, :]
+    scale = np.sum(relative * edges[np.newaxis, :, :], axis=2) / np.sum(edges * edges, axis=1)
+    scale = np.clip(scale, 0.0, 1.0)
+    closest = starts[np.newaxis, :, :] + scale[:, :, np.newaxis] * edges[np.newaxis, :, :]
+    return np.min(np.linalg.norm(points[:, np.newaxis, :] - closest, axis=2), axis=1)
+
+
+def test_all_supported_hole_shapes_are_conformal_and_on_their_boundaries() -> None:
+    x, y, _zmin, _zmax = load_surface_csvs(
+        INPUT / "xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "yrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmin_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmax_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+    )
+    shapes = (
+        HoleGeometry("circle", -0.25, 0.25, radius=0.045),
+        HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
+        HoleGeometry("triangle", -0.25, -0.23, side_length=0.10, rotation_degrees=-10.0),
+        HoleGeometry("regular_polygon", 0.23, -0.23, radius=0.055, sides=6, rotation_degrees=30.0),
+    )
+
+    rings = detect_hole_rings(x, y, shapes, nelem_x=2, nelem_y=2)
+
+    assert len(rings) == 4
+    for ring, geometry in zip(rings, shapes, strict=True):
+        assert len(ring.xy) == len(ring.outer_xy)
+        assert len(ring.xy) >= 32
+        if geometry.shape == "circle":
+            distance = np.hypot(ring.xy[:, 0] - geometry.cx, ring.xy[:, 1] - geometry.cy)
+            assert np.allclose(distance, geometry.radius, rtol=0.0, atol=1.0e-12)
+        else:
+            assert np.max(
+                _distance_to_polygon_edges(ring.xy, hole_boundary_vertices(geometry))
+            ) < 1.0e-12
+
+
+@pytest.mark.parametrize(
+    ("text", "shape"),
+    (
+        ("circle, -0.2, 0.2, 0.07", "circle"),
+        ("rectangle, 0.2, 0.2, 0.10, 0.06, 15", "rectangle"),
+        ("triangle, -0.2, -0.2, 0.10, -10", "triangle"),
+        ("regular_polygon, 0.2, -0.2, 6, 0.055, 30", "regular_polygon"),
+    ),
+)
+def test_documented_shape_specifications_parse(text: str, shape: str) -> None:
+    assert parse_hole_spec(text).shape == shape
+
+
+def test_mixed_shape_fill_mesh_has_valid_quads() -> None:
+    output = ROOT / "_runtime" / "test-mixed-shapes" / uuid4().hex
+    meshes = prepare_hole_fill_meshes(
+        INPUT / "xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "yrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmin_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmax_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        (
+            HoleGeometry("circle", -0.25, 0.25, radius=0.045),
+            HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
+            HoleGeometry("triangle", -0.25, -0.23, side_length=0.10, rotation_degrees=-10.0),
+            HoleGeometry("regular_polygon", 0.23, -0.23, radius=0.055, sides=6, rotation_degrees=30.0),
+        ),
+        output,
+        num_layers=5,
+        inflation_factor=5.0,
+        nelem_x=2,
+        nelem_y=2,
+    )
+
+    assert len(meshes.points_per_hole) == 4
+    assert meshes.min_mesh.quads.shape[0] == 5 * sum(meshes.points_per_hole)
+    validate_surface_fill_mesh(meshes.min_mesh)
 
 
 def test_hole_inflation_has_requested_outer_to_inner_size_ratio() -> None:

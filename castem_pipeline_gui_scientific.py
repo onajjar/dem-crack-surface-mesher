@@ -8,6 +8,7 @@ the vectorized, bulk-file Python hole workflow for the same inputs.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 import os
@@ -23,8 +24,11 @@ from castem_pipeline_gui_python_holes import (
     missing_mesh_outputs,
 )
 from python_hole_interpolation import (
-    detect_circle_rings,
+    HoleGeometry,
+    detect_hole_rings,
+    hole_boundary_vertices,
     load_surface_csvs,
+    normalize_hole_geometry,
     radial_layer_fractions,
 )
 
@@ -33,6 +37,33 @@ ROOT = Path(__file__).resolve().parent
 DOCUMENTED_INPUT = ROOT / "examples" / "input"
 DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
 COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
+SHAPE_GALLERY = (
+    HoleGeometry("circle", -0.25, 0.25, radius=0.045),
+    HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
+    HoleGeometry("triangle", -0.25, -0.23, side_length=0.10, rotation_degrees=-10.0),
+    HoleGeometry("regular_polygon", 0.23, -0.23, radius=0.055, sides=6, rotation_degrees=30.0),
+)
+
+
+@dataclass
+class HoleShapeRow:
+    shape: tk.StringVar
+    cx: tk.StringVar
+    cy: tk.StringVar
+    primary: tk.StringVar
+    secondary: tk.StringVar
+    rotation: tk.StringVar
+    proxy_radius: tk.StringVar
+    shape_widget: ttk.Combobox
+    cx_entry: ttk.Entry
+    cy_entry: ttk.Entry
+    primary_label: ttk.Label
+    primary_entry: ttk.Entry
+    secondary_label: ttk.Label
+    secondary_entry: ttk.Entry
+    rotation_label: ttk.Label
+    rotation_entry: ttk.Entry
+    widgets: tuple[tk.Widget, ...]
 
 
 class ScientificApp(PythonHoleInterpolationApp):
@@ -133,6 +164,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         toolbar = ttk.Frame(shell, style="Scientific.TFrame", padding=(20, 12, 20, 0))
         toolbar.pack(fill="x")
         ttk.Button(toolbar, text="Load documented example", style="Accent.TButton", command=self._load_documented_example).pack(side="left")
+        ttk.Button(toolbar, text="Load all shape examples", style="Quiet.TButton", command=self._load_shape_gallery).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Validate inputs", style="Quiet.TButton", command=self._validate_inputs).pack(side="left", padx=(8, 0))
         ttk.Label(toolbar, textvariable=self.context_var, style="Muted.TLabel").pack(side="right")
 
@@ -248,27 +280,28 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Radiobutton(exports, text="Original T13 workflow — reference", value="baseline", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=5, column=0, sticky="w", pady=3)
         ttk.Radiobutton(exports, text="Bulk Python hole mesh — fast + inflated", value="python", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=6, column=0, sticky="w", pady=3)
 
-        holes = self._card(tab, "Circular holes / internal boundaries")
+        holes = self._card(tab, "Hole shapes / internal boundaries")
         holes.grid(row=1, column=0, columnspan=2, sticky="nsew")
-        holes.columnconfigure(5, weight=1)
-        ttk.Checkbutton(holes, text="Enable circular holes", variable=self.holes_enabled_var, command=self._on_holes_toggle).grid(row=0, column=0, sticky="w", pady=(0, 7))
+        holes.columnconfigure(7, weight=1)
+        ttk.Checkbutton(holes, text="Enable holes", variable=self.holes_enabled_var, command=self._on_holes_toggle).grid(row=0, column=0, sticky="w", pady=(0, 7))
         ttk.Button(holes, text="Add hole", style="Quiet.TButton", command=self._add_hole_row).grid(row=0, column=1, padx=(8, 0), pady=(0, 7))
         ttk.Button(holes, text="Remove last", style="Quiet.TButton", command=self._remove_hole_row).grid(row=0, column=2, padx=(8, 0), pady=(0, 7))
-        ttk.Label(holes, textvariable=self.method_summary_var, style="CardMuted.TLabel", wraplength=520, justify="left").grid(row=0, column=3, columnspan=3, sticky="e", padx=(20, 0), pady=(0, 7))
-        ttk.Separator(holes, orient="horizontal").grid(row=1, column=0, columnspan=6, sticky="ew", pady=(0, 10))
+        ttk.Label(holes, textvariable=self.method_summary_var, style="CardMuted.TLabel", wraplength=620, justify="left").grid(row=0, column=3, columnspan=5, sticky="e", padx=(20, 0), pady=(0, 7))
+        ttk.Separator(holes, orient="horizontal").grid(row=1, column=0, columnspan=8, sticky="ew", pady=(0, 10))
         self._field(holes, 2, 0, "Radial fill cells", self.num_el_fill_var)
         self._field(holes, 2, 2, "Outer / inner cell ratio", self.re_fact_hole_var)
         ttk.Label(
             holes,
             text="Inflation definition: Δr outer / Δr hole = ratio. Hole coordinates use the CSV coordinate units.",
             style="CardMuted.TLabel",
-        ).grid(row=3, column=0, columnspan=6, sticky="w", pady=(4, 0))
+        ).grid(row=3, column=0, columnspan=7, sticky="w", pady=(4, 0))
         ttk.Label(holes, text="Hole", style="CardMuted.TLabel").grid(row=4, column=0, sticky="w", pady=(10, 2))
-        ttk.Label(holes, text="Center X", style="CardMuted.TLabel").grid(row=4, column=1, sticky="w", pady=(10, 2))
-        ttk.Label(holes, text="Center Y", style="CardMuted.TLabel").grid(row=4, column=2, sticky="w", pady=(10, 2))
-        ttk.Label(holes, text="Radius", style="CardMuted.TLabel").grid(row=4, column=3, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Shape", style="CardMuted.TLabel").grid(row=4, column=1, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Center X", style="CardMuted.TLabel").grid(row=4, column=2, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Center Y", style="CardMuted.TLabel").grid(row=4, column=3, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Shape parameters", style="CardMuted.TLabel").grid(row=4, column=4, columnspan=3, sticky="w", pady=(10, 2))
         profile = ttk.Frame(holes, style="Card.TFrame")
-        profile.grid(row=2, column=4, columnspan=2, rowspan=7, sticky="ne", padx=(28, 6), pady=(0, 4))
+        profile.grid(row=2, column=7, rowspan=8, sticky="ne", padx=(22, 6), pady=(0, 4))
         ttk.Label(profile, text="Normalized inflation profile", style="Card.TLabel", font=("Segoe UI Semibold", 10)).pack(anchor="w")
         self.inflation_canvas = tk.Canvas(
             profile,
@@ -282,7 +315,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.re_fact_hole_var.trace_add("write", lambda *_args: self.after_idle(self._draw_inflation_preview))
         self.holes_container = holes
         self.holes_rows_start = 5
-        self.hole_row_widgets: list[tuple[tk.Widget, tk.Widget, tk.Widget, tk.Widget]] = []
+        self.hole_shape_rows: list[HoleShapeRow] = []
+        self.hole_row_widgets = []
         self._toggle_holes()
         self._draw_inflation_preview()
 
@@ -533,16 +567,214 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._set_status("Modified — validation required", "neutral")
 
     def _add_hole_row(self) -> None:
-        super()._add_hole_row()
-        for variable in self.hole_rows[-1]:
+        row_index = self.holes_rows_start + len(self.hole_shape_rows)
+        shape = tk.StringVar(value="Circle")
+        cx = tk.StringVar(value="0.0")
+        cy = tk.StringVar(value="0.0")
+        primary = tk.StringVar(value="0.07")
+        secondary = tk.StringVar(value="0.07")
+        rotation = tk.StringVar(value="0.0")
+        proxy_radius = tk.StringVar(value="0.07")
+
+        number = ttk.Label(self.holes_container, text=f"H{len(self.hole_shape_rows) + 1}")
+        shape_widget = ttk.Combobox(
+            self.holes_container,
+            textvariable=shape,
+            values=("Circle", "Rectangle", "Equilateral triangle", "Regular polygon"),
+            state="readonly",
+            width=17,
+            style="Scientific.TCombobox",
+        )
+        cx_entry = ttk.Entry(self.holes_container, textvariable=cx, width=10, style="Scientific.TEntry")
+        cy_entry = ttk.Entry(self.holes_container, textvariable=cy, width=10, style="Scientific.TEntry")
+
+        primary_frame = ttk.Frame(self.holes_container, style="Card.TFrame")
+        primary_label = ttk.Label(primary_frame, text="Radius", style="CardMuted.TLabel")
+        primary_entry = ttk.Entry(primary_frame, textvariable=primary, width=11, style="Scientific.TEntry")
+        primary_label.pack(anchor="w")
+        primary_entry.pack(anchor="w")
+
+        secondary_frame = ttk.Frame(self.holes_container, style="Card.TFrame")
+        secondary_label = ttk.Label(secondary_frame, text="—", style="CardMuted.TLabel")
+        secondary_entry = ttk.Entry(secondary_frame, textvariable=secondary, width=10, style="Scientific.TEntry")
+        secondary_label.pack(anchor="w")
+        secondary_entry.pack(anchor="w")
+
+        rotation_frame = ttk.Frame(self.holes_container, style="Card.TFrame")
+        rotation_label = ttk.Label(rotation_frame, text="Rotation (°)", style="CardMuted.TLabel")
+        rotation_entry = ttk.Entry(rotation_frame, textvariable=rotation, width=10, style="Scientific.TEntry")
+        rotation_label.pack(anchor="w")
+        rotation_entry.pack(anchor="w")
+
+        number.grid(row=row_index, column=0, sticky="w", padx=(7, 4), pady=5)
+        shape_widget.grid(row=row_index, column=1, sticky="w", padx=4, pady=5)
+        cx_entry.grid(row=row_index, column=2, sticky="w", padx=4, pady=5)
+        cy_entry.grid(row=row_index, column=3, sticky="w", padx=4, pady=5)
+        primary_frame.grid(row=row_index, column=4, sticky="w", padx=4, pady=3)
+        secondary_frame.grid(row=row_index, column=5, sticky="w", padx=4, pady=3)
+        rotation_frame.grid(row=row_index, column=6, sticky="w", padx=4, pady=3)
+
+        row = HoleShapeRow(
+            shape=shape,
+            cx=cx,
+            cy=cy,
+            primary=primary,
+            secondary=secondary,
+            rotation=rotation,
+            proxy_radius=proxy_radius,
+            shape_widget=shape_widget,
+            cx_entry=cx_entry,
+            cy_entry=cy_entry,
+            primary_label=primary_label,
+            primary_entry=primary_entry,
+            secondary_label=secondary_label,
+            secondary_entry=secondary_entry,
+            rotation_label=rotation_label,
+            rotation_entry=rotation_entry,
+            widgets=(
+                number,
+                shape_widget,
+                cx_entry,
+                cy_entry,
+                primary_frame,
+                secondary_frame,
+                rotation_frame,
+            ),
+        )
+        self.hole_shape_rows.append(row)
+        # The baseline parameter patcher still receives conservative circular
+        # selectors; the bulk Python mesh contains the actual selected shape.
+        self.hole_rows.append((cx, cy, proxy_radius))
+        for variable in (shape, cx, cy, primary, secondary, rotation):
             variable.trace_add("write", self._mark_dirty)
+            variable.trace_add("write", lambda *_args, current=row: self._sync_hole_proxy(current))
+        shape.trace_add("write", lambda *_args, current=row: self._refresh_hole_shape_row(current))
+        self._refresh_hole_shape_row(row)
         self._mark_dirty()
 
     def _remove_hole_row(self) -> None:
-        previous_count = len(self.hole_rows)
-        super()._remove_hole_row()
-        if len(self.hole_rows) != previous_count:
-            self._mark_dirty()
+        if not self.hole_shape_rows:
+            return
+        row = self.hole_shape_rows.pop()
+        self.hole_rows.pop()
+        for widget in row.widgets:
+            widget.destroy()
+        self._mark_dirty()
+
+    def _hole_geometry_from_row(self, row: HoleShapeRow, index: int) -> HoleGeometry:
+        shape = self._shape_key(row.shape.get())
+        cx = baseline.parse_float(row.cx.get())
+        cy = baseline.parse_float(row.cy.get())
+        primary = baseline.parse_float(row.primary.get())
+        rotation = baseline.parse_float(row.rotation.get())
+        if shape == "circle":
+            geometry = HoleGeometry(shape, cx, cy, radius=primary)
+        elif shape == "rectangle":
+            geometry = HoleGeometry(
+                shape,
+                cx,
+                cy,
+                width=primary,
+                height=baseline.parse_float(row.secondary.get()),
+                rotation_degrees=rotation,
+            )
+        elif shape == "triangle":
+            geometry = HoleGeometry(
+                shape,
+                cx,
+                cy,
+                side_length=primary,
+                rotation_degrees=rotation,
+            )
+        elif shape == "regular_polygon":
+            geometry = HoleGeometry(
+                shape,
+                cx,
+                cy,
+                radius=primary,
+                sides=int(row.secondary.get().strip()),
+                rotation_degrees=rotation,
+            )
+        else:
+            raise ValueError(f"Hole {index}: unsupported shape '{shape}'.")
+        return normalize_hole_geometry(geometry, index)
+
+    @staticmethod
+    def _shape_key(value: str) -> str:
+        key = value.strip().lower().replace("-", "_").replace(" ", "_")
+        return "triangle" if key == "equilateral_triangle" else key
+
+    def _sync_hole_proxy(self, row: HoleShapeRow) -> None:
+        try:
+            index = self.hole_shape_rows.index(row) + 1
+            radius = self._hole_geometry_from_row(row, index).selection_radius
+            row.proxy_radius.set(f"{radius:.12g}")
+        except (TypeError, ValueError):
+            row.proxy_radius.set("0")
+
+    def _refresh_hole_shape_row(self, row: HoleShapeRow) -> None:
+        shape = self._shape_key(row.shape.get())
+        labels = {
+            "circle": ("Radius", "—", False, False),
+            "rectangle": ("Width", "Height", True, True),
+            "triangle": ("Side length", "—", False, True),
+            "regular_polygon": ("Circumradius", "Sides", True, True),
+        }
+        primary_label, secondary_label, uses_secondary, uses_rotation = labels.get(
+            shape, ("Size", "—", False, False)
+        )
+        row.primary_label.configure(text=primary_label)
+        row.secondary_label.configure(text=secondary_label)
+        enabled = self.holes_enabled_var.get()
+        row.shape_widget.configure(state="readonly" if enabled else "disabled")
+        row.cx_entry.configure(state="normal" if enabled else "disabled")
+        row.cy_entry.configure(state="normal" if enabled else "disabled")
+        row.primary_entry.configure(state="normal" if enabled else "disabled")
+        row.secondary_entry.configure(
+            state="normal" if enabled and uses_secondary else "disabled"
+        )
+        row.rotation_entry.configure(
+            state="normal" if enabled and uses_rotation else "disabled"
+        )
+        self._sync_hole_proxy(row)
+
+    def _read_params(self) -> baseline.CastemMainParams:
+        params = super()._read_params()
+        geometries: list[HoleGeometry] = []
+        if params.holes_enabled:
+            geometries = [
+                self._hole_geometry_from_row(row, index)
+                for index, row in enumerate(self.hole_shape_rows, start=1)
+            ]
+            params.holes = [
+                baseline.Hole(hole.cx, hole.cy, hole.selection_radius)
+                for hole in geometries
+            ]
+        params.hole_shapes = geometries
+        return params
+
+    def _set_hole_row_geometry(self, row: HoleShapeRow, geometry: HoleGeometry) -> None:
+        geometry = normalize_hole_geometry(geometry)
+        display_names = {
+            "circle": "Circle",
+            "rectangle": "Rectangle",
+            "triangle": "Equilateral triangle",
+            "regular_polygon": "Regular polygon",
+        }
+        row.shape.set(display_names[geometry.shape])
+        row.cx.set(f"{geometry.cx:.12g}")
+        row.cy.set(f"{geometry.cy:.12g}")
+        row.rotation.set(f"{geometry.rotation_degrees:.12g}")
+        if geometry.shape in {"circle", "regular_polygon"}:
+            row.primary.set(f"{float(geometry.radius):.12g}")
+        elif geometry.shape == "rectangle":
+            row.primary.set(f"{float(geometry.width):.12g}")
+            row.secondary.set(f"{float(geometry.height):.12g}")
+        else:
+            row.primary.set(f"{float(geometry.side_length):.12g}")
+        if geometry.shape == "regular_polygon":
+            row.secondary.set(str(geometry.sides))
+        self._refresh_hole_shape_row(row)
 
     def _load_documented_example(self) -> None:
         try:
@@ -587,20 +819,44 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.opti_stl_var.set(bool(params["opti_stl"]))
             self.opti_visu_var.set(bool(params["opti_visu"]))
             self.do_merge_var.set(bool(params["merge_bdfs"]))
-            while self.hole_rows:
+            while self.hole_shape_rows:
                 self._remove_hole_row()
             self.holes_enabled_var.set(bool(params["holes_enabled"]))
             for hole in params["holes"]:
                 self._add_hole_row()
-                for variable, value in zip(
-                    self.hole_rows[-1],
-                    (hole["cx"], hole["cy"], hole["r"]),
-                    strict=True,
-                ):
-                    variable.set(str(value))
+                self._set_hole_row_geometry(
+                    self.hole_shape_rows[-1],
+                    HoleGeometry(
+                        shape=hole.get("shape", "circle"),
+                        cx=float(hole["cx"]),
+                        cy=float(hole["cy"]),
+                        radius=float(hole["r"]),
+                    ),
+                )
             self.solver_mode_var.set("python")
             self._toggle_holes()
             self._update_method_summary()
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_shape_gallery(self) -> None:
+        """Load one real, separated example of every supported hole shape."""
+
+        self._load_documented_example()
+        self._suspend_dirty = True
+        try:
+            self.workdir_var.set(str((ROOT / "_runtime" / "shape-gallery-run").resolve()))
+            while self.hole_shape_rows:
+                self._remove_hole_row()
+            self.holes_enabled_var.set(True)
+            for geometry in SHAPE_GALLERY:
+                self._add_hole_row()
+                self._set_hole_row_geometry(self.hole_shape_rows[-1], geometry)
+            self.solver_mode_var.set("python")
+            self._toggle_holes()
+            self._update_method_summary()
+            self.notebook.select(self.mesh_tab)
         finally:
             self._suspend_dirty = False
         self._validate_inputs(operation="mesh")
@@ -610,6 +866,12 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._update_method_summary()
         self._mark_dirty()
 
+    def _toggle_holes(self) -> None:
+        if not hasattr(self, "hole_shape_rows"):
+            return
+        for row in self.hole_shape_rows:
+            self._refresh_hole_shape_row(row)
+
     def _on_solver_mode_change(self) -> None:
         self._update_method_summary()
         self._mark_dirty()
@@ -618,9 +880,9 @@ class ScientificApp(PythonHoleInterpolationApp):
         if not self.holes_enabled_var.get():
             self.method_summary_var.set("No holes: both modes use the preserved baseline mesh path.")
         elif self.solver_mode_var.get() == "python":
-            self.method_summary_var.set("Bulk mode writes three complete inflated CQUAD4 fills; Cast3M reads them without per-node DGIBI, REGL, INT_COMP, or DISPLACE.")
+            self.method_summary_var.set("Bulk mode supports circles, rectangles, equilateral triangles, and regular polygons with conformal inflated CQUAD4 fills.")
         else:
-            self.method_summary_var.set("Baseline mode retains the original Cast3M circle interpolation and displacement workflow.")
+            self.method_summary_var.set("Reference mode retains the original circle-only Cast3M interpolation and displacement workflow.")
         mode = "bulk inflated holes" if self.solver_mode_var.get() == "python" else "T13 reference"
         self.context_var.set(f"Active mode: {mode}")
 
@@ -671,6 +933,8 @@ class ScientificApp(PythonHoleInterpolationApp):
                 self._validate_params(params)
             else:
                 baseline.App._validate_params(self, params)
+                if any(hole.shape != "circle" for hole in params.hole_shapes):
+                    raise ValueError("The preserved FISS workflow currently supports circular holes only.")
                 fiss = self._read_fiss_setup()
             details = [
                 f"Grid: {x.shape[1]} × {x.shape[0]} points",
@@ -681,21 +945,28 @@ class ScientificApp(PythonHoleInterpolationApp):
             ]
             if operation == "mesh" and params.holes_enabled:
                 if not params.holes:
-                    raise ValueError("Enable holes only after adding at least one circle.")
+                    raise ValueError("Enable holes only after adding at least one shape.")
                 if self.solver_mode_var.get() == "python":
-                    rings = detect_circle_rings(
+                    rings = detect_hole_rings(
                         x,
                         y,
-                        params.holes,
+                        params.hole_shapes,
                         tolerance=params.re_tol,
                         nelem_x=params.nelem_x,
                         nelem_y=params.nelem_y,
                     )
                     details.append(
-                        "Conformal edges (circle = square interface): "
-                        + ", ".join(str(len(ring.xy)) for ring in rings)
+                        "Conformal edges (hole wall = square interface): "
+                        + ", ".join(
+                            f"{ring.geometry.shape} {len(ring.xy)}={len(ring.outer_xy)}"
+                            for ring in rings
+                        )
                     )
                 else:
+                    if any(hole.shape != "circle" for hole in params.hole_shapes):
+                        raise ValueError(
+                            "Rectangle, triangle, and regular-polygon holes require the Bulk Python mode."
+                        )
                     details.append(f"Reference holes: {len(params.holes)}")
             elif operation == "mesh":
                 details.append("No holes enabled")
@@ -728,7 +999,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._validate_params(params)
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
             from matplotlib.figure import Figure
-            from matplotlib.patches import Circle
+            from matplotlib.patches import Polygon
         except Exception as exc:
             messagebox.showerror("XY preview", str(exc))
             return
@@ -741,10 +1012,28 @@ class ScientificApp(PythonHoleInterpolationApp):
         step = max(1, max(x.shape) // 55)
         axes.plot(x[::step, :].T, y[::step, :].T, color="#6d8195", linewidth=0.35, alpha=0.72)
         axes.plot(x[:, ::step], y[:, ::step], color="#6d8195", linewidth=0.35, alpha=0.72)
-        for number, hole in enumerate(params.holes if params.holes_enabled else (), start=1):
-            axes.add_patch(Circle((hole.cx, hole.cy), hole.r, fill=False, linewidth=2.0, edgecolor="#d97706"))
-            axes.annotate(f"H{number}", (hole.cx, hole.cy), color="#9a4d05", ha="center", va="center", fontsize=9, weight="bold")
-        axes.set_title("Structured XY source grid and configured circular holes", color="#10233f", pad=13, weight="bold")
+        for number, hole in enumerate(
+            params.hole_shapes if params.holes_enabled else (), start=1
+        ):
+            axes.add_patch(
+                Polygon(
+                    hole_boundary_vertices(hole),
+                    closed=True,
+                    fill=False,
+                    linewidth=2.0,
+                    edgecolor="#d97706",
+                )
+            )
+            axes.annotate(
+                f"H{number}\n{hole.shape}",
+                (hole.cx, hole.cy),
+                color="#9a4d05",
+                ha="center",
+                va="center",
+                fontsize=8,
+                weight="bold",
+            )
+        axes.set_title("Structured XY source grid and configured hole shapes", color="#10233f", pad=13, weight="bold")
         axes.set_xlabel("X coordinate")
         axes.set_ylabel("Y coordinate")
         axes.set_aspect("equal", adjustable="box")

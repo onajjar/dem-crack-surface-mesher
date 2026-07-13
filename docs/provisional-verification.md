@@ -8,7 +8,7 @@ This is implementation evidence, not scientific validation.
 
 - `python -B scripts\verify_baseline.py`: all 6 immutable files matched their committed SHA-256 values.
 - `python -B -m compileall -q .`: passed.
-- `python -B -m pytest -q -p no:cacheprovider tests`: 18 tests passed.
+- `python -B -m pytest -q -p no:cacheprovider tests`: 26 tests passed.
 - `python -B castem_pipeline_headless.py examples\scientific-run.ini --validate-only`: passed and reported 64 angular points for each of the two refinement-2 holes without starting a GUI or Cast3M.
 - The derived optimized DGIBI contains three `LIRE 'NAS'` mesh imports and no generated per-node `POIN` statements.
 - Its hole-fill replacement contains no `REGL (-1*num_el_fill)`, `INT_COMP surf_zmin_comp`, or `DISPLACE surf_zmin` call.
@@ -59,6 +59,29 @@ python -B castem_pipeline_headless.py examples\scientific-run.ini
 ```
 
 It returned `0`, reported Cast3M error level `0`, detected `[64, 64]` angular points, found no missing expected outputs, and created the named combined BDF. The headless process measured 15.231634 s on this run; timing variation relative to the controlled benchmark is expected.
+
+## Generalized shape verification
+
+The runnable gallery contains a circle, rotated rectangle, rotated equilateral triangle, and regular hexagon. The command
+
+```powershell
+python -B castem_pipeline_headless.py examples\shaped-holes\all-shapes.ini
+```
+
+returned `0`, stopped at Cast3M error level `0`, created all four requested hole-surface BDFs, found no missing outputs, and produced a combined BDF. The headless process measured 17.823067 s. The real volume BDF contains 40,920 points and 19,936 `HEXA8` cells; the maximum surface contains 9,968 `CQUAD4` cells.
+
+Final-surface topology was checked with `python -B scripts\verify_shape_interfaces.py`:
+
+| Shape | Square-interface edges | Final hole-wall edges | Residual square/fill boundary edges |
+|---|---:|---:|---:|
+| Circle | 44 | 44 | 0 |
+| Rectangle | 56 | 56 | 0 |
+| Equilateral triangle | 56 | 56 | 0 |
+| Regular hexagon | 56 | 56 | 0 |
+
+Thus every generated fill is conformal at the interface in this real mixed-shape run. This topology check does not replace solver-specific CFD mesh-quality validation.
+
+All 19,936 volume elements also had positive, non-zero center Jacobians in this run; no mixed or zero center orientation was detected.
 
 ## Inflation evidence
 

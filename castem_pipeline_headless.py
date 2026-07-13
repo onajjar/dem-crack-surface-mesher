@@ -20,10 +20,13 @@ from castem_pipeline_gui_python_holes import (
     missing_mesh_outputs,
 )
 from python_hole_interpolation import (
+    HoleGeometry,
     build_python_holes_dgibi,
-    detect_circle_rings,
+    detect_hole_rings,
     generated_program_uses_python_holes,
     load_surface_csvs,
+    normalize_hole_geometry,
+    parse_hole_spec,
 )
 
 
@@ -159,20 +162,13 @@ def load_setup(path: Path) -> HeadlessSetup:
     holes_section = parser["holes"]
     base = config_path.parent
 
-    holes: list[tuple[int, baseline.Hole]] = []
+    holes: list[tuple[int, HoleGeometry]] = []
     for key, value in holes_section.items():
         match = re.fullmatch(r"hole(\d+)", key.strip(), flags=re.IGNORECASE)
         if not match:
             continue
-        parts = [item.strip() for item in value.split(",")]
-        if len(parts) != 3:
-            raise ValueError(f"[{holes_section.name}] {key} must be 'center_x, center_y, radius'.")
-        holes.append(
-            (
-                int(match.group(1)),
-                baseline.Hole(*(baseline.parse_float(item) for item in parts)),
-            )
-        )
+        hole_index = int(match.group(1))
+        holes.append((hole_index, parse_hole_spec(value, hole_index)))
     holes.sort(key=lambda item: item[0])
 
     params = baseline.CastemMainParams(
@@ -192,8 +188,12 @@ def load_setup(path: Path) -> HeadlessSetup:
         opti_med=int(mesh.getboolean("export_med")),
         opti_stl=int(mesh.getboolean("export_stl")),
         holes_enabled=holes_section.getboolean("enabled"),
-        holes=[hole for _index, hole in holes],
+        holes=[
+            baseline.Hole(hole.cx, hole.cy, hole.selection_radius)
+            for _index, hole in holes
+        ],
     )
+    params.hole_shapes = [hole for _index, hole in holes]
 
     return HeadlessSetup(
         config_path=config_path,
@@ -255,25 +255,32 @@ def validate_setup(setup: HeadlessSetup, *, check_castem: bool = False) -> tuple
         raise ValueError("hole_outer_inner_ratio must be finite and > 0.")
     if p.holes_enabled and not p.holes:
         raise ValueError("At least one holeN entry is required when holes are enabled.")
-    for index, hole in enumerate(p.holes, start=1):
-        if not all(math.isfinite(value) for value in (hole.cx, hole.cy, hole.r)) or hole.r <= 0:
-            raise ValueError(f"Hole {index} requires finite coordinates and a radius > 0.")
+    geometries = tuple(
+        normalize_hole_geometry(hole, index)
+        for index, hole in enumerate(getattr(p, "hole_shapes", p.holes), start=1)
+    )
+    if setup.mesh_mode == "reference" and any(hole.shape != "circle" for hole in geometries):
+        raise ValueError("Rectangle, triangle, and regular-polygon holes require mesh mode = python.")
+    if setup.operation in {"fiss", "both", "mesh_and_fiss"} and any(
+        hole.shape != "circle" for hole in geometries
+    ):
+        raise ValueError("The preserved FISS workflow currently supports circular holes only.")
 
     points_per_hole: tuple[int, ...] = ()
     if p.holes_enabled and setup.mesh_mode == "python":
         x, y, _zmin, _zmax = load_surface_csvs(
             setup.csv_x, setup.csv_y, setup.csv_zmin, setup.csv_zmax
         )
-        rings = detect_circle_rings(
+        rings = detect_hole_rings(
             x,
             y,
-            p.holes,
+            geometries,
             tolerance=p.re_tol,
             nelem_x=p.nelem_x,
             nelem_y=p.nelem_y,
         )
         if any(len(ring.outer_xy) != len(ring.xy) for ring in rings):
-            raise RuntimeError("Hole circle and square-interface edge counts are not conformal.")
+            raise RuntimeError("Hole-wall and square-interface edge counts are not conformal.")
         points_per_hole = tuple(len(ring.xy) for ring in rings)
     _validate_fiss(setup.fiss)
     if check_castem:
@@ -393,7 +400,7 @@ def run_mesh(setup: HeadlessSetup, executable: Path) -> dict[str, object]:
         "elapsed_seconds": round(elapsed, 6),
         "mode": setup.mesh_mode,
         "generated_dgibi": dgibi.name,
-        "circle_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
+        "hole_wall_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
         "square_interface_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
         "interface_counts_match": True if hole_meshes is not None else None,
         "missing_outputs": list(missing),
@@ -458,7 +465,10 @@ def main() -> int:
             "operation": setup.operation,
             "mesh_mode": setup.mesh_mode,
             "workdir": str(setup.workdir),
-            "circle_edges_per_hole": list(points_per_hole),
+            "hole_shapes": [
+                hole.shape for hole in getattr(setup.params, "hole_shapes", ())
+            ],
+            "hole_wall_edges_per_hole": list(points_per_hole),
             "square_interface_edges_per_hole": list(points_per_hole),
             "interface_counts_match": True if points_per_hole else None,
         }

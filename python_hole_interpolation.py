@@ -1,4 +1,4 @@
-"""Vectorized Python generation of inflated Cast3M circular-hole fills.
+"""Vectorized Python generation of inflated Cast3M hole fills.
 
 The baseline Cast3M program creates hole fills at ``z = 0`` and then
 interpolates/displaces every node in three full surface meshes.  For dense
@@ -25,12 +25,44 @@ MAIN_HOLE_BLOCK_END = "* Remove duplicated nodes\nELIM surf_zmin re_tol ;"
 
 
 @dataclass(frozen=True)
-class CircleRing:
+class HoleGeometry:
+    """One supported star-shaped internal boundary in the XY plane."""
+
+    shape: str
+    cx: float
+    cy: float
+    radius: float | None = None
+    width: float | None = None
+    height: float | None = None
+    side_length: float | None = None
+    sides: int | None = None
+    rotation_degrees: float = 0.0
+
+    @property
+    def selection_radius(self) -> float:
+        """Radius of a conservative square used by the preserved DGIBI."""
+
+        if self.shape == "circle":
+            return float(self.radius)
+        if self.shape == "rectangle":
+            return 0.5 * float(np.hypot(self.width, self.height))
+        if self.shape == "triangle":
+            return float(self.side_length) / np.sqrt(3.0)
+        return float(self.radius)
+
+
+@dataclass(frozen=True)
+class HoleRing:
     """Counter-clockwise outer and projected inner boundaries for one hole."""
 
     hole_index: int
     outer_xy: np.ndarray
     xy: np.ndarray
+    geometry: HoleGeometry
+
+
+# Backwards-compatible public name retained for callers written for circles.
+CircleRing = HoleRing
 
 
 @dataclass(frozen=True)
@@ -90,6 +122,214 @@ def _quantized_xy(x: float, y: float, tolerance: float) -> tuple[int, int]:
     return (int(round(x / tolerance)), int(round(y / tolerance)))
 
 
+def normalize_hole_geometry(hole: object, index: int = 1) -> HoleGeometry:
+    """Validate a geometry or convert a legacy ``cx/cy/r`` circle object."""
+
+    if isinstance(hole, HoleGeometry):
+        geometry = hole
+    else:
+        try:
+            geometry = HoleGeometry(
+                shape="circle",
+                cx=float(hole.cx),
+                cy=float(hole.cy),
+                radius=float(hole.r),
+            )
+        except AttributeError as exc:
+            raise TypeError(
+                "Each hole must be HoleGeometry or provide legacy cx, cy, and r attributes."
+            ) from exc
+
+    shape = geometry.shape.strip().lower().replace("-", "_").replace(" ", "_")
+    if shape == "polygon":
+        shape = "regular_polygon"
+    geometry = HoleGeometry(
+        shape=shape,
+        cx=float(geometry.cx),
+        cy=float(geometry.cy),
+        radius=None if geometry.radius is None else float(geometry.radius),
+        width=None if geometry.width is None else float(geometry.width),
+        height=None if geometry.height is None else float(geometry.height),
+        side_length=None if geometry.side_length is None else float(geometry.side_length),
+        sides=None if geometry.sides is None else int(geometry.sides),
+        rotation_degrees=float(geometry.rotation_degrees),
+    )
+    if shape not in {"circle", "rectangle", "triangle", "regular_polygon"}:
+        raise ValueError(
+            f"Hole {index}: shape must be circle, rectangle, triangle, or regular_polygon."
+        )
+    if not np.isfinite((geometry.cx, geometry.cy, geometry.rotation_degrees)).all():
+        raise ValueError(f"Hole {index}: center and rotation must be finite.")
+    if shape == "circle" and (
+        geometry.radius is None or not np.isfinite(geometry.radius) or geometry.radius <= 0.0
+    ):
+        raise ValueError(f"Hole {index}: circle radius must be finite and > 0.")
+    if shape == "rectangle" and (
+        geometry.width is None
+        or geometry.height is None
+        or not np.isfinite((geometry.width, geometry.height)).all()
+        or geometry.width <= 0.0
+        or geometry.height <= 0.0
+    ):
+        raise ValueError(f"Hole {index}: rectangle width and height must be finite and > 0.")
+    if shape == "triangle" and (
+        geometry.side_length is None
+        or not np.isfinite(geometry.side_length)
+        or geometry.side_length <= 0.0
+    ):
+        raise ValueError(f"Hole {index}: triangle side_length must be finite and > 0.")
+    if shape == "regular_polygon":
+        if geometry.sides is None or geometry.sides < 3:
+            raise ValueError(f"Hole {index}: regular polygon sides must be an integer >= 3.")
+        if geometry.radius is None or not np.isfinite(geometry.radius) or geometry.radius <= 0.0:
+            raise ValueError(f"Hole {index}: regular polygon circumradius must be finite and > 0.")
+    return geometry
+
+
+def parse_hole_spec(value: str, index: int = 1) -> HoleGeometry:
+    """Parse one documented comma-separated INI hole specification."""
+
+    parts = [part.strip() for part in value.split(",")]
+    if len(parts) == 3:
+        # Published circle-only INI files remain valid.
+        cx, cy, radius = (float(part) for part in parts)
+        return normalize_hole_geometry(
+            HoleGeometry("circle", cx, cy, radius=radius), index
+        )
+    if not parts:
+        raise ValueError(f"Hole {index}: empty specification.")
+    shape = parts[0].lower().replace("-", "_").replace(" ", "_")
+    try:
+        if shape == "circle" and len(parts) == 4:
+            return normalize_hole_geometry(
+                HoleGeometry(shape, float(parts[1]), float(parts[2]), radius=float(parts[3])),
+                index,
+            )
+        if shape == "rectangle" and len(parts) == 6:
+            return normalize_hole_geometry(
+                HoleGeometry(
+                    shape,
+                    float(parts[1]),
+                    float(parts[2]),
+                    width=float(parts[3]),
+                    height=float(parts[4]),
+                    rotation_degrees=float(parts[5]),
+                ),
+                index,
+            )
+        if shape == "triangle" and len(parts) == 5:
+            return normalize_hole_geometry(
+                HoleGeometry(
+                    shape,
+                    float(parts[1]),
+                    float(parts[2]),
+                    side_length=float(parts[3]),
+                    rotation_degrees=float(parts[4]),
+                ),
+                index,
+            )
+        if shape in {"regular_polygon", "polygon"} and len(parts) == 6:
+            return normalize_hole_geometry(
+                HoleGeometry(
+                    "regular_polygon",
+                    float(parts[1]),
+                    float(parts[2]),
+                    radius=float(parts[4]),
+                    sides=int(parts[3]),
+                    rotation_degrees=float(parts[5]),
+                ),
+                index,
+            )
+    except ValueError as exc:
+        raise ValueError(f"Hole {index}: invalid numeric value in '{value}'.") from exc
+    raise ValueError(
+        f"Hole {index}: expected circle,cx,cy,r; rectangle,cx,cy,width,height,rotation; "
+        "triangle,cx,cy,side,rotation; or regular_polygon,cx,cy,sides,radius,rotation."
+    )
+
+
+def _polygon_vertices(geometry: HoleGeometry) -> np.ndarray:
+    """Return counter-clockwise vertices relative to the hole center."""
+
+    angle = np.deg2rad(geometry.rotation_degrees)
+    if geometry.shape == "rectangle":
+        half_width = 0.5 * float(geometry.width)
+        half_height = 0.5 * float(geometry.height)
+        vertices = np.array(
+            (
+                (-half_width, -half_height),
+                (half_width, -half_height),
+                (half_width, half_height),
+                (-half_width, half_height),
+            ),
+            dtype=float,
+        )
+        cosine, sine = np.cos(angle), np.sin(angle)
+        rotation = np.array(((cosine, -sine), (sine, cosine)))
+        return vertices @ rotation.T
+    sides = 3 if geometry.shape == "triangle" else int(geometry.sides)
+    radius = (
+        float(geometry.side_length) / np.sqrt(3.0)
+        if geometry.shape == "triangle"
+        else float(geometry.radius)
+    )
+    angles = angle + np.arange(sides, dtype=float) * (2.0 * np.pi / sides)
+    return radius * np.column_stack((np.cos(angles), np.sin(angles)))
+
+
+def hole_boundary_vertices(geometry: HoleGeometry, circle_points: int = 128) -> np.ndarray:
+    """Return absolute XY vertices suitable for previews and validation plots."""
+
+    geometry = normalize_hole_geometry(geometry)
+    center = np.array((geometry.cx, geometry.cy), dtype=float)
+    if geometry.shape == "circle":
+        angles = np.linspace(0.0, 2.0 * np.pi, circle_points, endpoint=False)
+        relative = float(geometry.radius) * np.column_stack((np.cos(angles), np.sin(angles)))
+    else:
+        relative = _polygon_vertices(geometry)
+    return center + relative
+
+
+def _project_to_hole_boundary(
+    outer_points: np.ndarray,
+    geometry: HoleGeometry,
+    tolerance: float,
+) -> np.ndarray:
+    center = np.array((geometry.cx, geometry.cy), dtype=float)
+    direction = outer_points - center
+    distance = np.hypot(direction[:, 0], direction[:, 1])
+    if np.any(distance <= tolerance):
+        raise ValueError("A detected outer-boundary point is at the hole centre.")
+    if geometry.shape == "circle":
+        return center + float(geometry.radius) * direction / distance[:, np.newaxis]
+
+    vertices = _polygon_vertices(geometry)
+    edges = np.roll(vertices, -1, axis=0) - vertices
+    ray = direction[:, np.newaxis, :]
+    edge = edges[np.newaxis, :, :]
+    vertex = vertices[np.newaxis, :, :]
+    denominator = ray[:, :, 0] * edge[:, :, 1] - ray[:, :, 1] * edge[:, :, 0]
+    valid_denominator = np.abs(denominator) > tolerance
+    safe_denominator = np.where(valid_denominator, denominator, 1.0)
+    ray_scale = (
+        vertex[:, :, 0] * edge[:, :, 1] - vertex[:, :, 1] * edge[:, :, 0]
+    ) / safe_denominator
+    segment_scale = (
+        vertex[:, :, 0] * ray[:, :, 1] - vertex[:, :, 1] * ray[:, :, 0]
+    ) / safe_denominator
+    valid = (
+        valid_denominator
+        & (ray_scale > tolerance)
+        & (segment_scale >= -tolerance)
+        & (segment_scale <= 1.0 + tolerance)
+    )
+    ray_scale = np.where(valid, ray_scale, np.inf)
+    nearest = np.min(ray_scale, axis=1)
+    if not np.isfinite(nearest).all():
+        raise ValueError(f"Could not project all contour rays onto the {geometry.shape} boundary.")
+    return center + nearest[:, np.newaxis] * direction
+
+
 def _edge_subdivision_count(
     start: np.ndarray,
     end: np.ndarray,
@@ -147,7 +387,7 @@ def _subdivide_ordered_contour(
     return np.vstack(blocks)
 
 
-def detect_circle_rings(
+def detect_hole_rings(
     x: np.ndarray,
     y: np.ndarray,
     holes: Sequence[object],
@@ -156,17 +396,14 @@ def detect_circle_rings(
     margin: float = 1.05,
     nelem_x: int = 1,
     nelem_y: int = 1,
-) -> tuple[CircleRing, ...]:
-    """Replicate the baseline ``CR_SURF`` + ``CIRC_INT`` boundary selection.
+) -> tuple[HoleRing, ...]:
+    """Detect a conformal square contour and project it to each hole shape.
 
     ``CR_SURF`` skips a source cell when a corner falls inside a hole's
     inflated bounding square.  Its outside corners then form the rectangle
-    side of the fill region.  ``CIRC_INT`` de-duplicates those corners, orders
-    them by angle, and radially projects them onto the circle.  Only the final
-    projected XY coordinates are needed here; their Z coordinates are
-    evaluated in Python. Each ordered outer edge is subdivided exactly as the
-    corresponding Cast3M background-grid edge, preventing hanging nodes when
-    ``nelem_x`` or ``nelem_y`` is greater than one.
+    side of the fill region. Candidate corners are de-duplicated, ordered by
+    angle, subdivided exactly like the corresponding background-grid edges,
+    and projected along center rays onto a circle or convex regular boundary.
     """
 
     if x.shape != y.shape:
@@ -178,15 +415,10 @@ def detect_circle_rings(
     if nelem_x < 1 or nelem_y < 1:
         raise ValueError("nelem_x and nelem_y must be >= 1.")
 
-    normalized_holes: list[tuple[float, float, float]] = []
-    for index, hole in enumerate(holes, start=1):
-        try:
-            cx, cy, radius = float(hole.cx), float(hole.cy), float(hole.r)
-        except AttributeError as exc:
-            raise TypeError("Each hole must provide cx, cy, and r attributes.") from exc
-        if not np.isfinite((cx, cy, radius)).all() or radius <= 0.0:
-            raise ValueError(f"Hole {index} must have finite cx/cy and a positive radius.")
-        normalized_holes.append((cx, cy, radius))
+    normalized_holes = [
+        normalize_hole_geometry(hole, index)
+        for index, hole in enumerate(holes, start=1)
+    ]
 
     if not normalized_holes:
         return ()
@@ -211,8 +443,9 @@ def detect_circle_rings(
                 (float(x[row + 1, col + 1]), float(y[row + 1, col + 1])),
                 (float(x[row, col + 1]), float(y[row, col + 1])),
             )
-            for hole_index, (cx, cy, radius) in enumerate(normalized_holes):
-                inflated = margin * radius
+            for hole_index, geometry in enumerate(normalized_holes):
+                cx, cy = geometry.cx, geometry.cy
+                inflated = margin * geometry.selection_radius
                 inside = tuple(
                     (cx - inflated < px < cx + inflated)
                     and (cy - inflated < py < cy + inflated)
@@ -225,10 +458,11 @@ def detect_circle_rings(
                                 _quantized_xy(*point, tolerance), point
                             )
 
-    rings: list[CircleRing] = []
-    for hole_index, ((cx, cy, radius), per_hole_candidates) in enumerate(
+    rings: list[HoleRing] = []
+    for hole_index, (geometry, per_hole_candidates) in enumerate(
         zip(normalized_holes, candidates, strict=True), start=1
     ):
+        cx, cy = geometry.cx, geometry.cy
         # ``ELIM (po_rec_hi ET SURF1)`` in the baseline merges coincident
         # Cast3M point objects.  It does not subtract the outer contour from
         # ``po_rec_hi``.  Retaining every unique candidate therefore mirrors
@@ -237,7 +471,7 @@ def detect_circle_rings(
         if len(boundary) < 3:
             raise ValueError(
                 f"Hole {hole_index} produced only {len(boundary)} boundary points. "
-                "Move the circle fully inside the input grid and away from other holes."
+                "Move the shape fully inside the input grid and away from other holes."
             )
 
         points = np.asarray(boundary, dtype=float)
@@ -250,21 +484,27 @@ def detect_circle_rings(
             nelem_y=nelem_y,
             tolerance=tolerance,
         )
-        direction = points - np.array((cx, cy), dtype=float)
-        distance = np.hypot(direction[:, 0], direction[:, 1])
-        if np.any(distance <= tolerance):
-            raise ValueError(
-                f"Hole {hole_index} has a detected boundary point at its centre; "
-                "the circle projection is undefined."
-            )
-        ring_xy = np.column_stack(
-            (
-                cx + radius * direction[:, 0] / distance,
-                cy + radius * direction[:, 1] / distance,
+        ring_xy = _project_to_hole_boundary(points, geometry, tolerance)
+        rings.append(
+            HoleRing(
+                hole_index=hole_index,
+                outer_xy=points,
+                xy=ring_xy,
+                geometry=geometry,
             )
         )
-        rings.append(CircleRing(hole_index=hole_index, outer_xy=points, xy=ring_xy))
     return tuple(rings)
+
+
+def detect_circle_rings(
+    x: np.ndarray,
+    y: np.ndarray,
+    holes: Sequence[object],
+    **kwargs,
+) -> tuple[HoleRing, ...]:
+    """Backward-compatible alias for the generalized hole-ring detector."""
+
+    return detect_hole_rings(x, y, holes, **kwargs)
 
 
 def _axis_coordinates(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray] | None:
@@ -291,7 +531,7 @@ def _cell_indices(axis: np.ndarray, values: np.ndarray) -> tuple[np.ndarray, np.
     if np.any(values < sorted_axis[0] - 1.0e-12) or np.any(
         values > sorted_axis[-1] + 1.0e-12
     ):
-        raise ValueError("A circle point lies outside the source-grid extent.")
+        raise ValueError("A hole-boundary point lies outside the source-grid extent.")
     position = np.searchsorted(sorted_axis, values, side="right") - 1
     position = np.clip(position, 0, len(sorted_axis) - 2).astype(int, copy=False)
     if not ascending:
@@ -323,7 +563,7 @@ def _interpolate_curvilinear(
     """Bilinear interpolation for a structured, non-rectilinear grid.
 
     This fallback locates a containing cell from its bounding box and solves
-    the bilinear inverse with Newton iterations.  Circle rings contain a small
+    the bilinear inverse with Newton iterations. Hole rings contain a small
     number of points, so robustness is more useful than global pre-indexing.
     """
 
@@ -394,7 +634,7 @@ def _interpolate_curvilinear(
                     break
         if not found:
             raise ValueError(
-                f"Could not locate circle point ({px:.12g}, {py:.12g}) in the structured source grid."
+                f"Could not locate hole-boundary point ({px:.12g}, {py:.12g}) in the structured source grid."
             )
     return values
 
@@ -440,7 +680,7 @@ def _build_surface_fill_mesh(
     x: np.ndarray,
     y: np.ndarray,
     z: np.ndarray,
-    rings: Sequence[CircleRing],
+    rings: Sequence[HoleRing],
     fractions: np.ndarray,
 ) -> SurfaceFillMesh:
     point_blocks: list[np.ndarray] = []
@@ -564,7 +804,7 @@ def prepare_hole_fill_meshes(
     """Generate and write complete min/max/mean inflated hole-fill meshes."""
 
     x, y, zmin, zmax = load_surface_csvs(csv_x, csv_y, csv_zmin, csv_zmax)
-    rings = detect_circle_rings(
+    rings = detect_hole_rings(
         x,
         y,
         holes,
@@ -678,7 +918,7 @@ def build_python_holes_dgibi(
         csv_y,
         csv_zmin,
         csv_zmax,
-        getattr(params, "holes"),
+        getattr(params, "hole_shapes", getattr(params, "holes")),
         hole_mesh_directory,
         num_layers=int(getattr(params, "num_el_fill")),
         inflation_factor=float(getattr(params, "re_fact_hole")),
