@@ -342,6 +342,7 @@ Run the non-invasive checks used by CI:
 
 ```powershell
 python -m pip install -r requirements-dev.txt -c constraints-baseline.txt
+python -m ruff check .
 python -m compileall -q .
 python -m pytest -q
 ```
@@ -364,7 +365,7 @@ python -m pip install -r requirements-visuals.txt -c constraints-baseline.txt
 python scripts\render_workflow.py
 ```
 
-On a Windows desktop with Cast3M available, `python scripts\capture_demo.py` drives the unchanged GUI run and recreates the GUI screenshot/GIF in a fresh ignored runtime directory. After a successful run, `python scripts\render_mesh.py` recreates the mesh preview from the real volume BDF. The multiple-hole guide provides its exact runner and render command.
+On a Windows desktop with Cast3M available, `python scripts\capture_demo.py` drives the unchanged GUI run and recreates the GUI screenshot/GIF in a fresh ignored runtime directory. Run `python scripts\capture_scientific_ui.py` to recapture the scientific-workbench screenshots. After a successful run, `python scripts\render_mesh.py` recreates the mesh preview from the real volume BDF. The multiple-hole guide provides its exact runner and render command.
 
 ## Limitations and known baseline behavior
 
@@ -409,8 +410,8 @@ Use a fresh work directory and start with conservative `nelem_x`, `nelem_y`, and
 
 ## Project status, provenance, and licensing
 
-This release is a preservation point for future testing and refactoring. See [CHANGELOG.md](CHANGELOG.md), [the source audit](docs/source-audit.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
+This release is a preservation point for future testing and refactoring. See [CHANGELOG.md](CHANGELOG.md), [the source audit](docs/source-audit.md), [CONTRIBUTING.md](CONTRIBUTING.md), and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-No `LICENSE` file was present in the supplied project, so none has been added. Public source visibility alone does not grant reuse, modification, or redistribution rights. The provenance and redistribution terms of `source_codes/fiss.eso` should also be confirmed before describing this repository as open source.
+No `LICENSE` file was present in the supplied project, so none has been added. Public source visibility alone does not grant reuse, modification, or redistribution rights. If the maintainer confirms the right to license all distributed material, the MIT License is recommended for the Python project; the provenance and redistribution terms of `source_codes/fiss.eso` must still be confirmed before describing this repository as open source.
 
 Please report security concerns through the process in [SECURITY.md](SECURITY.md).

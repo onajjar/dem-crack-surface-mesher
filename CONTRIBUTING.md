@@ -22,6 +22,7 @@ Run `python scripts/verify_baseline.py` before submitting a change. Behavioral r
 
    ```powershell
    python scripts\verify_baseline.py
+   python -m ruff check .
    python -m compileall -q .
    python -m pytest -q
    ```
@@ -39,6 +40,8 @@ Do not invent numerical results, meshes, screenshots, or performance claims. Whe
 - Keep user-facing instructions free of credentials and machine-specific absolute paths.
 - Document external requirements such as Cast3M and Gmsh; do not silently download them from application code.
 - Use clear English for new public documentation. Existing baseline comments and identifiers are preserved as-is.
+
+Participation in this project is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Licensing note
 
