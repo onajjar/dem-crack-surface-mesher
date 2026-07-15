@@ -48,10 +48,6 @@ The same diagram is available as a [PNG](docs/assets/workflow.png) and editable 
 
 The example was run on 2026-07-10 by driving the unchanged GUI path with Cast3M annual version 2025.0 (launcher version `25`), `nelem_x=1`, `nelem_y=1`, `nelem_z=1`, no holes, no MED/STL export, Gmsh launch disabled, and BDF merge enabled.
 
-![Authentic GUI launch, relative input loading, Cast3M execution, and completion](docs/assets/demo.gif)
-
-The animation is an authentic capture. The live log region is visibly replaced because the unchanged GUI prints local absolute paths there; the unredacted log is not published.
-
 | Result | Recorded value |
 |---|---:|
 | Process return code | `0` |
@@ -149,6 +145,8 @@ The scientific workbench is the single launcher for enhanced use. It separates g
 ```powershell
 python castem_pipeline_gui_scientific.py
 ```
+
+![Current scientific workbench walkthrough covering geometry, mesh controls, run results, and FISS setup](docs/assets/demo.gif)
 
 ![Scientific workbench: mesh and hole controls](docs/assets/scientific-workbench.png)
 
@@ -365,7 +363,7 @@ python -m pip install -r requirements-visuals.txt -c constraints-baseline.txt
 python scripts\render_workflow.py
 ```
 
-On a Windows desktop with Cast3M available, `python scripts\capture_demo.py` drives the unchanged GUI run and recreates the GUI screenshot/GIF in a fresh ignored runtime directory. Run `python scripts\capture_scientific_ui.py` to recapture the scientific-workbench screenshots. After a successful run, `python scripts\render_mesh.py` recreates the mesh preview from the real volume BDF. The multiple-hole guide provides its exact runner and render command.
+On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the scientific-workbench screenshots and animated walkthrough with repository-relative paths. `python scripts\capture_demo.py` remains a compatibility alias for the same capture. After a successful Cast3M run, `python scripts\render_mesh.py` recreates the mesh preview from the real volume BDF. The multiple-hole guide provides its exact runner and render command.
 
 ## Limitations and known baseline behavior
 

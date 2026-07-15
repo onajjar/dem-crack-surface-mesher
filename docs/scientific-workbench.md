@@ -4,6 +4,8 @@
 
 Run it without arguments for the interactive workbench, or pass `--headless CONFIG` to execute the same scientific pipeline from an INI file without creating a Tk window.
 
+The animated walkthrough in the main README and both workbench screenshots can be recaptured from the real interface with `python scripts\capture_scientific_ui.py`. Published path fields are converted to repository-relative values before capture.
+
 ## Workflow
 
 1. Open the workbench and select **Load documented example** to load the complete repository-relative two-hole configuration, or select the DGIBI template, a dedicated working directory, and the four structured CSV grids yourself.

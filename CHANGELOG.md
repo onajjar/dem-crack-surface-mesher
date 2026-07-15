@@ -5,6 +5,7 @@
 - Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
 - Added centralized pytest/Ruff configuration, CI linting, public contribution templates, and broader generated-file exclusions for release readiness.
 - Removed a dead scientific-UI assignment without changing runtime behavior.
+- Replaced the legacy T13 interface GIF with a current four-tab Scientific Workbench walkthrough and removed the obsolete baseline screenshot.
 
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 
