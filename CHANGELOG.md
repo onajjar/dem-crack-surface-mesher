@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
+
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 
 ## [Unreleased]

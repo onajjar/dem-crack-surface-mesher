@@ -444,7 +444,7 @@ def run_fiss(setup: HeadlessSetup, executable: Path) -> dict[str, object]:
     }
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path, help="INI text file containing every run option")
     parser.add_argument(
@@ -452,11 +452,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="validate configuration, CSV geometry, and hole topology without starting Cast3M",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    """Run the headless pipeline, optionally with arguments from another launcher."""
+    args = parse_args(argv)
     try:
         setup = load_setup(args.config)
         points_per_hole = validate_setup(setup, check_castem=not args.validate_only)

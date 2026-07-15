@@ -81,7 +81,7 @@ python scripts\run_python_holes_example.py --clean
 For all supported shapes together:
 
 ```powershell
-python castem_pipeline_headless.py examples\shaped-holes\all-shapes.ini
+python castem_pipeline_gui_scientific.py --headless examples\shaped-holes\all-shapes.ini
 python scripts\verify_shape_interfaces.py
 ```
 

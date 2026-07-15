@@ -9,7 +9,7 @@ This is implementation evidence, not scientific validation.
 - `python -B scripts\verify_baseline.py`: all 6 immutable files matched their committed SHA-256 values.
 - `python -B -m compileall -q .`: passed.
 - `python -B -m pytest -q -p no:cacheprovider tests`: 26 tests passed.
-- `python -B castem_pipeline_headless.py examples\scientific-run.ini --validate-only`: passed and reported 64 angular points for each of the two refinement-2 holes without starting a GUI or Cast3M.
+- `python -B castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only`: passed and reported 64 angular points for each of the two refinement-2 holes without starting a GUI or Cast3M.
 - The derived optimized DGIBI contains three `LIRE 'NAS'` mesh imports and no generated per-node `POIN` statements.
 - Its hole-fill replacement contains no `REGL (-1*num_el_fill)`, `INT_COMP surf_zmin_comp`, or `DISPLACE surf_zmin` call.
 
@@ -55,7 +55,7 @@ completed with process return code `0`, Cast3M error level `0`, and a generated 
 The complete committed INI was also executed through the no-interface launcher:
 
 ```powershell
-python -B castem_pipeline_headless.py examples\scientific-run.ini
+python -B castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 ```
 
 It returned `0`, reported Cast3M error level `0`, detected `[64, 64]` angular points, found no missing expected outputs, and created the named combined BDF. The headless process measured 15.231634 s on this run; timing variation relative to the controlled benchmark is expected.
@@ -65,7 +65,7 @@ It returned `0`, reported Cast3M error level `0`, detected `[64, 64]` angular po
 The runnable gallery contains a circle, rotated rectangle, rotated equilateral triangle, and regular hexagon. The command
 
 ```powershell
-python -B castem_pipeline_headless.py examples\shaped-holes\all-shapes.ini
+python -B castem_pipeline_gui_scientific.py --headless examples\shaped-holes\all-shapes.ini
 ```
 
 returned `0`, stopped at Cast3M error level `0`, created all four requested hole-surface BDFs, found no missing outputs, and produced a combined BDF. The headless process measured 17.823067 s. The real volume BDF contains 40,920 points and 19,936 `HEXA8` cells; the maximum surface contains 9,968 `CQUAD4` cells.

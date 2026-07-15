@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import os
 import subprocess
+import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -1241,10 +1242,34 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.run_summary_var.set(f"Opened {mesh.name} in Gmsh.")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
+    """Launch the GUI, or dispatch ``--headless`` without creating a Tk root."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] in {"-h", "--help"}:
+        print(
+            "Usage:\n"
+            "  python castem_pipeline_gui_scientific.py\n"
+            "  python castem_pipeline_gui_scientific.py --headless CONFIG [--validate-only]\n\n"
+            "With no arguments, open the scientific workbench. Use --headless to "
+            "run an INI configuration without creating a GUI."
+        )
+        return 0
+    if args and args[0] == "--headless":
+        from castem_pipeline_headless import main as headless_main
+
+        return headless_main(args[1:])
+    if args:
+        print(
+            f"ERROR: unknown argument: {args[0]}\n"
+            "Use --help for GUI and headless launch syntax.",
+            file=sys.stderr,
+        )
+        return 2
+
     app = ScientificApp()
     app.mainloop()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

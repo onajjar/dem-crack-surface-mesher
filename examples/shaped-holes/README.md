@@ -14,13 +14,13 @@ Positive rotations are counter-clockwise. For a rectangle, zero degrees aligns w
 Validate the complete gallery without starting Cast3M:
 
 ```powershell
-python -B castem_pipeline_headless.py examples\shaped-holes\all-shapes.ini --validate-only
+python -B castem_pipeline_gui_scientific.py --headless examples\shaped-holes\all-shapes.ini --validate-only
 ```
 
 Generate the real mesh:
 
 ```powershell
-python -B castem_pipeline_headless.py examples\shaped-holes\all-shapes.ini
+python -B castem_pipeline_gui_scientific.py --headless examples\shaped-holes\all-shapes.ini
 python -B scripts\verify_shape_interfaces.py
 ```
 

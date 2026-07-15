@@ -2,6 +2,8 @@
 
 `castem_pipeline_gui_scientific.py` is the single launcher for the enhanced workflow. It adds a clearer scientific interface and the accelerated bulk-hole implementation without editing the immutable T13 GUI or its Cast3M templates.
 
+Run it without arguments for the interactive workbench, or pass `--headless CONFIG` to execute the same scientific pipeline from an INI file without creating a Tk window.
+
 ## Workflow
 
 1. Open the workbench and select **Load documented example** to load the complete repository-relative two-hole configuration, or select the DGIBI template, a dedicated working directory, and the four structured CSV grids yourself.

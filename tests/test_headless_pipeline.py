@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import castem_pipeline_gui_scientific as scientific
 from castem_pipeline_headless import load_setup, validate_setup
 from python_hole_interpolation import HoleGeometry
 
@@ -10,6 +11,15 @@ from python_hole_interpolation import HoleGeometry
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "examples" / "scientific-run.ini"
 SHAPE_CONFIG = ROOT / "examples" / "shaped-holes" / "all-shapes.ini"
+
+
+def test_scientific_launcher_dispatches_headless_validation(capsys) -> None:
+    result = scientific.main(["--headless", str(CONFIG), "--validate-only"])
+
+    assert result == 0
+    output = capsys.readouterr()
+    assert '"valid": true' in output.out
+    assert output.err == ""
 
 
 def test_example_headless_config_covers_conformal_multiple_holes() -> None:

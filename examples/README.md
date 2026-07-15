@@ -93,8 +93,8 @@ The [shape gallery](shaped-holes/README.md) provides runnable circle, rectangle,
 [`scientific-run.ini`](scientific-run.ini) contains the complete documented two-hole configuration, including mesh, export, merge, Gmsh, and FISS options. Validate or execute it from the repository root:
 
 ```powershell
-python castem_pipeline_headless.py examples\scientific-run.ini --validate-only
-python castem_pipeline_headless.py examples\scientific-run.ini
+python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 ```
 
 Relative paths are interpreted from the INI file. Edit `operation = mesh` to `fiss` or `both` when the optional FISS calculation is required.

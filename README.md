@@ -161,8 +161,8 @@ See [docs/scientific-workbench.md](docs/scientific-workbench.md) for use, scope,
 The same scientific mesh and FISS settings can be supplied in a plain INI file, with no Tk window:
 
 ```powershell
-python castem_pipeline_headless.py examples\scientific-run.ini --validate-only
-python castem_pipeline_headless.py examples\scientific-run.ini
+python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 ```
 
 The committed configuration lists every path, naming, mesh, hole, export, merge, Gmsh, and FISS option. Paths are resolved relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set `open_gmsh = true` only when a Gmsh window is wanted. See the [headless runner guide](docs/headless-runner.md).
@@ -306,7 +306,7 @@ The template builds lines through the crack, derives local opening and extent, a
 .
 ├── castem_pipeline_gui_scientific.py    # primary enhanced launcher
 ├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
-├── castem_pipeline_headless.py          # INI-driven no-interface runner
+├── castem_pipeline_headless.py          # compatibility headless backend/entry point
 ├── python_hole_interpolation.py         # bulk inflated fill generation
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
