@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import argparse
-from configparser import ConfigParser
-from dataclasses import dataclass
 import json
 import math
-from pathlib import Path
 import re
 import subprocess
 import sys
 import time
+from configparser import ConfigParser
+from dataclasses import dataclass
+from pathlib import Path
 
 import castem_pipeline_gui_t13 as baseline
 from castem_pipeline_gui_python_holes import (
@@ -28,7 +28,6 @@ from python_hole_interpolation import (
     normalize_hole_geometry,
     parse_hole_spec,
 )
-
 
 SUPPORTED_OPERATIONS = {"mesh", "fiss", "both", "mesh_and_fiss"}
 SUPPORTED_MESH_MODES = {"python", "reference"}

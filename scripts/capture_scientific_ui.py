@@ -6,7 +6,6 @@ import os
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MESH_ASSET = ROOT / "docs" / "assets" / "scientific-workbench.png"
 RUN_ASSET = ROOT / "docs" / "assets" / "scientific-workbench-run-results.png"

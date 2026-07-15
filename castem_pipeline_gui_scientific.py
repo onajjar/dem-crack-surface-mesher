@@ -8,13 +8,13 @@ the vectorized, bulk-file Python hole workflow for the same inputs.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import os
 import subprocess
 import sys
 import tkinter as tk
+from dataclasses import dataclass
+from pathlib import Path
 from tkinter import messagebox, ttk
 
 import castem_pipeline_gui_t13 as baseline
@@ -32,7 +32,6 @@ from python_hole_interpolation import (
     normalize_hole_geometry,
     radial_layer_fractions,
 )
-
 
 ROOT = Path(__file__).resolve().parent
 DOCUMENTED_INPUT = ROOT / "examples" / "input"
@@ -134,7 +133,6 @@ class ScientificApp(PythonHoleInterpolationApp):
 
     def _build_ui(self, parent) -> None:  # called by baseline.App.__init__
         self._configure_theme()
-        c = self.COLORS
         self._suspend_dirty = True
         self._active_operation: str | None = None
         self._process_started = False

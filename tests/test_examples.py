@@ -9,7 +9,6 @@ from typing import Any
 
 import numpy as np
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 INPUT_DIRECTORY = REPOSITORY_ROOT / "examples" / "input"
 

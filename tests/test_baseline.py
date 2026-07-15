@@ -9,7 +9,6 @@ from scripts.verify_baseline import (
     verify_entries,
 )
 
-
 EXPECTED_BASELINE_SHA256 = {
     PurePosixPath("bpm_cfx.ico"): (
         "a906a62b5e698885bb7271784818fd75b816e389c79d27ccfbb69af7d1ca68c1"

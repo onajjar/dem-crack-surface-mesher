@@ -4,8 +4,15 @@ __pycache__/
 *$py.class
 .pytest_cache/
 pytest-cache-files-*/
+.cache/
+.hypothesis/
 .mypy_cache/
+.nox/
+.pyre/
+.pytype/
 .ruff_cache/
+.tox/
+.ipynb_checkpoints/
 .coverage
 .coverage.*
 coverage.xml
@@ -23,7 +30,10 @@ ENV/
 # Packaging artifacts
 build/
 dist/
+site/
+wheelhouse/
 *.egg-info/
+*.so
 
 # IDE and operating-system files
 .idea/
@@ -58,6 +68,8 @@ temp/
 *.tmp
 *.temp
 *.bak
+*.orig
+*.rej
 *.log
 
 # Generated Cast3M/Gmsh meshes and solver artifacts

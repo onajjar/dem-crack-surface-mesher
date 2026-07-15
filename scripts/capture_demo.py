@@ -17,7 +17,6 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "_runtime"
 OUTPUT = RUNTIME / "demo-output"
@@ -38,7 +37,6 @@ sys.path.insert(0, str(ROOT))
 from PIL import Image, ImageDraw, ImageFont, ImageGrab  # noqa: E402
 
 import castem_pipeline_gui_t13 as baseline  # noqa: E402
-
 
 GUI_SCREENSHOT = ASSETS / "gui-screenshot.png"
 DEMO_GIF = ASSETS / "demo.gif"

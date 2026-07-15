@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "_runtime" / "hole-optimization-benchmark"
 DEFAULT_OUTPUT = ROOT / "docs" / "assets" / "mesh-comparison-baseline-vs-python-holes.png"

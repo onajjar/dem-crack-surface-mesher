@@ -39,8 +39,11 @@ jobs:
       - name: Verify immutable baseline
         run: python scripts/verify_baseline.py
 
+      - name: Lint maintained Python sources
+        run: python -m ruff check .
+
       - name: Compile Python sources
-        run: python -m compileall .
+        run: python -m compileall -q .
 
       - name: Run tests
         run: python -m pytest -q

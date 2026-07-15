@@ -8,18 +8,17 @@ before and after the run.
 
 from __future__ import annotations
 
-import hashlib
 import argparse
+import hashlib
 import json
 import os
-import shutil
 import re
+import shutil
 import sys
 import time
 import traceback
 from pathlib import Path
 from typing import Any
-
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "_runtime" / "multiple-holes-output"
@@ -35,7 +34,6 @@ os.environ["MPLCONFIGDIR"] = str(MPLCONFIG)
 sys.path.insert(0, str(ROOT))
 
 import castem_pipeline_gui_t13 as baseline  # noqa: E402
-
 
 IMMUTABLE_PATHS = [
     ROOT / "bpm_cfx.ico",

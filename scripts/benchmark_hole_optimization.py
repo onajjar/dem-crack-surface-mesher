@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import time
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -25,7 +24,6 @@ from python_hole_interpolation import (  # noqa: E402
     build_python_holes_dgibi,
     generated_program_uses_python_holes,
 )
-
 
 INPUTS = {
     "xrange": ROOT / "examples" / "input" / "xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",

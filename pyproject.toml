@@ -1,0 +1,15 @@
+[tool.pytest.ini_options]
+minversion = "7.4"
+testpaths = ["tests"]
+addopts = ["--strict-config", "--strict-markers", "-p", "no:cacheprovider"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+  "castem_pipeline_gui_t13.py",
+  "source_codes",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

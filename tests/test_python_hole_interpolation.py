@@ -27,7 +27,6 @@ from python_hole_interpolation import (
     validate_surface_fill_mesh,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 INPUT = ROOT / "examples" / "input"
 

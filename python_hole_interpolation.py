@@ -19,7 +19,6 @@ from typing import Sequence
 
 import numpy as np
 
-
 MAIN_HOLE_BLOCK_START = "* Correct the z coordinates for the filling elements based on the original point clouds"
 MAIN_HOLE_BLOCK_END = "* Remove duplicated nodes\nELIM surf_zmin re_tol ;"
 

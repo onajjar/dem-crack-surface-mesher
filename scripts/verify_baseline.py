@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Sequence
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = REPOSITORY_ROOT / "BASELINE_SHA256SUMS"
 MANIFEST_LINE = re.compile(

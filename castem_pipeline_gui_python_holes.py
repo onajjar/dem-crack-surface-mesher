@@ -7,14 +7,13 @@ delegates to that same interface for backwards compatibility.
 
 from __future__ import annotations
 
-from datetime import datetime
 import math
-from pathlib import Path
 import subprocess
+from datetime import datetime
+from pathlib import Path
 
 import castem_pipeline_gui_t13 as baseline
 from python_hole_interpolation import build_python_holes_dgibi
-
 
 MESH_OUTPUT_PATTERNS = (
     "castem_mesh_*.bdf",

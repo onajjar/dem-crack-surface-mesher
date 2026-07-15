@@ -7,7 +7,6 @@ import castem_pipeline_gui_scientific as scientific
 from castem_pipeline_headless import load_setup, validate_setup
 from python_hole_interpolation import HoleGeometry
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "examples" / "scientific-run.ini"
 SHAPE_CONFIG = ROOT / "examples" / "shaped-holes" / "all-shapes.ini"
