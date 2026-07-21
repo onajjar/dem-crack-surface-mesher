@@ -6,6 +6,7 @@
 |---|---:|---|
 | [Baseline run](#run-it-through-the-gui) | 0 | `output/` |
 | [Multiple-hole run](multiple-holes/README.md) | 2 | `multiple-holes/output/` |
+| [Generated surfaces](surfaces/README.md) | 2 | ignored real runs under `_runtime/` |
 
 ## Shared input summary
 
@@ -87,6 +88,15 @@ python scripts\run_python_holes_example.py --clean
 The script writes only ignored files under `_runtime\python-holes-output`. It reports the Cast3M return code, detected contour points, generated fill topology, radial fractions, preparation time, and whether `castem_mesh_v.bdf` was produced. The hole-ring angular count follows `nelem_x` and `nelem_y`, so the hole-wall and square sides of every fill interface have the same number of edges. In the scientific GUI, use **Open generated mesh in Gmsh** on the Run / results tab to inspect an existing combined or volume BDF without rerunning Cast3M. For the method, real multi-size comparison, and element-orientation audit, see [the optimization note](../docs/python-hole-interpolation.md) and [provisional verification](../docs/provisional-verification.md).
 
 The [shape gallery](shaped-holes/README.md) provides runnable circle, rectangle, triangle, and regular-polygon examples in one INI file.
+
+## Run generated surface examples
+
+The [`surfaces`](surfaces/README.md) directory contains complete configurations for a self-affine surface entered as `H = 0.8`, the equivalent `D = 2.2`, and constant planes with a lower wall at `z = 0`. Each configuration generates the canonical four matrices and continues through the same hole and Cast3M workflow:
+
+```powershell
+python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini
+python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-planes.ini
+```
 
 ## Run without the GUI
 

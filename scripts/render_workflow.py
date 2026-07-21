@@ -1,4 +1,4 @@
-"""Render the documented baseline workflow as a deterministic PNG."""
+"""Render the documented scientific workflow as a deterministic PNG."""
 
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def main() -> None:
     draw.text((55, 26), "Crack geometry to Cast3M mesh", font=font(40, bold=True), fill="white")
     draw.text(
         (56, 78),
-        "Current baseline execution path, including the optional FISS flow branch",
+        "CSV and generated surfaces through one preserved Cast3M contract",
         font=font(20),
         fill="#cbd9eb",
     )
@@ -126,9 +126,9 @@ def main() -> None:
     # Reorder tuple construction from (x1, y1, y2, x2) to normal boxes.
     boxes = {key: (value[0], value[1], value[3], value[2]) for key, value in boxes.items()}
 
-    node(draw, boxes["csv"], "4 CSV matrices", ["xrange · yrange", "zfit_zmin · zfit_zmax"], "#dff3ff", "#4795bd")
-    node(draw, boxes["gui"], "Python / Tk GUI", ["paths · parameters", "validation · naming"], "#e5f5ec", "#4c9b70")
-    node(draw, boxes["dgibi"], "Patched DGIBI", ["baseline template", "run-specific values"], "#fff1d8", "#c89236")
+    node(draw, boxes["csv"], "Surface source", ["CSV · fractal", "constant Z planes"], "#dff3ff", "#4795bd")
+    node(draw, boxes["gui"], "Scientific launcher", ["GUI or headless", "validation · generation"], "#e5f5ec", "#4c9b70")
+    node(draw, boxes["dgibi"], "Canonical run files", ["4 CSV matrices", "patched DGIBI"], "#fff1d8", "#c89236")
     node(draw, boxes["castem"], "Cast3M 25", ["geometry processing", "mesh generation"], "#fce7e8", "#bc5b60")
     node(draw, boxes["mesh"], "Mesh outputs", ["volume BDF", "surface BDF files"], "#eae7fb", "#7767b7")
     node(draw, boxes["cfd"], "Combined NASTRAN BDF", ["volume + named surfaces", "for downstream CFD import"], "#dceef7", "#3d82a2")
@@ -163,7 +163,7 @@ def main() -> None:
 
     draw.text((56, 838), "Solid path: mesh conversion", font=font(18, bold=True), fill="#446481")
     draw.text((340, 838), "Dashed path: optional FISS flow calculation", font=font(18), fill="#71879e")
-    draw.text((1420, 838), "Pre-refactor baseline", font=font(18, bold=True), fill="#566b82")
+    draw.text((1410, 838), "Current benchmark", font=font(18, bold=True), fill="#566b82")
 
     image.save(OUTPUT, optimize=True)
     print(f"Wrote {OUTPUT} ({WIDTH}x{HEIGHT}, {OUTPUT.stat().st_size} bytes)")

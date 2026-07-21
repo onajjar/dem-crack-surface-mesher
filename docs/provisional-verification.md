@@ -8,7 +8,7 @@ This is implementation evidence, not scientific validation.
 
 - `python -B scripts\verify_baseline.py`: all 6 immutable files matched their committed SHA-256 values.
 - `python -B -m compileall -q .`: passed.
-- `python -B -m pytest -q -p no:cacheprovider tests`: 26 tests passed.
+- `python -B -m pytest -q -p no:cacheprovider tests`: 39 tests passed.
 - `python -B castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only`: passed and reported 64 angular points for each of the two refinement-2 holes without starting a GUI or Cast3M.
 - The derived optimized DGIBI contains three `LIRE 'NAS'` mesh imports and no generated per-node `POIN` statements.
 - Its hole-fill replacement contains no `REGL (-1*num_el_fill)`, `INT_COMP surf_zmin_comp`, or `DISPLACE surf_zmin` call.
@@ -82,6 +82,33 @@ Final-surface topology was checked with `python -B scripts\verify_shape_interfac
 Thus every generated fill is conformal at the interface in this real mixed-shape run. This topology check does not replace solver-specific CFD mesh-quality validation.
 
 All 19,936 volume elements also had positive, non-zero center Jacobians in this run; no mixed or zero center orientation was detected.
+
+## Generated surface verification
+
+The self-affine Hurst example and constant-plane example were executed through the same headless hole/Cast3M path:
+
+```powershell
+python -B castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini
+python -B castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-planes.ini
+```
+
+Both returned process code `0`, stopped at Cast3M error level `0`, produced every expected surface and volume BDF, and created the merged output. The equivalent `D = 2.2` configuration was validated against `H = 0.8`; tests confirm the same seed produces numerically equivalent surfaces under `D = 3 - H`.
+
+| Quantity | Self-affine fractal | Constant planes |
+|---|---:|---:|
+| Grid points | 50 × 50 | 50 × 50 |
+| Cast3M elapsed | 15.074886 s | 10.364480 s |
+| Final surface quads | 2,590 | 2,590 |
+| Volume HEXA8 | 5,180 | 5,180 |
+| Circle wall/interface edges | 28 / 28 | 28 / 28 |
+| Rectangle wall/interface edges | 32 / 32 | 32 / 32 |
+| Residual square/fill seams | 0 | 0 |
+| Positive center Jacobians | 5,180 | 5,180 |
+| Negative or zero center Jacobians | 0 | 0 |
+| Positive corner Jacobians | 41,440 | 41,440 |
+| Negative or zero corner Jacobians | 0 | 0 |
+
+The fractal field had requested `H = 0.8`, derived `D = 2.2`, RMS height `5e-5`, aperture `2e-4`, and seed `20260721`. The constant case used `zmin = 0` and `zmax = 2e-4`. The fractal walls are parallel realizations around one rough mean surface, not independent opposing-wall fields.
 
 ## Inflation evidence
 

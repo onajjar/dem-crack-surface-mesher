@@ -128,13 +128,39 @@ def main() -> int:
     positive = int(np.count_nonzero(determinants > determinant_tolerance))
     negative = int(np.count_nonzero(determinants < -determinant_tolerance))
     zero = int(len(determinants) - positive - negative)
-    volume_ok = zero == 0 and (positive == len(determinants) or negative == len(determinants))
+    center_ok = zero == 0 and (positive == len(determinants) or negative == len(determinants))
+
+    corner_derivatives = np.empty((8, 8, 3), dtype=float)
+    for corner, (xi, eta, zeta) in enumerate(signs):
+        corner_derivatives[corner, :, 0] = (
+            signs[:, 0] * (1.0 + signs[:, 1] * eta) * (1.0 + signs[:, 2] * zeta) / 8.0
+        )
+        corner_derivatives[corner, :, 1] = (
+            signs[:, 1] * (1.0 + signs[:, 0] * xi) * (1.0 + signs[:, 2] * zeta) / 8.0
+        )
+        corner_derivatives[corner, :, 2] = (
+            signs[:, 2] * (1.0 + signs[:, 0] * xi) * (1.0 + signs[:, 1] * eta) / 8.0
+        )
+    corner_jacobians = np.einsum("hni,qnj->hqij", coordinates, corner_derivatives)
+    corner_determinants = np.linalg.det(corner_jacobians).reshape(-1)
+    corner_positive = int(np.count_nonzero(corner_determinants > determinant_tolerance))
+    corner_negative = int(np.count_nonzero(corner_determinants < -determinant_tolerance))
+    corner_zero = int(len(corner_determinants) - corner_positive - corner_negative)
+    corner_ok = corner_zero == 0 and (
+        corner_positive == len(corner_determinants)
+        or corner_negative == len(corner_determinants)
+    )
+    volume_ok = center_ok and corner_ok
     success = success and volume_ok
     report["volume"] = {
         "hexahedra": int(len(hexahedra)),
         "positive_center_jacobians": positive,
         "negative_center_jacobians": negative,
         "zero_center_jacobians": zero,
+        "corner_jacobians": int(len(corner_determinants)),
+        "positive_corner_jacobians": corner_positive,
+        "negative_corner_jacobians": corner_negative,
+        "zero_corner_jacobians": corner_zero,
         "consistent_nonzero_orientation": volume_ok,
     }
     report["passed"] = success

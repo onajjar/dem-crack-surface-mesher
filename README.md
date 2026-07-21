@@ -2,45 +2,80 @@
 
 [![CI](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml)
 
-A Windows desktop pipeline that turns four structured crack-surface CSV grids into Cast3M meshes, prepares a combined NASTRAN BDF for downstream CFD import, and optionally evaluates crack flow with Cast3M's `FISS` operator.
+A Windows desktop pipeline that loads or synthesizes structured crack surfaces, converts them into Cast3M meshes, prepares a combined NASTRAN BDF for downstream CFD import, and optionally evaluates crack flow with Cast3M's `FISS` operator.
 
-> **Baseline status:** `v0.1.0-baseline` is a pre-refactor publication of the current T13 program. The GUI and every file in `source_codes/` are preserved byte-for-byte. Documentation, examples, verification, and CI are additive; computational behavior is intentionally unchanged.
+> **Baseline status:** `v0.1.0-baseline` preserves the historical T13 program. `castem_pipeline_gui_t13.py` and every file in `source_codes/` remain byte-for-byte protected; current development is isolated in the scientific launcher and its supporting modules.
 
 ![Scientific workbench showing dynamic circle, rectangle, triangle, and regular-polygon controls](docs/assets/scientific-workbench.png)
 
 ## What it does
 
-- Selects four comma-delimited surface grids: `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin`.
-- Copies them to a working directory under the filenames expected by the Cast3M templates.
+- Selects an existing four-CSV dataset, synthesizes a reproducible self-affine fractal surface, or creates two constant-Z planes.
+- Materializes every source as the same canonical `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin` matrices expected by the preserved Cast3M templates.
 - Patches parameters only inside the marked `Main Program` section of a `.dgibi` template.
 - Invokes Cast3M through its Windows batch launcher and streams solver output into the GUI.
 - Creates a crack volume mesh and named boundary-surface meshes in NASTRAN BDF format.
 - Supports zero, one, or multiple through-holes. The scientific mode accepts circles, rotated rectangles, rotated equilateral triangles, and regular polygons with any integer side count ≥ 3.
 - Optionally exports MED/STL, combines volume and boundary BDF cards, and opens the selected mesh in Gmsh.
-- Runs a separate, optional `FISS` flow calculation from the same four surface grids and post-processes solver text results into plots or HDF5.
+- Runs a separate, optional `FISS` flow calculation from the same canonical surface grids and post-processes solver text results into plots or HDF5.
 
 ## Workflow
 
 ```mermaid
 flowchart LR
-    A[Four numeric CSV grids] --> B[Tkinter GUI]
-    B --> C[Canonical CSV copies]
-    B --> D[Patch DGIBI Main Program]
-    C --> E[Cast3M mesh run]
-    D --> E
-    E --> F[Volume and boundary BDFs]
-    F --> G{Optional outputs}
-    G --> H[Combined BDF]
-    G --> I[MED / STL]
-    F --> J[Gmsh preview]
-    B --> K[Optional FISS setup]
-    C --> K
-    K --> L[Cast3M FISS run]
-    L --> M[TXT results]
-    M --> N[Plots / HDF5]
+    A[CSV files] --> B[Surface source]
+    A2[Self-affine fractal] --> B
+    A3[Constant Z planes] --> B
+    B --> C[Four canonical matrices]
+    C --> D[GUI or headless runner]
+    D --> E[Patch DGIBI Main Program]
+    C --> F[Cast3M mesh run]
+    E --> F
+    F --> G[Volume and boundary BDFs]
+    G --> H{Optional outputs}
+    H --> I[Combined BDF]
+    H --> J[MED / STL]
+    G --> K[Gmsh preview]
+    D --> L[Optional FISS setup]
+    C --> L
+    L --> M[Cast3M FISS run]
+    M --> N[TXT results]
+    N --> O[Plots / HDF5]
 ```
 
 The same diagram is available as a [PNG](docs/assets/workflow.png) and editable [Mermaid source](docs/workflow.mmd).
+
+## Surface source modes
+
+The scientific launcher changes its visible inputs with the selected source:
+
+| Source | Required geometry inputs | Z definition |
+|---|---|---|
+| Existing CSV | Four equally shaped matrices | Values supplied by the dataset |
+| Synthetic fractal | Grid points, X/Y size and center, `H` or `D`, RMS height, aperture, seed | Parallel self-affine walls |
+| Constant Z planes | Grid points, X/Y size and center, lower Z, upper Z | No fluctuations |
+
+For a two-dimensional surface graph embedded in three dimensions, the implemented relation is `D = 3 - H`, with `0 < H < 1` and `2 < D < 3`. Isotropic spectral synthesis uses `S(k) ∝ k^-(2H+2)`. The random mean surface is normalized to the requested RMS height; the upper and lower walls are parallel and separated by the requested aperture. The seed makes the generated matrices reproducible.
+
+An exponent defines scale dependence, not vertical magnitude, so RMS height cannot be inferred from `H` or `D`. Likewise, a positive aperture is required for Cast3M volume meshing. In constant mode the lower wall may be `z = 0` everywhere, but the upper wall must be greater than the lower wall.
+
+![Real generated self-affine and constant crack-wall sources](docs/assets/synthetic-surface-comparison.png)
+
+The committed examples were executed with Cast3M 25 and the same circle/rectangle hole configuration:
+
+| Source | Cast3M elapsed | Surface quads | Volume HEXA8 | Hole interfaces | Residual seams |
+|---|---:|---:|---:|---|---:|
+| Fractal, `H=0.8` (`D=2.2`) | 15.075 s | 2,590 | 5,180 | `28=28`, `32=32` | 0 |
+| Constant, `zmin=0`, `zmax=2e-4` | 10.364 s | 2,590 | 5,180 | `28=28`, `32=32` | 0 |
+
+All 5,180 HEXA8 elements and all 41,440 evaluated element corners in each real BDF had consistent positive, non-zero Jacobians. Cast3M returned `0` at error level `0` and also emitted its existing signalling `IEEE_INVALID_FLAG` notice. These checks establish execution and interface topology, not full integration-point quality or CFD suitability.
+
+```powershell
+python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini
+python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-planes.ini
+```
+
+See [Structured surface generation](docs/surface-generation.md) for the spectral model, wall construction, units, reproducibility contract, and limitations.
 
 ## Verified baseline executions
 
@@ -140,13 +175,15 @@ This image is rendered from the real four-shape Cast3M volume BDF. Its final max
 
 ### Scientific workbench
 
-The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; supports a complete documented-configuration loader, mode-aware preflight, real XY-grid/hole and inflation-profile previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, a one-click **Open generated mesh in Gmsh** action, and access to the BDF comparison image.
+The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; dynamically exposes CSV, fractal, or constant-plane inputs; supports mode-aware preflight, real XY/hole and three-dimensional wall previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, and one-click Gmsh opening.
 
 ```powershell
 python castem_pipeline_gui_scientific.py
 ```
 
 ![Current scientific workbench walkthrough covering geometry, mesh controls, run results, and FISS setup](docs/assets/demo.gif)
+
+![Scientific workbench: deterministic self-affine surface definition](docs/assets/scientific-surface-fractal.png)
 
 ![Scientific workbench: mesh and hole controls](docs/assets/scientific-workbench.png)
 
@@ -163,7 +200,7 @@ python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini 
 python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 ```
 
-The committed configuration lists every path, naming, mesh, hole, export, merge, Gmsh, and FISS option. Paths are resolved relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set `open_gmsh = true` only when a Gmsh window is wanted. See the [headless runner guide](docs/headless-runner.md).
+The committed configuration lists every surface, path, naming, mesh, hole, export, merge, Gmsh, and FISS option. Paths are resolved relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set `open_gmsh = true` only when a Gmsh window is wanted. See the [headless runner guide](docs/headless-runner.md).
 
 ## Requirements
 
@@ -225,14 +262,14 @@ Then:
 
 1. Choose **Load documented example**, or select `source_codes\castem_tool.dgibi` as the mesh template.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
-3. Select the four files in `examples\input` in their matching `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin` fields.
+3. Select **CSV files**, **Synthetic fractal**, or **Constant Z planes**. For CSV mode, select the four files in `examples\input`; for a generated mode, enter the grid dimensions and visible mode-specific parameters.
 4. Keep the example naming parameters at `re_ti=60`, `re_crpa=1`, `re_smfa=0.05`, `re_numspa=50`, and `re_opmin=1e-6`.
 5. Review mesh density, holes, inflation, export, merge, and Gmsh options. For holes, choose the reference mode or **Bulk Python hole mesh — fast + inflated**.
 6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
-See [examples/README.md](examples/README.md) for the shared input/output policy, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md) for the two-hole walkthrough.
+See [examples/README.md](examples/README.md) for the shared input/output policy, [examples/surfaces/README.md](examples/surfaces/README.md) for generated sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md) for the two-hole walkthrough.
 
-## CSV input contract
+## Surface input contract
 
 Each input is a headerless, comma-delimited numeric matrix. The four matrices must have the same rectangular shape and at least two rows and two columns.
 
@@ -250,7 +287,9 @@ mean surface = (zfit_zmax + zfit_zmin) / 2
 opening      =  zfit_zmax - zfit_zmin
 ```
 
-Use decimal points, finite values, compatible coordinate grids, and `zfit_zmax >= zfit_zmin`. The GUI checks that files exist but does not validate matrix shape, contents, or physical consistency before starting Cast3M.
+Use decimal points, finite values, compatible coordinate grids, and `zfit_zmax >= zfit_zmin`. The scientific launcher validates file existence, equal matrix shape, finite values, wall ordering, generated-mode bounds, and hole topology before starting Cast3M. These structural checks are not a physical acceptance test.
+
+Fractal and constant modes create the same four matrices in `_generated_surface_inputs` below the selected run directory. `points_x` and `points_y` are point counts; the unrefined structured grid therefore has `(points_x - 1) × (points_y - 1)` cells. Synthetic generation never edits the source templates or the documented CSV dataset.
 
 The unchanged post-processing converts x/y/z coordinates to centimetres and opening to micrometres for plots, so it implicitly treats the CSV coordinate values as metres.
 
@@ -284,7 +323,7 @@ The combined file is a NASTRAN BDF assembled by the GUI's `merge_bdfs()` functio
 
 ## Optional FISS flow calculation
 
-The **Calcul (FISS)** path is a separate Cast3M run over the same CSV geometry; it does not consume the merged BDF. Choose `source_codes\fuite_fissure.dgibi` as its template.
+The **Calcul (FISS)** path is a separate Cast3M run over the same selected surface after materialization to the canonical four-grid contract; it does not consume the merged BDF. Choose `source_codes\fuite_fissure.dgibi` as its template.
 
 The unchanged GUI exposes:
 
@@ -306,6 +345,7 @@ The template builds lines through the crack, derives local opening and extent, a
 ├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
 ├── castem_pipeline_headless.py          # compatibility headless backend/entry point
 ├── python_hole_interpolation.py         # bulk inflated fill generation
+├── surface_generation.py                # CSV, self-affine, and planar surface sources
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
 ├── source_codes/                # unchanged Cast3M and helper sources
@@ -314,6 +354,7 @@ The template builds lines through the crack, derives local opening and extent, a
 │   ├── output/                  # verified no-hole run artifacts
 │   ├── scientific-run.ini       # complete headless configuration
 │   ├── shaped-holes/            # circle/rectangle/triangle/polygon gallery
+│   ├── surfaces/                # fractal-H, fractal-D, and constant examples
 │   └── multiple-holes/          # verified two-hole configuration/output
 ├── docs/
 │   ├── assets/                  # authentic screenshots and diagrams
@@ -373,6 +414,8 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 - Non-circular holes require the scientific Python mode. The preserved T13 reference mode and preserved FISS path remain circle-only.
 - Cast3M and Gmsh are external applications and are not installed by `requirements.txt`.
 - The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.
+- The fractal generator is an isotropic Gaussian spectral model with one power-law exponent. It does not yet model anisotropy, roll-off wavelengths, non-Gaussian height distributions, or independently rough opposing walls; its two walls are parallel with constant aperture.
+- Reported HEXA8 Jacobian checks cover element centers and eight natural corners. They do not replace all-integration-point quality metrics, skewness/orthogonality checks, or validation in the target CFD solver.
 - The integrated BDF merger imports `CQUAD4` boundary cards, assigns one `PSHELL` per surface file, and excludes the mean surface. It is not a general-purpose BDF merger.
 - **FISS model parameters:** the patcher replaces only the first matching assignment in the template's Main Program. Because the supplied FISS template repeats material variables in multiple model blocks, some entered overrides can affect an earlier inactive block while the selected model retains a hard-coded value. This behavior is preserved and must be verified in the generated `.dgibi` before relying on a study.
 - Enabling **View mesh in Gmsh** also writes `opti_visu=1`; the supplied Cast3M template performs its own `TRAC` operation before the GUI opens Gmsh.
@@ -397,6 +440,10 @@ Install a Python distribution that includes Tcl/Tk. Tkinter is normally included
 **Cast3M cannot find a CSV**
 
 Confirm all four naming parameters match the example and use exactly scaled `re_smfa`/`re_opmin` values. Inspect the copied filenames in the working directory.
+
+**Constant surface has zero volume**
+
+Set `constant_zmax` strictly greater than `constant_zmin`. A lower wall may be zero everywhere, but both walls cannot occupy the same Z plane when generating a volume mesh.
 
 **HDF5 conversion is unavailable**
 

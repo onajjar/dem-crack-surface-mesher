@@ -1,12 +1,15 @@
 flowchart LR
-    CSV["4 CSV matrices<br/>xrange · yrange<br/>zfit_zmin · zfit_zmax"] --> GUI["Python / Tk GUI<br/>paths · parameters<br/>validation · naming"]
-    TEMPLATE["Source templates<br/>castem_tool.dgibi<br/>fuite_fissure.dgibi"] --> GUI
-    GUI --> DGIBI["Patched DGIBI<br/>baseline template<br/>run-specific values"]
-    DGIBI --> CASTEM["Cast3M 25<br/>geometry processing<br/>mesh generation"]
+    SOURCE["Surface source<br/>CSV · self-affine fractal<br/>constant Z planes"] --> CONTRACT["Canonical matrices<br/>xrange · yrange<br/>zfit_zmin · zfit_zmax"]
+    CONTRACT --> GUI["Scientific launcher<br/>GUI or headless<br/>validation · naming"]
+    TEMPLATE["Preserved templates<br/>castem_tool.dgibi<br/>fuite_fissure.dgibi"] --> GUI
+    GUI --> DGIBI["Patched DGIBI<br/>run-specific values"]
+    CONTRACT --> CASTEM["Cast3M 25<br/>geometry processing<br/>mesh generation"]
+    DGIBI --> CASTEM
     CASTEM --> MESH["Mesh outputs<br/>volume BDF<br/>surface BDF files"]
     MESH --> CFD["Combined NASTRAN BDF<br/>volume + named surfaces<br/>for downstream CFD import"]
 
     GUI -. optional .-> FSETUP["Optional FISS setup<br/>model · gas · boundary conditions<br/>pressure / temperature"]
+    CONTRACT -.-> FSETUP
     FSETUP -.-> FISS["Cast3M FISS<br/>flow calculation<br/>along crack lines"]
     FISS -.-> RESULTS["Flow results<br/>profiles · totals<br/>optional post-processing"]
 
@@ -17,7 +20,7 @@ flowchart LR
     classDef output fill:#dceef7,stroke:#3d82a2,color:#10233f,stroke-width:2px;
     classDef support fill:#fff1d8,stroke:#c89236,color:#10233f,stroke-width:2px;
 
-    class CSV input;
+    class SOURCE,CONTRACT input;
     class GUI,RESULTS gui;
     class CASTEM,FISS castem;
     class MESH mesh;

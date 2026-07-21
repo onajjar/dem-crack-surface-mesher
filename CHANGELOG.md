@@ -6,6 +6,7 @@
 - Added centralized pytest/Ruff configuration, CI linting, public contribution templates, and broader generated-file exclusions for release readiness.
 - Removed a dead scientific-UI assignment without changing runtime behavior.
 - Replaced the legacy T13 interface GIF with a current four-tab Scientific Workbench walkthrough and removed the obsolete baseline screenshot.
+- Added CSV, reproducible self-affine fractal, and constant-plane surface sources behind one canonical four-grid Cast3M contract.
 
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 
@@ -23,6 +24,7 @@ All notable repository-level changes are documented here. This project follows t
 - A one-click scientific-workbench action for opening the generated combined or volume BDF in Gmsh.
 - A no-interface INI runner covering mesh, multiple holes, exports, merge/Gmsh controls, and optional FISS execution.
 - Generalized conformal holes for circles, rotated rectangles, equilateral triangles, and regular polygons, with shape-dependent GUI/INI parameters and a real four-shape Cast3M example.
+- Added dynamic surface-source controls, Hurst/fractal-dimension parameterization, deterministic seeds, RMS roughness/aperture controls, constant-Z examples, real Cast3M executions, and BDF topology/Jacobian verification.
 
 ## [0.1.0-baseline] - 2026-07-10
 

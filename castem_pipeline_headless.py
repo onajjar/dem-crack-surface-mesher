@@ -24,9 +24,15 @@ from python_hole_interpolation import (
     build_python_holes_dgibi,
     detect_hole_rings,
     generated_program_uses_python_holes,
-    load_surface_csvs,
     normalize_hole_geometry,
     parse_hole_spec,
+)
+from surface_generation import (
+    SUPPORTED_SURFACE_MODES,
+    SurfaceGrid,
+    SurfaceSource,
+    build_surface_grid,
+    write_surface_grid,
 )
 
 SUPPORTED_OPERATIONS = {"mesh", "fiss", "both", "mesh_and_fiss"}
@@ -55,6 +61,7 @@ class HeadlessSetup:
     merge_bdfs: bool
     mesh_template: Path
     fiss_template: Path
+    surface_source: SurfaceSource
     csv_x: Path
     csv_y: Path
     csv_zmin: Path
@@ -70,6 +77,11 @@ def _path(base: Path, value: str) -> Path:
 
 def _number(section, key: str) -> float:
     return baseline.parse_float(section.get(key))
+
+
+def _optional_number(section, key: str) -> float | None:
+    value = section.get(key, fallback="").strip()
+    return baseline.parse_float(value) if value else None
 
 
 def _build_fiss(section) -> baseline.FissSetup:
@@ -160,6 +172,55 @@ def load_setup(path: Path) -> HeadlessSetup:
     mesh = parser["mesh"]
     holes_section = parser["holes"]
     base = config_path.parent
+    workdir = _path(base, run.get("working_directory"))
+
+    surface_section = parser["surface"] if parser.has_section("surface") else None
+    surface_mode = (
+        surface_section.get("mode", "csv").strip().lower()
+        if surface_section is not None
+        else "csv"
+    )
+    if surface_mode in {"constant_z", "plane", "planar"}:
+        surface_mode = "constant"
+    if surface_mode not in SUPPORTED_SURFACE_MODES:
+        raise ValueError("surface mode must be csv, fractal, or constant.")
+
+    if surface_mode == "csv":
+        csv_x = _path(base, files.get("x_csv"))
+        csv_y = _path(base, files.get("y_csv"))
+        csv_zmin = _path(base, files.get("zmin_csv"))
+        csv_zmax = _path(base, files.get("zmax_csv"))
+        surface_source = SurfaceSource(
+            mode="csv",
+            csv_x=csv_x,
+            csv_y=csv_y,
+            csv_zmin=csv_zmin,
+            csv_zmax=csv_zmax,
+        )
+    else:
+        if surface_section is None:
+            raise ValueError("Generated surface modes require a [surface] section.")
+        generated_directory = workdir / "_generated_surface_inputs"
+        csv_x = generated_directory / "xrange_generated.csv"
+        csv_y = generated_directory / "yrange_generated.csv"
+        csv_zmin = generated_directory / "zfit_zmin_generated.csv"
+        csv_zmax = generated_directory / "zfit_zmax_generated.csv"
+        surface_source = SurfaceSource(
+            mode=surface_mode,
+            points_x=surface_section.getint("points_x", fallback=50),
+            points_y=surface_section.getint("points_y", fallback=50),
+            size_x=_number(surface_section, "size_x"),
+            size_y=_number(surface_section, "size_y"),
+            center_x=baseline.parse_float(surface_section.get("center_x", "0.0")),
+            center_y=baseline.parse_float(surface_section.get("center_y", "0.0")),
+            hurst_exponent=_optional_number(surface_section, "hurst_exponent"),
+            fractal_dimension=_optional_number(surface_section, "fractal_dimension"),
+            rms_height=baseline.parse_float(surface_section.get("rms_height", "5e-5")),
+            mean_aperture=baseline.parse_float(surface_section.get("mean_aperture", "2e-4")),
+            random_seed=surface_section.getint("random_seed", fallback=20260721),
+            constant_zmin=baseline.parse_float(surface_section.get("constant_zmin", "0.0")),
+            constant_zmax=baseline.parse_float(surface_section.get("constant_zmax", "2e-4")),
+        )
 
     holes: list[tuple[int, HoleGeometry]] = []
     for key, value in holes_section.items():
@@ -198,16 +259,17 @@ def load_setup(path: Path) -> HeadlessSetup:
         config_path=config_path,
         operation=run.get("operation", "mesh").strip().lower(),
         castem_version=run.get("castem_version", "25").strip(),
-        workdir=_path(base, run.get("working_directory")),
+        workdir=workdir,
         archive_existing=run.getboolean("archive_existing_outputs", fallback=True),
         mesh_mode=mesh.get("mode", "python").strip().lower(),
         merge_bdfs=mesh.getboolean("merge_bdfs", fallback=True),
         mesh_template=_path(base, files.get("mesh_template")),
         fiss_template=_path(base, files.get("fiss_template")),
-        csv_x=_path(base, files.get("x_csv")),
-        csv_y=_path(base, files.get("y_csv")),
-        csv_zmin=_path(base, files.get("zmin_csv")),
-        csv_zmax=_path(base, files.get("zmax_csv")),
+        surface_source=surface_source,
+        csv_x=csv_x,
+        csv_y=csv_y,
+        csv_zmin=csv_zmin,
+        csv_zmax=csv_zmax,
         params=params,
         fiss=_build_fiss(parser["fiss"]),
     )
@@ -230,14 +292,17 @@ def _validate_fiss(fiss: baseline.FissSetup) -> None:
         raise ValueError("FISS temperature_step must be > 0 in range mode.")
 
 
-def validate_setup(setup: HeadlessSetup, *, check_castem: bool = False) -> tuple[int, ...]:
+def validate_setup(
+    setup: HeadlessSetup,
+    *,
+    check_castem: bool = False,
+    surface_grid: SurfaceGrid | None = None,
+) -> tuple[int, ...]:
     if setup.operation not in SUPPORTED_OPERATIONS:
         raise ValueError("operation must be mesh, fiss, both, or mesh_and_fiss.")
     if setup.mesh_mode not in SUPPORTED_MESH_MODES:
         raise ValueError("mesh mode must be python or reference.")
-    for source in (setup.csv_x, setup.csv_y, setup.csv_zmin, setup.csv_zmax):
-        if not source.is_file():
-            raise FileNotFoundError(f"CSV input does not exist: {source}")
+    surface_grid = surface_grid or build_surface_grid(setup.surface_source)
     if setup.operation in {"mesh", "both", "mesh_and_fiss"} and not setup.mesh_template.is_file():
         raise FileNotFoundError(f"Mesh DGIBI template does not exist: {setup.mesh_template}")
     if setup.operation in {"fiss", "both", "mesh_and_fiss"} and not setup.fiss_template.is_file():
@@ -258,21 +323,22 @@ def validate_setup(setup: HeadlessSetup, *, check_castem: bool = False) -> tuple
         normalize_hole_geometry(hole, index)
         for index, hole in enumerate(getattr(p, "hole_shapes", p.holes), start=1)
     )
-    if setup.mesh_mode == "reference" and any(hole.shape != "circle" for hole in geometries):
-        raise ValueError("Rectangle, triangle, and regular-polygon holes require mesh mode = python.")
-    if setup.operation in {"fiss", "both", "mesh_and_fiss"} and any(
+    if p.holes_enabled and setup.mesh_mode == "reference" and any(
         hole.shape != "circle" for hole in geometries
+    ):
+        raise ValueError("Rectangle, triangle, and regular-polygon holes require mesh mode = python.")
+    if (
+        p.holes_enabled
+        and setup.operation in {"fiss", "both", "mesh_and_fiss"}
+        and any(hole.shape != "circle" for hole in geometries)
     ):
         raise ValueError("The preserved FISS workflow currently supports circular holes only.")
 
     points_per_hole: tuple[int, ...] = ()
     if p.holes_enabled and setup.mesh_mode == "python":
-        x, y, _zmin, _zmax = load_surface_csvs(
-            setup.csv_x, setup.csv_y, setup.csv_zmin, setup.csv_zmax
-        )
         rings = detect_hole_rings(
-            x,
-            y,
+            surface_grid.x,
+            surface_grid.y,
             geometries,
             tolerance=p.re_tol,
             nelem_x=p.nelem_x,
@@ -308,6 +374,21 @@ def _copy_csv_inputs(setup: HeadlessSetup, destination: Path) -> None:
         baseline.safe_copy(source, destination / name)
 
 
+def _materialize_surface_inputs(
+    setup: HeadlessSetup, surface_grid: SurfaceGrid | None = None
+) -> SurfaceGrid:
+    """Write generated sources once, preserving the downstream CSV contract."""
+
+    grid = surface_grid or build_surface_grid(setup.surface_source)
+    if setup.surface_source.normalized_mode != "csv":
+        files = write_surface_grid(grid, setup.csv_x.parent)
+        expected = (setup.csv_x, setup.csv_y, setup.csv_zmin, setup.csv_zmax)
+        actual = (files.x, files.y, files.zmin, files.zmax)
+        if actual != expected:
+            raise RuntimeError("Generated surface paths do not match the configured runtime paths.")
+    return grid
+
+
 def _run_castem(executable: Path, dgibi: Path, cwd: Path, log_path: Path) -> tuple[int, float]:
     started = time.perf_counter()
     with log_path.open("w", encoding="utf-8") as log:
@@ -337,9 +418,14 @@ def _combined_name(p: baseline.CastemMainParams) -> str:
     )
 
 
-def run_mesh(setup: HeadlessSetup, executable: Path) -> dict[str, object]:
+def run_mesh(
+    setup: HeadlessSetup,
+    executable: Path,
+    surface_grid: SurfaceGrid | None = None,
+) -> dict[str, object]:
     workdir = setup.workdir
     workdir.mkdir(parents=True, exist_ok=True)
+    surface_grid = _materialize_surface_inputs(setup, surface_grid)
     prior = existing_mesh_outputs(workdir)
     if prior and not setup.archive_existing:
         raise RuntimeError("Existing mesh outputs found; enable archive_existing_outputs or select another workdir.")
@@ -398,6 +484,8 @@ def run_mesh(setup: HeadlessSetup, executable: Path) -> dict[str, object]:
         "return_code": return_code,
         "elapsed_seconds": round(elapsed, 6),
         "mode": setup.mesh_mode,
+        "surface_mode": setup.surface_source.normalized_mode,
+        "surface_grid_points": [surface_grid.shape[1], surface_grid.shape[0]],
         "generated_dgibi": dgibi.name,
         "hole_wall_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
         "square_interface_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
@@ -420,7 +508,12 @@ def _next_calculation_directory(base: Path) -> Path:
     return result
 
 
-def run_fiss(setup: HeadlessSetup, executable: Path) -> dict[str, object]:
+def run_fiss(
+    setup: HeadlessSetup,
+    executable: Path,
+    surface_grid: SurfaceGrid | None = None,
+) -> dict[str, object]:
+    _materialize_surface_inputs(setup, surface_grid)
     calculation = _next_calculation_directory(setup.workdir / setup.fiss.model)
     _copy_csv_inputs(setup, calculation)
     template = setup.fiss_template.read_text(encoding="utf-8", errors="ignore")
@@ -449,7 +542,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--validate-only",
         action="store_true",
-        help="validate configuration, CSV geometry, and hole topology without starting Cast3M",
+        help="validate configuration, loaded or generated surface geometry, and hole topology without starting Cast3M",
     )
     return parser.parse_args(argv)
 
@@ -459,11 +552,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         setup = load_setup(args.config)
-        points_per_hole = validate_setup(setup, check_castem=not args.validate_only)
+        surface_grid = build_surface_grid(setup.surface_source)
+        points_per_hole = validate_setup(
+            setup,
+            check_castem=not args.validate_only,
+            surface_grid=surface_grid,
+        )
         summary: dict[str, object] = {
             "config": setup.config_path.name,
             "operation": setup.operation,
             "mesh_mode": setup.mesh_mode,
+            "surface_mode": setup.surface_source.normalized_mode,
             "workdir": str(setup.workdir),
             "hole_shapes": [
                 hole.shape for hole in getattr(setup.params, "hole_shapes", ())
@@ -472,6 +571,38 @@ def main(argv: list[str] | None = None) -> int:
             "square_interface_edges_per_hole": list(points_per_hole),
             "interface_counts_match": True if points_per_hole else None,
         }
+        summary["surface_grid_points"] = [surface_grid.shape[1], surface_grid.shape[0]]
+        summary["surface_size"] = [
+            float(surface_grid.x.max() - surface_grid.x.min()),
+            float(surface_grid.y.max() - surface_grid.y.min()),
+        ]
+        source = setup.surface_source
+        if source.normalized_mode == "fractal":
+            summary["hurst_exponent"] = round(
+                source.resolved_hurst_exponent, 12
+            )
+            summary["fractal_dimension"] = round(
+                source.resolved_fractal_dimension, 12
+            )
+            summary["surface_parameters"] = {
+                "center": [source.center_x, source.center_y],
+                "rms_height": source.rms_height,
+                "mean_aperture": source.mean_aperture,
+                "random_seed": source.random_seed,
+            }
+        elif source.normalized_mode == "constant":
+            summary["surface_parameters"] = {
+                "center": [source.center_x, source.center_y],
+                "constant_zmin": source.constant_zmin,
+                "constant_zmax": source.constant_zmax,
+            }
+        else:
+            summary["surface_files"] = [
+                setup.csv_x.name,
+                setup.csv_y.name,
+                setup.csv_zmin.name,
+                setup.csv_zmax.name,
+            ]
         if args.validate_only:
             summary["valid"] = True
             print(json.dumps(summary, indent=2))
@@ -479,12 +610,12 @@ def main(argv: list[str] | None = None) -> int:
 
         executable = baseline.resolve_castem_exe(setup.castem_version)
         if setup.operation in {"mesh", "both", "mesh_and_fiss"}:
-            summary["mesh"] = run_mesh(setup, executable)
+            summary["mesh"] = run_mesh(setup, executable, surface_grid)
         if setup.operation in {"fiss", "both", "mesh_and_fiss"}:
             mesh_result = summary.get("mesh")
             if isinstance(mesh_result, dict) and not mesh_result.get("success"):
                 raise RuntimeError("Mesh run failed; FISS was not started.")
-            summary["fiss"] = run_fiss(setup, executable)
+            summary["fiss"] = run_fiss(setup, executable, surface_grid)
         setup.workdir.mkdir(parents=True, exist_ok=True)
         report = setup.workdir / "headless-run-report.json"
         report.write_text(json.dumps(summary, indent=2), encoding="utf-8")

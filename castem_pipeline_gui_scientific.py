@@ -3,7 +3,7 @@
 This is the single supported launcher for the enhanced workflow. It reuses the
 baseline's execution, FISS, and BDF merge code without modifying immutable
 baseline sources. Users can choose the original Cast3M reference workflow or
-the vectorized, bulk-file Python hole workflow for the same inputs.
+the vectorized, bulk-file Python hole workflow with imported or generated surfaces.
 """
 
 from __future__ import annotations
@@ -28,10 +28,10 @@ from python_hole_interpolation import (
     HoleGeometry,
     detect_hole_rings,
     hole_boundary_vertices,
-    load_surface_csvs,
     normalize_hole_geometry,
     radial_layer_fractions,
 )
+from surface_generation import SurfaceGrid, SurfaceSource, build_surface_grid, write_surface_grid
 
 ROOT = Path(__file__).resolve().parent
 DOCUMENTED_INPUT = ROOT / "examples" / "input"
@@ -137,13 +137,30 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._active_operation: str | None = None
         self._process_started = False
         self._active_mesh_params = None
+        self._validated_surface_source: SurfaceSource | None = None
+        self._validated_surface_grid: SurfaceGrid | None = None
         self.status_var = tk.StringVar(value="Initializing")
         self.status_tone = "neutral"
         self.solver_mode_var = tk.StringVar(value="python")
         self.context_var = tk.StringVar(value="Active mode: bulk inflated holes")
-        self.input_summary_var = tk.StringVar(value="Select the four structured CSV grids, then validate the configuration.")
+        self.input_summary_var = tk.StringVar(value="Select or generate a structured crack surface, then validate the configuration.")
         self.method_summary_var = tk.StringVar()
         self.run_summary_var = tk.StringVar(value="No run has been started in this session.")
+        self.surface_mode_var = tk.StringVar(value="CSV files")
+        self.fractal_parameter_var = tk.StringVar(value="Hurst exponent H")
+        self.fractal_value_var = tk.StringVar(value="0.8")
+        self.fractal_relation_var = tk.StringVar(value="D = 2.2")
+        self.surface_points_x_var = tk.StringVar(value="50")
+        self.surface_points_y_var = tk.StringVar(value="50")
+        self.surface_size_x_var = tk.StringVar(value="1.2")
+        self.surface_size_y_var = tk.StringVar(value="0.9")
+        self.surface_center_x_var = tk.StringVar(value="0.0")
+        self.surface_center_y_var = tk.StringVar(value="0.0")
+        self.fractal_rms_height_var = tk.StringVar(value="5e-5")
+        self.fractal_aperture_var = tk.StringVar(value="2e-4")
+        self.fractal_seed_var = tk.StringVar(value="20260721")
+        self.constant_zmin_var = tk.StringVar(value="0.0")
+        self.constant_zmax_var = tk.StringVar(value="2e-4")
 
         shell = ttk.Frame(parent, style="Scientific.TFrame")
         shell.pack(fill="both", expand=True)
@@ -154,7 +171,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Label(header, text="Crack Meshing Workbench", style="Hero.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
             header,
-            text="Structured crack surfaces → Cast3M volume mesh → CFD-ready BDF",
+            text="CSV or synthetic crack surfaces → Cast3M volume mesh → CFD-ready BDF",
             style="HeroSub.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(4, 0))
         self.status_label = ttk.Label(header, textvariable=self.status_var, style="Status.TLabel", padding=(12, 6))
@@ -164,6 +181,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         toolbar.pack(fill="x")
         ttk.Button(toolbar, text="Load documented example", style="Accent.TButton", command=self._load_documented_example).pack(side="left")
         ttk.Button(toolbar, text="Load all shape examples", style="Quiet.TButton", command=self._load_shape_gallery).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Fractal example", style="Quiet.TButton", command=self._load_fractal_example).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Planar example", style="Quiet.TButton", command=self._load_constant_example).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Validate inputs", style="Quiet.TButton", command=self._validate_inputs).pack(side="left", padx=(8, 0))
         ttk.Label(toolbar, textvariable=self.context_var, style="Muted.TLabel").pack(side="right")
 
@@ -224,18 +243,88 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._field(metadata, 1, 0, "re_numspa", self.re_numspa_var, width=9)
         self._field(metadata, 1, 2, "re_opmin", self.re_opmin_var, width=9)
 
-        grids = self._card(tab, "Structured surface grids")
+        grids = self._card(tab, "Crack surface source")
         grids.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
         grids.columnconfigure(1, weight=1)
-        self._path_row(grids, 0, "X coordinate grid — xrange", self.csv_x_var, self._browse_csv_x)
-        self._path_row(grids, 1, "Y coordinate grid — yrange", self.csv_y_var, self._browse_csv_y)
-        self._path_row(grids, 2, "Upper surface — zfit_zmax", self.csv_zmax_var, self._browse_csv_zmax)
-        self._path_row(grids, 3, "Lower surface — zfit_zmin", self.csv_zmin_var, self._browse_csv_zmin)
-        ttk.Label(
+        ttk.Label(grids, text="Source type", style="Card.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 9), pady=(0, 8))
+        self.surface_mode_combo = ttk.Combobox(
             grids,
-            text="All files must be equally sized, headerless comma-delimited numeric matrices.",
+            textvariable=self.surface_mode_var,
+            values=("CSV files", "Synthetic fractal", "Constant Z planes"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=25,
+        )
+        self.surface_mode_combo.grid(row=0, column=1, sticky="w", pady=(0, 8))
+        self.surface_mode_combo.bind("<<ComboboxSelected>>", self._on_surface_mode_change)
+
+        self.surface_frames: dict[str, ttk.Frame] = {}
+        csv_frame = ttk.Frame(grids, style="Card.TFrame")
+        csv_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        csv_frame.columnconfigure(1, weight=1)
+        self._path_row(csv_frame, 0, "X coordinate grid — xrange", self.csv_x_var, self._browse_csv_x)
+        self._path_row(csv_frame, 1, "Y coordinate grid — yrange", self.csv_y_var, self._browse_csv_y)
+        self._path_row(csv_frame, 2, "Upper surface — zfit_zmax", self.csv_zmax_var, self._browse_csv_zmax)
+        self._path_row(csv_frame, 3, "Lower surface — zfit_zmin", self.csv_zmin_var, self._browse_csv_zmin)
+        ttk.Label(
+            csv_frame,
+            text="Four equally sized, headerless comma-delimited numeric matrices.",
             style="CardMuted.TLabel",
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(11, 0))
+        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self.surface_frames["csv"] = csv_frame
+
+        fractal_frame = ttk.Frame(grids, style="Card.TFrame")
+        fractal_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        for column in (1, 3, 5):
+            fractal_frame.columnconfigure(column, weight=1)
+        ttk.Label(fractal_frame, text="Exponent input", style="Card.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 7), pady=4)
+        self.fractal_parameter_combo = ttk.Combobox(
+            fractal_frame,
+            textvariable=self.fractal_parameter_var,
+            values=("Hurst exponent H", "Fractal dimension D"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=20,
+        )
+        self.fractal_parameter_combo.grid(row=0, column=1, sticky="we", pady=4)
+        self.fractal_parameter_combo.bind("<<ComboboxSelected>>", self._on_fractal_parameter_change)
+        self._field(fractal_frame, 0, 2, "Exponent value", self.fractal_value_var, width=12)
+        ttk.Label(fractal_frame, textvariable=self.fractal_relation_var, style="CardMuted.TLabel").grid(row=0, column=4, columnspan=2, sticky="w", padx=(12, 0))
+        self._field(fractal_frame, 1, 0, "Grid points X", self.surface_points_x_var, width=10)
+        self._field(fractal_frame, 1, 2, "Grid points Y", self.surface_points_y_var, width=10)
+        self._field(fractal_frame, 1, 4, "Random seed", self.fractal_seed_var, width=12)
+        self._field(fractal_frame, 2, 0, "Crack size X", self.surface_size_x_var, width=12)
+        self._field(fractal_frame, 2, 2, "Crack size Y", self.surface_size_y_var, width=12)
+        self._field(fractal_frame, 2, 4, "RMS roughness", self.fractal_rms_height_var, width=12)
+        self._field(fractal_frame, 3, 0, "Center X", self.surface_center_x_var, width=12)
+        self._field(fractal_frame, 3, 2, "Center Y", self.surface_center_y_var, width=12)
+        self._field(fractal_frame, 3, 4, "Mean aperture", self.fractal_aperture_var, width=12)
+        ttk.Label(
+            fractal_frame,
+            text="Isotropic spectral synthesis; D = 3 − H. RMS height and aperture use the same length unit as X and Y.",
+            style="CardMuted.TLabel",
+        ).grid(row=4, column=0, columnspan=6, sticky="w", pady=(8, 0))
+        self.surface_frames["fractal"] = fractal_frame
+
+        constant_frame = ttk.Frame(grids, style="Card.TFrame")
+        constant_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        for column in (1, 3):
+            constant_frame.columnconfigure(column, weight=1)
+        self._field(constant_frame, 0, 0, "Grid points X", self.surface_points_x_var, width=12)
+        self._field(constant_frame, 0, 2, "Grid points Y", self.surface_points_y_var, width=12)
+        self._field(constant_frame, 1, 0, "Crack size X", self.surface_size_x_var, width=12)
+        self._field(constant_frame, 1, 2, "Crack size Y", self.surface_size_y_var, width=12)
+        self._field(constant_frame, 2, 0, "Center X", self.surface_center_x_var, width=12)
+        self._field(constant_frame, 2, 2, "Center Y", self.surface_center_y_var, width=12)
+        self._field(constant_frame, 3, 0, "Constant lower Z", self.constant_zmin_var, width=12)
+        self._field(constant_frame, 3, 2, "Constant upper Z", self.constant_zmax_var, width=12)
+        ttk.Label(
+            constant_frame,
+            text="Both planes have no fluctuations. Upper Z must exceed lower Z to create a non-zero Cast3M volume.",
+            style="CardMuted.TLabel",
+        ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        self.surface_frames["constant"] = constant_frame
+        self._refresh_surface_mode()
 
         quality = self._card(tab, "Input quality")
         quality.grid(row=0, column=1, rowspan=2, sticky="nsew")
@@ -244,7 +333,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Separator(quality, orient="horizontal").grid(row=1, column=0, sticky="ew", pady=10)
         ttk.Label(quality, textvariable=self.input_summary_var, style="CardMuted.TLabel", wraplength=300, justify="left").grid(row=2, column=0, sticky="nw")
         ttk.Button(quality, text="Validate inputs", style="Accent.TButton", command=self._validate_inputs).grid(row=3, column=0, sticky="ew", pady=(18, 8))
-        ttk.Button(quality, text="Preview XY geometry", style="Quiet.TButton", command=self._preview_geometry).grid(row=4, column=0, sticky="ew", pady=(0, 8))
+        ttk.Button(quality, text="Preview surface & holes", style="Quiet.TButton", command=self._preview_geometry).grid(row=4, column=0, sticky="ew", pady=(0, 8))
         ttk.Label(
             quality,
             text="Pre-flight reads inputs and resolves the selected Cast3M launcher; it does not run Cast3M or change files.",
@@ -252,6 +341,123 @@ class ScientificApp(PythonHoleInterpolationApp):
             wraplength=300,
             justify="left",
         ).grid(row=5, column=0, sticky="sw")
+
+    @staticmethod
+    def _surface_mode_key(value: str) -> str:
+        return {
+            "CSV files": "csv",
+            "Synthetic fractal": "fractal",
+            "Constant Z planes": "constant",
+        }.get(value.strip(), value.strip().lower())
+
+    def _refresh_surface_mode(self) -> None:
+        if not hasattr(self, "surface_frames"):
+            return
+        selected = self._surface_mode_key(self.surface_mode_var.get())
+        for mode, frame in self.surface_frames.items():
+            if mode == selected:
+                frame.grid()
+            else:
+                frame.grid_remove()
+        self._update_fractal_relation()
+
+    def _on_surface_mode_change(self, _event=None) -> None:
+        self._refresh_surface_mode()
+        self._mark_dirty()
+
+    def _on_fractal_parameter_change(self, _event=None) -> None:
+        try:
+            self.fractal_value_var.set(f"{3.0 - baseline.parse_float(self.fractal_value_var.get()):.12g}")
+        except (TypeError, ValueError):
+            pass
+        self._update_fractal_relation()
+        self._mark_dirty()
+
+    def _update_fractal_relation(self, *_args) -> None:
+        try:
+            value = baseline.parse_float(self.fractal_value_var.get())
+            if self.fractal_parameter_var.get() == "Hurst exponent H":
+                if not 0.0 < value < 1.0:
+                    raise ValueError
+                self.fractal_relation_var.set(f"D = {3.0 - value:.6g}")
+            else:
+                if not 2.0 < value < 3.0:
+                    raise ValueError
+                self.fractal_relation_var.set(f"H = {3.0 - value:.6g}")
+        except (TypeError, ValueError):
+            self.fractal_relation_var.set("Use 0 < H < 1 or 2 < D < 3")
+
+    def _surface_source_from_ui(self) -> SurfaceSource:
+        mode = self._surface_mode_key(self.surface_mode_var.get())
+        if mode == "csv":
+            return SurfaceSource(
+                mode="csv",
+                csv_x=Path(self.csv_x_var.get().strip()).expanduser(),
+                csv_y=Path(self.csv_y_var.get().strip()).expanduser(),
+                csv_zmin=Path(self.csv_zmin_var.get().strip()).expanduser(),
+                csv_zmax=Path(self.csv_zmax_var.get().strip()).expanduser(),
+            )
+        common = {
+            "mode": mode,
+            "points_x": int(self.surface_points_x_var.get().strip()),
+            "points_y": int(self.surface_points_y_var.get().strip()),
+            "size_x": baseline.parse_float(self.surface_size_x_var.get()),
+            "size_y": baseline.parse_float(self.surface_size_y_var.get()),
+            "center_x": baseline.parse_float(self.surface_center_x_var.get()),
+            "center_y": baseline.parse_float(self.surface_center_y_var.get()),
+        }
+        if mode == "fractal":
+            value = baseline.parse_float(self.fractal_value_var.get())
+            uses_hurst = self.fractal_parameter_var.get() == "Hurst exponent H"
+            return SurfaceSource(
+                **common,
+                hurst_exponent=value if uses_hurst else None,
+                fractal_dimension=None if uses_hurst else value,
+                rms_height=baseline.parse_float(self.fractal_rms_height_var.get()),
+                mean_aperture=baseline.parse_float(self.fractal_aperture_var.get()),
+                random_seed=int(self.fractal_seed_var.get().strip()),
+            )
+        return SurfaceSource(
+            **common,
+            hurst_exponent=None,
+            constant_zmin=baseline.parse_float(self.constant_zmin_var.get()),
+            constant_zmax=baseline.parse_float(self.constant_zmax_var.get()),
+        )
+
+    def _surface_grid_from_ui(self) -> SurfaceGrid:
+        source = self._surface_source_from_ui()
+        if source == self._validated_surface_source and self._validated_surface_grid is not None:
+            return self._validated_surface_grid
+        return build_surface_grid(source)
+
+    def _materialize_surface_inputs(self) -> SurfaceGrid:
+        """Write synthetic arrays to an isolated folder for the unchanged backend."""
+
+        source = self._surface_source_from_ui()
+        grid = (
+            self._validated_surface_grid
+            if source == self._validated_surface_source
+            and self._validated_surface_grid is not None
+            else build_surface_grid(source)
+        )
+        if source.normalized_mode == "csv":
+            return grid
+        workdir = self._preflight_workdir()
+        files = write_surface_grid(grid, workdir / "_generated_surface_inputs")
+        suspended = self._suspend_dirty
+        self._suspend_dirty = True
+        try:
+            self.csv_x_var.set(str(files.x))
+            self.csv_y_var.set(str(files.y))
+            self.csv_zmin_var.set(str(files.zmin))
+            self.csv_zmax_var.set(str(files.zmax))
+        finally:
+            self._suspend_dirty = suspended
+        self._log(
+            f"Generated {source.normalized_mode} surface CSV contract: "
+            f"{grid.shape[1]} x {grid.shape[0]} points in {files.x.parent}\n"
+        )
+        return grid
 
     def _build_mesh_tab(self) -> None:
         tab = self.mesh_tab
@@ -445,7 +651,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         context.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         context.columnconfigure(1, weight=1)
         self._path_row(context, 0, "FISS DGIBI template", self.fiss_dgibi_var, self._browse_fiss_dgibi)
-        ttk.Label(context, text="FISS uses the same four surface CSV grids but is a separate Cast3M calculation.", style="CardMuted.TLabel").grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
+        ttk.Label(context, text="FISS uses the selected CSV or generated surface through the same canonical four-grid contract.", style="CardMuted.TLabel").grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         model = self._card(tab, "Flow model")
         model.grid(row=1, column=0, sticky="new", padx=(0, 9))
@@ -512,6 +718,20 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.csv_y_var,
             self.csv_zmax_var,
             self.csv_zmin_var,
+            self.surface_mode_var,
+            self.fractal_parameter_var,
+            self.fractal_value_var,
+            self.surface_points_x_var,
+            self.surface_points_y_var,
+            self.surface_size_x_var,
+            self.surface_size_y_var,
+            self.surface_center_x_var,
+            self.surface_center_y_var,
+            self.fractal_rms_height_var,
+            self.fractal_aperture_var,
+            self.fractal_seed_var,
+            self.constant_zmin_var,
+            self.constant_zmax_var,
             self.re_ti_var,
             self.re_crpa_var,
             self.re_smfa_var,
@@ -559,10 +779,13 @@ class ScientificApp(PythonHoleInterpolationApp):
         )
         for variable in variables:
             variable.trace_add("write", self._mark_dirty)
+        self.fractal_value_var.trace_add("write", self._update_fractal_relation)
 
     def _mark_dirty(self, *_args) -> None:
         if self._suspend_dirty or self._active_operation is not None:
             return
+        self._validated_surface_source = None
+        self._validated_surface_grid = None
         self._set_status("Modified — validation required", "neutral")
 
     def _add_hole_row(self) -> None:
@@ -775,7 +998,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             row.secondary.set(str(geometry.sides))
         self._refresh_hole_shape_row(row)
 
-    def _load_documented_example(self) -> None:
+    def _load_documented_example(self, *, validate: bool = True) -> None:
         try:
             config = json.loads(DOCUMENTED_CONFIG.read_text(encoding="utf-8"))
             inputs = config["inputs"]
@@ -789,6 +1012,7 @@ class ScientificApp(PythonHoleInterpolationApp):
 
         self._suspend_dirty = True
         try:
+            self.surface_mode_var.set("CSV files")
             self.dgibi_var.set(repository_path(config["template"]))
             self.fiss_dgibi_var.set(str((ROOT / "source_codes" / "fuite_fissure.dgibi").resolve()))
             self.workdir_var.set(str((ROOT / "_runtime" / "scientific-run").resolve()))
@@ -833,16 +1057,18 @@ class ScientificApp(PythonHoleInterpolationApp):
                     ),
                 )
             self.solver_mode_var.set("python")
+            self._refresh_surface_mode()
             self._toggle_holes()
             self._update_method_summary()
         finally:
             self._suspend_dirty = False
-        self._validate_inputs(operation="mesh")
+        if validate:
+            self._validate_inputs(operation="mesh")
 
     def _load_shape_gallery(self) -> None:
         """Load one real, separated example of every supported hole shape."""
 
-        self._load_documented_example()
+        self._load_documented_example(validate=False)
         self._suspend_dirty = True
         try:
             self.workdir_var.set(str((ROOT / "_runtime" / "shape-gallery-run").resolve()))
@@ -856,6 +1082,53 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._toggle_holes()
             self._update_method_summary()
             self.notebook.select(self.mesh_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_fractal_example(self) -> None:
+        """Load a reproducible self-affine surface with the documented holes."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("Synthetic fractal")
+            self.fractal_parameter_var.set("Hurst exponent H")
+            self.fractal_value_var.set("0.8")
+            self.surface_points_x_var.set("50")
+            self.surface_points_y_var.set("50")
+            self.surface_size_x_var.set("1.2")
+            self.surface_size_y_var.set("0.9")
+            self.surface_center_x_var.set("0.0")
+            self.surface_center_y_var.set("0.0")
+            self.fractal_rms_height_var.set("5e-5")
+            self.fractal_aperture_var.set("2e-4")
+            self.fractal_seed_var.set("20260721")
+            self.workdir_var.set(str((ROOT / "_runtime" / "fractal-surface-run").resolve()))
+            self._refresh_surface_mode()
+            self.notebook.select(self.input_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_constant_example(self) -> None:
+        """Load two parallel constant-Z planes with the documented holes."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("Constant Z planes")
+            self.surface_points_x_var.set("50")
+            self.surface_points_y_var.set("50")
+            self.surface_size_x_var.set("1.2")
+            self.surface_size_y_var.set("0.9")
+            self.surface_center_x_var.set("0.0")
+            self.surface_center_y_var.set("0.0")
+            self.constant_zmin_var.set("0.0")
+            self.constant_zmax_var.set("2e-4")
+            self.workdir_var.set(str((ROOT / "_runtime" / "constant-surface-run").resolve()))
+            self._refresh_surface_mode()
+            self.notebook.select(self.input_tab)
         finally:
             self._suspend_dirty = False
         self._validate_inputs(operation="mesh")
@@ -917,16 +1190,14 @@ class ScientificApp(PythonHoleInterpolationApp):
                 raise FileNotFoundError(f"Missing DGIBI template: {template}")
             workdir = self._preflight_workdir()
             castem_exe = baseline.resolve_castem_exe(self.castem_version_var.get())
-            csv_x = Path(self.csv_x_var.get().strip())
-            csv_y = Path(self.csv_y_var.get().strip())
-            csv_zmax = Path(self.csv_zmax_var.get().strip())
-            csv_zmin = Path(self.csv_zmin_var.get().strip())
-            for source in (csv_x, csv_y, csv_zmax, csv_zmin):
-                if not source.is_file():
-                    raise FileNotFoundError(f"Missing CSV: {source}")
-            x, y, zmin, zmax = load_surface_csvs(csv_x, csv_y, csv_zmin, csv_zmax)
-            if (zmax < zmin).any():
-                raise ValueError("zfit_zmax is below zfit_zmin at one or more grid points.")
+            surface_source = self._surface_source_from_ui()
+            surface_grid = build_surface_grid(surface_source)
+            x, y, zmin, zmax = (
+                surface_grid.x,
+                surface_grid.y,
+                surface_grid.zmin,
+                surface_grid.zmax,
+            )
             params = self._read_params()
             if operation == "mesh":
                 self._validate_params(params)
@@ -936,12 +1207,18 @@ class ScientificApp(PythonHoleInterpolationApp):
                     raise ValueError("The preserved FISS workflow currently supports circular holes only.")
                 fiss = self._read_fiss_setup()
             details = [
+                f"Surface source: {surface_source.normalized_mode}",
                 f"Grid: {x.shape[1]} × {x.shape[0]} points",
                 f"X range: {x.min():.5g} to {x.max():.5g}",
                 f"Y range: {y.min():.5g} to {y.max():.5g}",
                 f"Opening: {(zmax - zmin).min():.3g} to {(zmax - zmin).max():.3g}",
                 f"Cast3M launcher: {castem_exe.name}",
             ]
+            if surface_source.normalized_mode == "fractal":
+                details.append(
+                    f"Self-affine exponent: H={surface_source.resolved_hurst_exponent:.5g}, "
+                    f"D={surface_source.resolved_fractal_dimension:.5g}; seed={surface_source.random_seed}"
+                )
             if operation == "mesh" and params.holes_enabled:
                 if not params.holes:
                     raise ValueError("Enable holes only after adding at least one shape.")
@@ -982,18 +1259,17 @@ class ScientificApp(PythonHoleInterpolationApp):
             return False
 
         self.input_summary_var.set("\n".join(details))
+        self._validated_surface_source = surface_source
+        self._validated_surface_grid = surface_grid
         self._set_status("Mesh pre-flight passed" if operation == "mesh" else "FISS pre-flight passed", "success")
         return True
 
     def _preview_geometry(self) -> None:
-        """Open a real XY-grid preview from the selected source CSVs."""
+        """Open a real XY-grid preview from the selected or generated source."""
 
         try:
-            csv_x = Path(self.csv_x_var.get().strip())
-            csv_y = Path(self.csv_y_var.get().strip())
-            csv_zmax = Path(self.csv_zmax_var.get().strip())
-            csv_zmin = Path(self.csv_zmin_var.get().strip())
-            x, y, _zmin, _zmax = load_surface_csvs(csv_x, csv_y, csv_zmin, csv_zmax)
+            surface_grid = self._surface_grid_from_ui()
+            x, y = surface_grid.x, surface_grid.y
             params = self._read_params()
             self._validate_params(params)
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -1004,10 +1280,11 @@ class ScientificApp(PythonHoleInterpolationApp):
             return
 
         window = tk.Toplevel(self)
-        window.title("XY source-grid preview")
-        window.geometry("900x720")
-        figure = Figure(figsize=(8.6, 6.5), dpi=100, facecolor="#ffffff")
-        axes = figure.add_subplot(111)
+        window.title("Crack surface and hole preview")
+        window.geometry("1240x720")
+        figure = Figure(figsize=(12.0, 6.5), dpi=100, facecolor="#ffffff")
+        axes = figure.add_subplot(121)
+        surface_axes = figure.add_subplot(122, projection="3d")
         step = max(1, max(x.shape) // 55)
         axes.plot(x[::step, :].T, y[::step, :].T, color="#6d8195", linewidth=0.35, alpha=0.72)
         axes.plot(x[:, ::step], y[:, ::step], color="#6d8195", linewidth=0.35, alpha=0.72)
@@ -1032,11 +1309,42 @@ class ScientificApp(PythonHoleInterpolationApp):
                 fontsize=8,
                 weight="bold",
             )
-        axes.set_title("Structured XY source grid and configured hole shapes", color="#10233f", pad=13, weight="bold")
+        axes.set_title(
+            f"{surface_grid.mode.title()} XY source grid and configured hole shapes",
+            color="#10233f",
+            pad=13,
+            weight="bold",
+        )
         axes.set_xlabel("X coordinate")
         axes.set_ylabel("Y coordinate")
         axes.set_aspect("equal", adjustable="box")
         axes.grid(False)
+        surface_step = max(1, max(surface_grid.shape) // 80)
+        sx = surface_grid.x[::surface_step, ::surface_step]
+        sy = surface_grid.y[::surface_step, ::surface_step]
+        surface_axes.plot_surface(
+            sx,
+            sy,
+            surface_grid.zmin[::surface_step, ::surface_step],
+            cmap="Blues",
+            linewidth=0,
+            antialiased=True,
+            alpha=0.82,
+        )
+        surface_axes.plot_surface(
+            sx,
+            sy,
+            surface_grid.zmax[::surface_step, ::surface_step],
+            cmap="Oranges",
+            linewidth=0,
+            antialiased=True,
+            alpha=0.62,
+        )
+        surface_axes.set_title("Lower (blue) and upper (orange) walls", color="#10233f", pad=13, weight="bold")
+        surface_axes.set_xlabel("X")
+        surface_axes.set_ylabel("Y")
+        surface_axes.set_zlabel("Z")
+        surface_axes.view_init(elev=28, azim=-55)
         figure.tight_layout()
         canvas = FigureCanvasTkAgg(figure, master=window)
         canvas.draw()
@@ -1111,12 +1419,17 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.run_summary_var.set(summary)
 
     def _run(self) -> None:
+        self._materialize_surface_inputs()
         if self.solver_mode_var.get() == "baseline":
             workdir = baseline.ensure_dir(self.workdir_var.get().strip())
             archive_existing_mesh_outputs(workdir, self._log)
             return baseline.App._run(self)
         else:
             return super()._run()
+
+    def _run_fiss(self) -> None:
+        self._materialize_surface_inputs()
+        return baseline.App._run_fiss(self)
 
     def _stream_process_to_log(self, cmd, cwd: Path, on_done=None):
         operation = self._active_operation or "mesh"

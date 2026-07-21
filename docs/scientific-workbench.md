@@ -8,19 +8,30 @@ The animated walkthrough in the main README and both workbench screenshots can b
 
 ## Workflow
 
-1. Open the workbench and select **Load documented example** to load the complete repository-relative two-hole configuration, or select the DGIBI template, a dedicated working directory, and the four structured CSV grids yourself.
-2. Use **Validate inputs** to check that the matrices are finite, equally shaped, and satisfy `zfit_zmax >= zfit_zmin`.
-3. Use **Preview XY geometry** to inspect the real source grid and configured hole shapes before a run.
-4. In **Mesh & holes**, choose one mode:
+1. Open the workbench and select **Load documented example**, **Fractal example**, or **Planar example**; alternatively select the DGIBI template, a dedicated working directory, and define the source manually.
+2. Choose **CSV files**, **Synthetic fractal**, or **Constant Z planes**. The visible fields change to only those used by that source.
+3. Use **Validate inputs** to check matrices or generated parameters, wall ordering, and hole topology.
+4. Use **Preview surface & holes** to inspect the XY topology together with the real lower and upper three-dimensional walls before a run.
+5. In **Mesh & holes**, choose one mode:
    - **Original T13 hole workflow — reference** preserves the original Cast3M construction, interpolation, and displacement behavior.
    - **Bulk Python hole mesh — fast + inflated** vectorizes the common interpolation path, writes complete lower/upper/mean `CQUAD4` fill meshes, and lets Cast3M read them with `LIRE 'NAS'`.
-5. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
-6. In **Run & results**, validate again and launch Cast3M. The live solver log and run state are streamed without blocking the interface.
-7. Use **Open generated mesh in Gmsh** to open the exact combined BDF for the current naming parameters, the newest combined BDF, or the volume BDF without rerunning Cast3M.
+6. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
+7. In **Run & results**, validate again and launch Cast3M. The live solver log and run state are streamed without blocking the interface.
+8. Use **Open generated mesh in Gmsh** to open the exact combined BDF for the current naming parameters, the newest combined BDF, or the volume BDF without rerunning Cast3M.
 
 The no-hole path remains the preserved baseline regardless of the selected hole mode. The previous `castem_pipeline_gui_python_holes.py` entry point is retained only as a compatibility wrapper and redirects to this workbench.
 
 Changing a tracked path or parameter marks the validation state as stale. Mesh and FISS launches are mutually exclusive, and both buttons remain disabled until the active process finishes. Before a mesh run, prior fixed-name solver artifacts in the selected directory are moved to `_previous_mesh_runs`; after return code `0`, the workbench checks the expected volume and surface files before declaring the run verified.
+
+## Generated surfaces
+
+The fractal mode implements an isotropic Gaussian self-affine surface through spectral filtering. Enter either the Hurst exponent `H` or the graph dimension `D`; the interface displays the coupled value using `D = 3 - H`. Grid point counts, physical X/Y dimensions, RMS height, mean aperture, and an integer seed complete the definition. The walls share the same rough mean surface and remain separated by a constant aperture, preventing intersections.
+
+Constant mode creates two planar grids. It supports a lower surface fixed at `z = 0`, as in the documented example, but requires a strictly higher upper surface for non-zero volume. During execution both generated modes write four runtime CSV matrices and then use the same hole, Cast3M, merge, FISS, and Gmsh paths as imported CSV data.
+
+![Dynamic fractal-source controls in the real workbench](assets/scientific-surface-fractal.png)
+
+See the [generated surface examples](../examples/surfaces/README.md) for complete GUI-free configurations and real Cast3M verification results.
 
 ## Inflation behavior
 

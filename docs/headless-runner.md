@@ -10,7 +10,7 @@ Copy [the complete example configuration](../examples/scientific-run.ini), edit 
 python castem_pipeline_gui_scientific.py --headless path\to\run.ini --validate-only
 ```
 
-Validation checks the INI schema, referenced files, numeric bounds, FISS setup, CSV matrices, shape projection, and refined angular counts. It does not require or start Cast3M.
+Validation checks the INI schema, referenced files, numeric bounds, FISS setup, loaded or generated surface matrices, shape projection, and refined angular counts. It does not require or start Cast3M, and generated surfaces remain in memory during `--validate-only`.
 
 Run the configured operation:
 
@@ -19,6 +19,43 @@ python castem_pipeline_gui_scientific.py --headless path\to\run.ini
 ```
 
 The process streams Cast3M output to the terminal, writes `castem-console.log`, and records `headless-run-report.json` in the configured working directory. A nonzero process or incomplete expected mesh manifest returns a nonzero command exit status.
+
+## Surface sources
+
+`[surface] mode` accepts `csv`, `fractal`, or `constant`. CSV mode reads the four paths from `[files]`. Generated modes write the same four-matrix contract below `_generated_surface_inputs` in the isolated working directory before the preserved Cast3M reader starts.
+
+```ini
+[surface]
+mode = fractal
+points_x = 50
+points_y = 50
+size_x = 1.2
+size_y = 0.9
+center_x = 0.0
+center_y = 0.0
+hurst_exponent = 0.8
+fractal_dimension =
+rms_height = 5e-5
+mean_aperture = 2e-4
+random_seed = 20260721
+```
+
+Specify either `hurst_exponent` or `fractal_dimension`; if both are present they must satisfy `D = 3 - H`. The accepted ranges are `0 < H < 1` and `2 < D < 3`. RMS height supplies the vertical roughness scale that an exponent alone cannot define. The seed makes the spectral synthesis reproducible.
+
+```ini
+[surface]
+mode = constant
+points_x = 50
+points_y = 50
+size_x = 1.2
+size_y = 0.9
+center_x = 0.0
+center_y = 0.0
+constant_zmin = 0.0
+constant_zmax = 2e-4
+```
+
+`constant_zmax` must exceed `constant_zmin`; identical planes have zero volume. Runnable Hurst, fractal-dimension, and constant-plane configurations are in [`examples/surfaces`](../examples/surfaces/README.md). The complete [`scientific-run.ini`](../examples/scientific-run.ini) comments every accepted surface key.
 
 ## Operations and modes
 
