@@ -9,7 +9,7 @@ The animated walkthrough in the main README and both workbench screenshots can b
 ## Workflow
 
 1. Open the workbench and select **Load documented example**, **Fractal example**, or **Planar example**; alternatively select the DGIBI template, a dedicated working directory, and define the source manually.
-2. Choose **CSV files**, **Synthetic fractal**, or **Constant Z planes**. The visible fields change to only those used by that source.
+2. Choose **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**, or **Constant Z planes**. The visible fields change to only those used by that source. DEAP mode reads the raw HDF5 files from the working directory; CSV mode bypasses fitting.
 3. Use **Validate inputs** to check matrices or generated parameters, wall ordering, and hole topology.
 4. Use **Preview surface & holes** to inspect the XY topology together with the real lower and upper three-dimensional walls before a run.
 5. In **Mesh & holes**, choose one mode:
@@ -25,13 +25,22 @@ Changing a tracked path or parameter marks the validation state as stale. Mesh a
 
 ## Generated surfaces
 
+DEAP mode reconstructs the selected connected crack component from
+`deap_post.h5` and `deap_output.h5`, then evaluates both faces with the
+MATLAB-compatible two-dimensional quadratic LOESS port. The naming metadata
+fields supply time step, component, span, grid resolution, and opening
+threshold. Select the crack-plane orientation and displacement magnification;
+provide a six-value bounding box only when `input.boundary` is absent. The fit
+writes its four matrices and `deap-fit-report.json` under
+`_generated_surface_inputs` before entering the same Cast3M path.
+
 The fractal mode implements an isotropic Gaussian self-affine surface through spectral filtering. Enter either the Hurst exponent `H` or the graph dimension `D`; the interface displays the coupled value using `D = 3 - H`. Grid point counts, physical X/Y dimensions, RMS height, mean aperture, and an integer seed complete the definition. The walls share the same rough mean surface and remain separated by a constant aperture, preventing intersections.
 
-Constant mode creates two planar grids. It supports a lower surface fixed at `z = 0`, as in the documented example, but requires a strictly higher upper surface for non-zero volume. During execution both generated modes write four runtime CSV matrices and then use the same hole, Cast3M, merge, FISS, and Gmsh paths as imported CSV data.
+Constant mode creates two planar grids. It supports a lower surface fixed at `z = 0`, as in the documented example, but requires a strictly higher upper surface for non-zero volume. During execution all generated modes write four runtime CSV matrices and then use the same hole, Cast3M, merge, FISS, and Gmsh paths as imported CSV data.
 
 ![Dynamic fractal-source controls in the real workbench](assets/scientific-surface-fractal.png)
 
-See the [generated surface examples](../examples/surfaces/README.md) for complete GUI-free configurations and real Cast3M verification results.
+See the [DEAP fitting guide](deap-surface-fitting.md), [four DEAP application examples](../examples/deap/README.md), and [generated surface examples](../examples/surfaces/README.md) for complete GUI-free configurations and verification evidence.
 
 ## Inflation behavior
 

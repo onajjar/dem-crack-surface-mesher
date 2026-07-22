@@ -34,6 +34,8 @@ from python_hole_interpolation import (
 from surface_generation import SurfaceGrid, SurfaceSource, build_surface_grid, write_surface_grid
 
 ROOT = Path(__file__).resolve().parent
+DEFAULT_MESH_TEMPLATE = ROOT / "source_codes" / "castem_tool.dgibi"
+DEFAULT_FISS_TEMPLATE = ROOT / "source_codes" / "fuite_fissure.dgibi"
 DOCUMENTED_INPUT = ROOT / "examples" / "input"
 DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
 COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
@@ -86,6 +88,8 @@ class ScientificApp(PythonHoleInterpolationApp):
 
     def __init__(self) -> None:
         super().__init__()
+        self.dgibi_var.set(str(DEFAULT_MESH_TEMPLATE))
+        self.fiss_dgibi_var.set(str(DEFAULT_FISS_TEMPLATE))
         self.title("Cast3M Crack Meshing Workbench")
         self.geometry("1440x900")
         self.minsize(1120, 720)
@@ -147,6 +151,9 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.method_summary_var = tk.StringVar()
         self.run_summary_var = tk.StringVar(value="No run has been started in this session.")
         self.surface_mode_var = tk.StringVar(value="CSV files")
+        self.deap_orientation_var = tk.StringVar(value="ZX")
+        self.deap_magnification_var = tk.StringVar(value="1.0")
+        self.deap_bounding_box_var = tk.StringVar(value="")
         self.fractal_parameter_var = tk.StringVar(value="Hurst exponent H")
         self.fractal_value_var = tk.StringVar(value="0.8")
         self.fractal_relation_var = tk.StringVar(value="D = 2.2")
@@ -171,7 +178,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Label(header, text="Crack Meshing Workbench", style="Hero.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
             header,
-            text="CSV or synthetic crack surfaces → Cast3M volume mesh → CFD-ready BDF",
+            text="CSV, Python-fitted DEAP, or synthetic surfaces → Cast3M volume mesh → CFD-ready BDF",
             style="HeroSub.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(4, 0))
         self.status_label = ttk.Label(header, textvariable=self.status_var, style="Status.TLabel", padding=(12, 6))
@@ -237,11 +244,23 @@ class ScientificApp(PythonHoleInterpolationApp):
         metadata.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         for column in (1, 3, 5):
             metadata.columnconfigure(column, weight=1)
-        self._field(metadata, 0, 0, "re_ti", self.re_ti_var, width=9)
-        self._field(metadata, 0, 2, "re_crpa", self.re_crpa_var, width=9)
-        self._field(metadata, 0, 4, "re_smfa", self.re_smfa_var, width=9)
-        self._field(metadata, 1, 0, "re_numspa", self.re_numspa_var, width=9)
-        self._field(metadata, 1, 2, "re_opmin", self.re_opmin_var, width=9)
+        self._csv_metadata_entries = (
+            self._field(metadata, 0, 0, "Loading time step (re_ti)", self.re_ti_var, width=9),
+            self._field(metadata, 0, 2, "Chosen crack path (re_crpa)", self.re_crpa_var, width=9),
+            self._field(metadata, 0, 4, "Fitting smoothness (re_smfa)", self.re_smfa_var, width=9),
+            self._field(metadata, 1, 0, "Fitting grid points (re_numspa)", self.re_numspa_var, width=9),
+            self._field(metadata, 1, 2, "Crack opening threshold (re_opmin)", self.re_opmin_var, width=9),
+        )
+        self._csv_metadata_variables = (
+            self.re_ti_var,
+            self.re_crpa_var,
+            self.re_smfa_var,
+            self.re_numspa_var,
+            self.re_opmin_var,
+        )
+        self._csv_metadata_defaults = tuple(
+            variable.get() for variable in self._csv_metadata_variables
+        )
 
         grids = self._card(tab, "Crack surface source")
         grids.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
@@ -250,7 +269,12 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.surface_mode_combo = ttk.Combobox(
             grids,
             textvariable=self.surface_mode_var,
-            values=("CSV files", "Synthetic fractal", "Constant Z planes"),
+            values=(
+                "CSV files",
+                "Fit DEAP results (Python)",
+                "Synthetic fractal",
+                "Constant Z planes",
+            ),
             state="readonly",
             style="Scientific.TCombobox",
             width=25,
@@ -272,6 +296,51 @@ class ScientificApp(PythonHoleInterpolationApp):
             style="CardMuted.TLabel",
         ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
         self.surface_frames["csv"] = csv_frame
+
+        deap_frame = ttk.Frame(grids, style="Card.TFrame")
+        deap_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        for column in (1, 3):
+            deap_frame.columnconfigure(column, weight=1)
+        ttk.Label(deap_frame, text="Crack-plane orientation", style="Card.TLabel").grid(
+            row=0, column=0, sticky="w", padx=(0, 7), pady=5
+        )
+        ttk.Combobox(
+            deap_frame,
+            textvariable=self.deap_orientation_var,
+            values=("ZX", "XY", "YZ"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=10,
+        ).grid(row=0, column=1, sticky="w", pady=5)
+        self._field(
+            deap_frame,
+            0,
+            2,
+            "Displacement magnification",
+            self.deap_magnification_var,
+            width=12,
+        )
+        self._field(
+            deap_frame,
+            1,
+            0,
+            "Bounding box (optional)",
+            self.deap_bounding_box_var,
+            width=45,
+        )
+        ttk.Label(
+            deap_frame,
+            text=(
+                "Reads deap_post.h5 and deap_output.h5 from the working directory. "
+                "The naming metadata above supplies time step, component, LOESS span, "
+                "grid resolution, and opening threshold. Use six bounding-box values "
+                "only when input.boundary is absent."
+            ),
+            style="CardMuted.TLabel",
+            wraplength=760,
+            justify="left",
+        ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        self.surface_frames["deap"] = deap_frame
 
         fractal_frame = ttk.Frame(grids, style="Card.TFrame")
         fractal_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
@@ -346,6 +415,7 @@ class ScientificApp(PythonHoleInterpolationApp):
     def _surface_mode_key(value: str) -> str:
         return {
             "CSV files": "csv",
+            "Fit DEAP results (Python)": "deap",
             "Synthetic fractal": "fractal",
             "Constant Z planes": "constant",
         }.get(value.strip(), value.strip().lower())
@@ -359,6 +429,14 @@ class ScientificApp(PythonHoleInterpolationApp):
                 frame.grid()
             else:
                 frame.grid_remove()
+        metadata_state = "normal" if selected in {"csv", "deap"} else "disabled"
+        if selected not in {"csv", "deap"}:
+            for variable, default in zip(
+                self._csv_metadata_variables, self._csv_metadata_defaults
+            ):
+                variable.set(default)
+        for entry in self._csv_metadata_entries:
+            entry.configure(state=metadata_state)
         self._update_fractal_relation()
 
     def _on_surface_mode_change(self, _event=None) -> None:
@@ -396,6 +474,34 @@ class ScientificApp(PythonHoleInterpolationApp):
                 csv_y=Path(self.csv_y_var.get().strip()).expanduser(),
                 csv_zmin=Path(self.csv_zmin_var.get().strip()).expanduser(),
                 csv_zmax=Path(self.csv_zmax_var.get().strip()).expanduser(),
+            )
+        if mode == "deap":
+            bounding_box_raw = self.deap_bounding_box_var.get().strip()
+            bounding_box = None
+            if bounding_box_raw:
+                parts = [
+                    part
+                    for part in bounding_box_raw.replace(",", " ").split()
+                    if part
+                ]
+                if len(parts) != 6:
+                    raise ValueError(
+                        "DEAP bounding box requires Xmin Xmax Ymin Ymax Zmin Zmax."
+                    )
+                bounding_box = tuple(baseline.parse_float(part) for part in parts)
+            return SurfaceSource(
+                mode="deap",
+                deap_results_dir=self._preflight_workdir(),
+                deap_time_step=int(self.re_ti_var.get().strip()),
+                deap_component=int(self.re_crpa_var.get().strip()),
+                deap_span=baseline.parse_float(self.re_smfa_var.get()),
+                deap_grid_resolution=int(self.re_numspa_var.get().strip()),
+                deap_opening_threshold=baseline.parse_float(self.re_opmin_var.get()),
+                deap_orientation=self.deap_orientation_var.get().strip().upper(),
+                deap_magnification=baseline.parse_float(
+                    self.deap_magnification_var.get()
+                ),
+                deap_bounding_box=bounding_box,
             )
         common = {
             "mode": mode,
@@ -444,6 +550,20 @@ class ScientificApp(PythonHoleInterpolationApp):
             return grid
         workdir = self._preflight_workdir()
         files = write_surface_grid(grid, workdir / "_generated_surface_inputs")
+        if source.normalized_mode == "deap":
+            report = {
+                "surface_mode": "deap",
+                "fit": grid.metadata,
+                "generated_files": [
+                    files.x.name,
+                    files.y.name,
+                    files.zmin.name,
+                    files.zmax.name,
+                ],
+            }
+            (files.x.parent / "deap-fit-report.json").write_text(
+                json.dumps(report, indent=2) + "\n", encoding="utf-8"
+            )
         suspended = self._suspend_dirty
         self._suspend_dirty = True
         try:
@@ -719,6 +839,9 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.csv_zmax_var,
             self.csv_zmin_var,
             self.surface_mode_var,
+            self.deap_orientation_var,
+            self.deap_magnification_var,
+            self.deap_bounding_box_var,
             self.fractal_parameter_var,
             self.fractal_value_var,
             self.surface_points_x_var,
@@ -962,6 +1085,9 @@ class ScientificApp(PythonHoleInterpolationApp):
 
     def _read_params(self) -> baseline.CastemMainParams:
         params = super()._read_params()
+        # This UI option controls only the external Gmsh viewer. Cast3M's
+        # internal OPTI VISU/TRAC path stays disabled in every generated file.
+        params.opti_visu = 0
         geometries: list[HoleGeometry] = []
         if params.holes_enabled:
             geometries = [
@@ -1014,7 +1140,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         try:
             self.surface_mode_var.set("CSV files")
             self.dgibi_var.set(repository_path(config["template"]))
-            self.fiss_dgibi_var.set(str((ROOT / "source_codes" / "fuite_fissure.dgibi").resolve()))
+            self.fiss_dgibi_var.set(str(DEFAULT_FISS_TEMPLATE))
             self.workdir_var.set(str((ROOT / "_runtime" / "scientific-run").resolve()))
             self.castem_version_var.set(str(config["castem_version"]))
             self.csv_x_var.set(repository_path(inputs["xrange"]))
@@ -1219,6 +1345,13 @@ class ScientificApp(PythonHoleInterpolationApp):
                     f"Self-affine exponent: H={surface_source.resolved_hurst_exponent:.5g}, "
                     f"D={surface_source.resolved_fractal_dimension:.5g}; seed={surface_source.random_seed}"
                 )
+            elif surface_source.normalized_mode == "deap" and surface_grid.metadata:
+                details.append(
+                    "DEAP fit: "
+                    f"component {surface_grid.metadata['component']}; "
+                    f"{surface_grid.metadata['component_nodes']} connected nodes; "
+                    f"orientation {surface_grid.metadata['orientation']}"
+                )
             if operation == "mesh" and params.holes_enabled:
                 if not params.holes:
                     raise ValueError("Enable holes only after adding at least one shape.")
@@ -1362,6 +1495,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             return
         self._active_mesh_params = self._read_params()
         self._active_merge_requested = bool(self.do_merge_var.get())
+        self._active_open_gmsh_requested = bool(self.opti_visu_var.get())
         self._begin_operation("mesh")
         self._set_status("Preparing Cast3M run", "running")
         self.run_summary_var.set("The solver is being prepared. Follow detailed output in the live log.")
@@ -1473,6 +1607,14 @@ class ScientificApp(PythonHoleInterpolationApp):
                         self._finish_operation(False, "BDF merge incomplete", "Fresh Cast3M meshes exist, but the requested combined BDF was not created.")
                         return
                 result = combined if combined is not None else Path(cwd) / "castem_mesh_v.bdf"
+                if self._active_open_gmsh_requested:
+                    try:
+                        gmsh_exe = baseline.resolve_gmsh_exe()
+                        subprocess.Popen([str(gmsh_exe), str(result)], cwd=str(cwd))
+                        self._log(f"Opened in Gmsh: {result.name}\n")
+                    except Exception as exc:
+                        self._log(f"Gmsh could not be opened: {exc}\n")
+                        messagebox.showwarning("Gmsh", str(exc))
                 self._finish_operation(True, "Mesh run verified", f"Fresh expected outputs verified. Primary result: {result.name}")
             else:
                 self._finish_operation(True, "FISS run completed", f"Cast3M returned 0 for FISS. Review results under {Path(cwd).name}.")
@@ -1560,7 +1702,8 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "Usage:\n"
             "  python castem_pipeline_gui_scientific.py\n"
-            "  python castem_pipeline_gui_scientific.py --headless CONFIG [--validate-only]\n\n"
+            "  python castem_pipeline_gui_scientific.py --headless CONFIG "
+            "[--surface-mode MODE] [--validate-only]\n\n"
             "With no arguments, open the scientific workbench. Use --headless to "
             "run an INI configuration without creating a GUI."
         )

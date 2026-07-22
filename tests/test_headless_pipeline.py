@@ -27,9 +27,18 @@ def test_example_headless_config_covers_conformal_multiple_holes() -> None:
     assert setup.operation == "mesh"
     assert setup.mesh_mode == "python"
     assert setup.params.nelem_x == setup.params.nelem_y == 2
+    assert setup.params.opti_visu == 0
+    assert setup.open_gmsh is False
     assert len(setup.params.holes) == 2
     circle_edges = validate_setup(setup)
     assert circle_edges == (64, 64)
+
+
+def test_gmsh_option_never_enables_cast3m_visualization() -> None:
+    setup = replace(load_setup(CONFIG), open_gmsh=True)
+
+    assert setup.open_gmsh is True
+    assert setup.params.opti_visu == 0
 
 
 def test_headless_config_rejects_nonpositive_hole_radius() -> None:

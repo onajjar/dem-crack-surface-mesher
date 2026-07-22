@@ -1,5 +1,7 @@
 flowchart LR
-    SOURCE["Surface source<br/>CSV · self-affine fractal<br/>constant Z planes"] --> CONTRACT["Canonical matrices<br/>xrange · yrange<br/>zfit_zmin · zfit_zmax"]
+    DEAP["Raw DEAP results<br/>deap_post.h5 · deap_output.h5"] --> FIT["Python quadratic LOESS<br/>MATLAB-compatible surface"]
+    FIT --> SOURCE
+    SOURCE["Surface source<br/>CSV · fitted DEAP · self-affine fractal<br/>constant Z planes"] --> CONTRACT["Canonical matrices<br/>xrange · yrange<br/>zfit_zmin · zfit_zmax"]
     CONTRACT --> GUI["Scientific launcher<br/>GUI or headless<br/>validation · naming"]
     TEMPLATE["Preserved templates<br/>castem_tool.dgibi<br/>fuite_fissure.dgibi"] --> GUI
     GUI --> DGIBI["Patched DGIBI<br/>run-specific values"]
@@ -20,7 +22,7 @@ flowchart LR
     classDef output fill:#dceef7,stroke:#3d82a2,color:#10233f,stroke-width:2px;
     classDef support fill:#fff1d8,stroke:#c89236,color:#10233f,stroke-width:2px;
 
-    class SOURCE,CONTRACT input;
+    class DEAP,FIT,SOURCE,CONTRACT input;
     class GUI,RESULTS gui;
     class CASTEM,FISS castem;
     class MESH mesh;

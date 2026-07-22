@@ -18,11 +18,40 @@ Run the configured operation:
 python castem_pipeline_gui_scientific.py --headless path\to\run.ini
 ```
 
+Override only the surface decision for an individual run with
+`--surface-mode deap` (fit raw HDF5 in Python) or `--surface-mode csv` (use the
+four existing files). `fit` and `python_fit` are aliases for `deap`.
+
 The process streams Cast3M output to the terminal, writes `castem-console.log`, and records `headless-run-report.json` in the configured working directory. A nonzero process or incomplete expected mesh manifest returns a nonzero command exit status.
 
 ## Surface sources
 
-`[surface] mode` accepts `csv`, `fractal`, or `constant`. CSV mode reads the four paths from `[files]`. Generated modes write the same four-matrix contract below `_generated_surface_inputs` in the isolated working directory before the preserved Cast3M reader starts.
+`[surface] mode` accepts `csv`, `deap`, `fractal`, or `constant`. CSV mode reads the four paths from `[files]`. DEAP mode reads `deap_post.h5`, `deap_output.h5`, and normally `input.boundary` from `[run] working_directory`, then fits both crack faces with the Python quadratic LOESS implementation. Generated modes write the same four-matrix contract below `_generated_surface_inputs` in the isolated working directory before the preserved Cast3M reader starts.
+
+```ini
+[run]
+working_directory = results
+
+[surface]
+mode = deap
+orientation = YZ
+magnification = 1.0
+# Required only when results/input.boundary is absent:
+bounding_box = -0.055 0.055 -0.055 0.055 0.0 0.05
+
+[naming]
+ti = 85
+crpa = 1
+smfa = 0.05
+numspa = 50
+opmin = 1e-6
+```
+
+For DEAP mode the five `[naming]` values are also the fitter's time step,
+MATLAB-style component number, span, grid resolution, and opening threshold.
+Each fit writes `_generated_surface_inputs/deap-fit-report.json`; the final
+headless report embeds the same metadata. Complete DEAP/CSV dual-mode examples
+are in [`examples/deap`](../examples/deap/README.md).
 
 ```ini
 [surface]
@@ -80,6 +109,6 @@ The legacy three-number circle shorthand remains valid. Non-circular shapes requ
 
 With `archive_existing_outputs = true`, fixed-name prior mesh outputs are moved into a timestamped `_previous_mesh_runs` directory before a new mesh run. With it set to `false`, the runner refuses to start if such outputs exist. It never recursively cleans the configured directory.
 
-`open_gmsh = true` opens the merged BDF, or the volume BDF when merging is disabled, after a successful mesh run. Keep it `false` for fully unattended execution.
+`open_gmsh = true` opens the merged BDF, or the volume BDF when merging is disabled, after a successful mesh run. It never enables Cast3M's internal visualization: generated DGIBI files always contain `opti_visu=0`. Keep it `false` for fully unattended execution.
 
 Paths may be absolute or relative. Relative paths are resolved from the INI file location, making a configuration portable with the repository.

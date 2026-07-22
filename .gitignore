@@ -96,6 +96,20 @@ results.h
 !examples/multiple-holes/output/combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf
 !examples/multiple-holes/output/castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi
 
+# Reviewed raw DEAP application inputs. Large files are routed through Git LFS.
+!examples/deap/*/results/deap_post.h5
+!examples/deap/*/results/deap_output.h5
+
+# Runtime files produced when a bundled DEAP application is executed in place.
+examples/deap/*/results/_generated_surface_inputs/
+examples/deap/*/results/xrange_ti*.csv
+examples/deap/*/results/yrange_ti*.csv
+examples/deap/*/results/zfit_zmax_ti*.csv
+examples/deap/*/results/zfit_zmin_ti*.csv
+examples/deap/*/results/*_ti*_crpa*_smfa*_numsp*_opmin*.dgibi
+examples/deap/*/results/headless-run-report.json
+examples/deap/*/results/_previous_mesh_runs/
+
 # Generated pipeline inputs and patched Cast3M programs at repository root
 /xrange_ti*.csv
 /yrange_ti*.csv

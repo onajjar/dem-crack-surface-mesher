@@ -109,7 +109,7 @@ def main() -> None:
     draw.text((55, 26), "Crack geometry to Cast3M mesh", font=font(40, bold=True), fill="white")
     draw.text(
         (56, 78),
-        "CSV and generated surfaces through one preserved Cast3M contract",
+        "CSV, Python-fitted DEAP, and generated surfaces through one preserved Cast3M contract",
         font=font(20),
         fill="#cbd9eb",
     )
@@ -126,7 +126,14 @@ def main() -> None:
     # Reorder tuple construction from (x1, y1, y2, x2) to normal boxes.
     boxes = {key: (value[0], value[1], value[3], value[2]) for key, value in boxes.items()}
 
-    node(draw, boxes["csv"], "Surface source", ["CSV · fractal", "constant Z planes"], "#dff3ff", "#4795bd")
+    node(
+        draw,
+        boxes["csv"],
+        "Surface source",
+        ["CSV · fitted DEAP", "fractal · constant Z"],
+        "#dff3ff",
+        "#4795bd",
+    )
     node(draw, boxes["gui"], "Scientific launcher", ["GUI or headless", "validation · generation"], "#e5f5ec", "#4c9b70")
     node(draw, boxes["dgibi"], "Canonical run files", ["4 CSV matrices", "patched DGIBI"], "#fff1d8", "#c89236")
     node(draw, boxes["castem"], "Cast3M 25", ["geometry processing", "mesh generation"], "#fce7e8", "#bc5b60")

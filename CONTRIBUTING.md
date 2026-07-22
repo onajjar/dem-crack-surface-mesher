@@ -16,7 +16,7 @@ Run `python scripts/verify_baseline.py` before submitting a change. Behavioral r
 
 1. Open or reference an issue that defines the intended change and its scope.
 2. Create a focused branch from the current default branch.
-3. Keep generated Cast3M/Gmsh outputs, virtual environments, caches, credentials, and machine-specific paths out of the commit.
+3. Keep generated Cast3M/Gmsh outputs, virtual environments, caches, credentials, and machine-specific paths out of the commit. Reviewed DEAP validation inputs are the narrow exception and must follow the existing Git LFS rules.
 4. Add or update documentation and non-invasive tests where appropriate.
 5. Run:
 
@@ -25,6 +25,7 @@ Run `python scripts/verify_baseline.py` before submitting a change. Behavioral r
    python -m ruff check .
    python -m compileall -q .
    python -m pytest -q
+   python scripts\validate_deap_examples.py
    ```
 
 6. Inspect the complete diff and explicitly identify any checks that could not be executed.

@@ -7,6 +7,7 @@
 | [Baseline run](#run-it-through-the-gui) | 0 | `output/` |
 | [Multiple-hole run](multiple-holes/README.md) | 2 | `multiple-holes/output/` |
 | [Generated surfaces](surfaces/README.md) | 2 | ignored real runs under `_runtime/` |
+| [Raw DEAP applications](deap/README.md) | 0 | raw HDF5 + MATLAB reference CSVs |
 
 ## Shared input summary
 
@@ -108,3 +109,14 @@ python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 ```
 
 Relative paths are interpreted from the INI file. Edit `operation = mesh` to `fiss` or `both` when the optional FISS calculation is required.
+
+## Run a raw DEAP application
+
+Each [`deap`](deap/README.md) case keeps its discrete-simulation HDF5 files in
+the configured working directory. Choose the Python fit or existing CSVs per
+run:
+
+```powershell
+python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode deap --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode csv --validate-only
+```

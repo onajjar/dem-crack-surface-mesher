@@ -8,7 +8,6 @@ delegates to that same interface for backwards compatibility.
 from __future__ import annotations
 
 import math
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -195,7 +194,6 @@ class PythonHoleInterpolationApp(baseline.App):
                 self._log(message + "\n===== PYTHON-HOLE RUN END (FAILED) =====\n")
                 return
 
-            final_bdf = None
             if self.do_merge_var.get():
                 combined = baseline.merge_bdfs(workdir, self._log)
                 if combined is not None:
@@ -206,20 +204,8 @@ class PythonHoleInterpolationApp(baseline.App):
                     if named.exists():
                         named.unlink()
                     combined.replace(named)
-                    final_bdf = named
                     self._log(f"Final combined: {named.name}\n")
-            else:
-                volume = workdir / "castem_mesh_v.bdf"
-                if volume.exists():
-                    final_bdf = volume
 
-            if params.opti_visu == 1 and final_bdf and final_bdf.exists():
-                try:
-                    gmsh_exe = baseline.resolve_gmsh_exe()
-                    self._log(f"Opening in Gmsh: {final_bdf.name}\n")
-                    subprocess.Popen([str(gmsh_exe), str(final_bdf)], cwd=str(workdir))
-                except Exception as exc:
-                    baseline.messagebox.showwarning("Gmsh", str(exc))
             self._log("===== PYTHON-HOLE RUN END =====\n")
 
         self._log("Running CASTEM without INT_COMP/DISPLACE...\n")

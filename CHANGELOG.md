@@ -7,6 +7,9 @@
 - Removed a dead scientific-UI assignment without changing runtime behavior.
 - Replaced the legacy T13 interface GIF with a current four-tab Scientific Workbench walkthrough and removed the obsolete baseline screenshot.
 - Added CSV, reproducible self-affine fractal, and constant-plane surface sources behind one canonical four-grid Cast3M contract.
+- Replaced the MATLAB runtime dependency for DEAP crack fitting with a Python
+  quadratic LOESS implementation, explicit DEAP-fit/CSV-bypass controls, four
+  application datasets, fit reports, and archived MATLAB provenance sources.
 
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 
@@ -25,6 +28,9 @@ All notable repository-level changes are documented here. This project follows t
 - A no-interface INI runner covering mesh, multiple holes, exports, merge/Gmsh controls, and optional FISS execution.
 - Generalized conformal holes for circles, rotated rectangles, equilateral triangles, and regular polygons, with shape-dependent GUI/INI parameters and a real four-shape Cast3M example.
 - Added dynamic surface-source controls, Hurst/fractal-dimension parameterization, deterministic seeds, RMS roughness/aperture controls, constant-Z examples, real Cast3M executions, and BDF topology/Jacobian verification.
+- Integrated raw DEAP HDF5 fitting into the GUI and headless runner, including
+  per-run `--surface-mode`, four MATLAB-reference validations at `1e-12 m`, Git
+  LFS routing for large example inputs, and comparison/report artifacts.
 
 ## [0.1.0-baseline] - 2026-07-10
 

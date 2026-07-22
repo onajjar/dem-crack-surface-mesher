@@ -59,6 +59,7 @@ class HeadlessSetup:
     archive_existing: bool
     mesh_mode: str
     merge_bdfs: bool
+    open_gmsh: bool
     mesh_template: Path
     fiss_template: Path
     surface_source: SurfaceSource
@@ -82,6 +83,18 @@ def _number(section, key: str) -> float:
 def _optional_number(section, key: str) -> float | None:
     value = section.get(key, fallback="").strip()
     return baseline.parse_float(value) if value else None
+
+
+def _optional_bounding_box(section, key: str = "bounding_box") -> tuple[float, ...] | None:
+    value = section.get(key, fallback="").strip()
+    if not value:
+        return None
+    parts = [part for part in re.split(r"[,\s]+", value) if part]
+    if len(parts) != 6:
+        raise ValueError(
+            "surface bounding_box must contain Xmin, Xmax, Ymin, Ymax, Zmin, Zmax"
+        )
+    return tuple(baseline.parse_float(part) for part in parts)
 
 
 def _build_fiss(section) -> baseline.FissSetup:
@@ -154,7 +167,7 @@ def _build_fiss(section) -> baseline.FissSetup:
     )
 
 
-def load_setup(path: Path) -> HeadlessSetup:
+def load_setup(path: Path, *, surface_mode_override: str | None = None) -> HeadlessSetup:
     config_path = path.expanduser().resolve()
     if not config_path.is_file():
         raise FileNotFoundError(f"Configuration file does not exist: {config_path}")
@@ -176,14 +189,20 @@ def load_setup(path: Path) -> HeadlessSetup:
 
     surface_section = parser["surface"] if parser.has_section("surface") else None
     surface_mode = (
-        surface_section.get("mode", "csv").strip().lower()
-        if surface_section is not None
-        else "csv"
+        surface_mode_override.strip().lower()
+        if surface_mode_override is not None
+        else (
+            surface_section.get("mode", "csv").strip().lower()
+            if surface_section is not None
+            else "csv"
+        )
     )
     if surface_mode in {"constant_z", "plane", "planar"}:
         surface_mode = "constant"
+    if surface_mode in {"fit", "deap_fit", "python_fit"}:
+        surface_mode = "deap"
     if surface_mode not in SUPPORTED_SURFACE_MODES:
-        raise ValueError("surface mode must be csv, fractal, or constant.")
+        raise ValueError("surface mode must be csv, deap, fractal, or constant.")
 
     if surface_mode == "csv":
         csv_x = _path(base, files.get("x_csv"))
@@ -196,6 +215,28 @@ def load_setup(path: Path) -> HeadlessSetup:
             csv_y=csv_y,
             csv_zmin=csv_zmin,
             csv_zmax=csv_zmax,
+        )
+    elif surface_mode == "deap":
+        if surface_section is None:
+            raise ValueError("DEAP fitting requires a [surface] section.")
+        generated_directory = workdir / "_generated_surface_inputs"
+        csv_x = generated_directory / "xrange_generated.csv"
+        csv_y = generated_directory / "yrange_generated.csv"
+        csv_zmin = generated_directory / "zfit_zmin_generated.csv"
+        csv_zmax = generated_directory / "zfit_zmax_generated.csv"
+        surface_source = SurfaceSource(
+            mode="deap",
+            deap_results_dir=workdir,
+            deap_time_step=naming.getint("ti"),
+            deap_component=naming.getint("crpa"),
+            deap_span=_number(naming, "smfa"),
+            deap_grid_resolution=naming.getint("numspa"),
+            deap_opening_threshold=_number(naming, "opmin"),
+            deap_orientation=surface_section.get("orientation", "ZX").strip().upper(),
+            deap_magnification=baseline.parse_float(
+                surface_section.get("magnification", "1.0")
+            ),
+            deap_bounding_box=_optional_bounding_box(surface_section),
         )
     else:
         if surface_section is None:
@@ -244,7 +285,7 @@ def load_setup(path: Path) -> HeadlessSetup:
         re_fact_z=_number(mesh, "z_inflation_factor"),
         num_el_fill=mesh.getint("hole_radial_cells"),
         re_fact_hole=_number(mesh, "hole_outer_inner_ratio"),
-        opti_visu=int(mesh.getboolean("open_gmsh")),
+        opti_visu=0,
         opti_med=int(mesh.getboolean("export_med")),
         opti_stl=int(mesh.getboolean("export_stl")),
         holes_enabled=holes_section.getboolean("enabled"),
@@ -263,6 +304,7 @@ def load_setup(path: Path) -> HeadlessSetup:
         archive_existing=run.getboolean("archive_existing_outputs", fallback=True),
         mesh_mode=mesh.get("mode", "python").strip().lower(),
         merge_bdfs=mesh.getboolean("merge_bdfs", fallback=True),
+        open_gmsh=mesh.getboolean("open_gmsh", fallback=False),
         mesh_template=_path(base, files.get("mesh_template")),
         fiss_template=_path(base, files.get("fiss_template")),
         surface_source=surface_source,
@@ -386,6 +428,15 @@ def _materialize_surface_inputs(
         actual = (files.x, files.y, files.zmin, files.zmax)
         if actual != expected:
             raise RuntimeError("Generated surface paths do not match the configured runtime paths.")
+        if setup.surface_source.normalized_mode == "deap":
+            report = {
+                "surface_mode": "deap",
+                "fit": grid.metadata,
+                "generated_files": [path.name for path in actual],
+            }
+            (setup.csv_x.parent / "deap-fit-report.json").write_text(
+                json.dumps(report, indent=2) + "\n", encoding="utf-8"
+            )
     return grid
 
 
@@ -476,7 +527,7 @@ def run_mesh(
             volume = workdir / "castem_mesh_v.bdf"
             final_bdf = volume if volume.is_file() else None
 
-    if p.opti_visu and final_bdf is not None and final_bdf.is_file():
+    if setup.open_gmsh and final_bdf is not None and final_bdf.is_file():
         gmsh = baseline.resolve_gmsh_exe()
         subprocess.Popen([str(gmsh), str(final_bdf)], cwd=str(workdir))
 
@@ -540,6 +591,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path, help="INI text file containing every run option")
     parser.add_argument(
+        "--surface-mode",
+        choices=(
+            "csv",
+            "deap",
+            "fit",
+            "deap_fit",
+            "python_fit",
+            "fractal",
+            "constant",
+        ),
+        help="override [surface] mode for this run; use deap/fit for Python fitting or csv to bypass fitting",
+    )
+    parser.add_argument(
         "--validate-only",
         action="store_true",
         help="validate configuration, loaded or generated surface geometry, and hole topology without starting Cast3M",
@@ -551,7 +615,7 @@ def main(argv: list[str] | None = None) -> int:
     """Run the headless pipeline, optionally with arguments from another launcher."""
     args = parse_args(argv)
     try:
-        setup = load_setup(args.config)
+        setup = load_setup(args.config, surface_mode_override=args.surface_mode)
         surface_grid = build_surface_grid(setup.surface_source)
         points_per_hole = validate_setup(
             setup,
@@ -596,6 +660,14 @@ def main(argv: list[str] | None = None) -> int:
                 "constant_zmin": source.constant_zmin,
                 "constant_zmax": source.constant_zmax,
             }
+        elif source.normalized_mode == "deap":
+            summary["surface_fit"] = surface_grid.metadata
+            summary["surface_files"] = [
+                setup.csv_x.name,
+                setup.csv_y.name,
+                setup.csv_zmin.name,
+                setup.csv_zmax.name,
+            ]
         else:
             summary["surface_files"] = [
                 setup.csv_x.name,

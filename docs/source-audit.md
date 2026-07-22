@@ -79,6 +79,12 @@ The GUI imports standard-library modules plus:
 - Tkinter/Tcl-Tk for the interface; and
 - h5py optionally for FISS TXT-to-HDF5 conversion.
 
+The additive Python DEAP fitter additionally requires SciPy and h5py. It is not
+part of the immutable baseline and does not alter the byte-preservation
+manifest. The historical MATLAB implementation and its helpers are preserved
+separately in `legacy/matlab`; MATLAB is not a runtime dependency of the
+enhanced pipeline.
+
 Python 3.10 or newer is required by the source syntax. Cast3M is required for meshing and FISS. Gmsh is optional and is launched only for visualization. The baseline resolves a `CASTEM_PATH` override before its version-derived Windows installation layout, then runs Cast3M using `cmd.exe /c`. It resolves Gmsh from `GMSH_PATH`, standard installation locations, matching home-directory folders, or `PATH`.
 
 ## CSV contract
@@ -120,6 +126,6 @@ Because generated `.txt` results account for more than 30 GiB and nearly 1.4 mil
 
 ## Exclusion rationale
 
-The baseline excludes editor settings, historical experiments, run directories, traces, PostScript, large BDF/MED/STL meshes, HDF5 stores, plot PDFs, quarantined FISS text, caches, and environments. This prevents personal paths, machine-specific state, and more than 33 GiB of generated material from entering Git.
+The baseline excludes editor settings, historical experiments, run directories, traces, PostScript, large BDF/MED/STL meshes, unrelated HDF5 stores, plot PDFs, quarantined FISS text, caches, and environments. The only reviewed HDF5 exceptions are the two raw DEAP inputs for each of four documented validation applications; cases 2–4 are routed through Git LFS. This prevents personal paths, machine-specific state, and the rest of the more than 33 GiB generated tree from entering Git.
 
 No `LICENSE` file existed. In addition, the provenance/redistribution terms of `source_codes/fiss.eso` were not documented. These are release-governance issues, not reasons to alter the preserved bytes; they are called out explicitly in the main README.

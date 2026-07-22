@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml)
 
-A Windows desktop pipeline that loads or synthesizes structured crack surfaces, converts them into Cast3M meshes, prepares a combined NASTRAN BDF for downstream CFD import, and optionally evaluates crack flow with Cast3M's `FISS` operator.
+A Windows desktop pipeline that loads CSVs, fits raw DEAP discrete-simulation results in Python, or synthesizes structured crack surfaces; converts them into Cast3M meshes; prepares a combined NASTRAN BDF for downstream CFD import; and optionally evaluates crack flow with Cast3M's `FISS` operator.
 
 > **Baseline status:** `v0.1.0-baseline` preserves the historical T13 program. `castem_pipeline_gui_t13.py` and every file in `source_codes/` remain byte-for-byte protected; current development is isolated in the scientific launcher and its supporting modules.
 
@@ -10,7 +10,7 @@ A Windows desktop pipeline that loads or synthesizes structured crack surfaces, 
 
 ## What it does
 
-- Selects an existing four-CSV dataset, synthesizes a reproducible self-affine fractal surface, or creates two constant-Z planes.
+- Selects an existing four-CSV dataset, reconstructs a DEAP crack surface with the MATLAB-compatible Python quadratic LOESS fit, synthesizes a reproducible self-affine fractal surface, or creates two constant-Z planes.
 - Materializes every source as the same canonical `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin` matrices expected by the preserved Cast3M templates.
 - Patches parameters only inside the marked `Main Program` section of a `.dgibi` template.
 - Invokes Cast3M through its Windows batch launcher and streams solver output into the GUI.
@@ -24,6 +24,8 @@ A Windows desktop pipeline that loads or synthesizes structured crack surfaces, 
 ```mermaid
 flowchart LR
     A[CSV files] --> B[Surface source]
+    A1[Raw DEAP HDF5] --> A4[Python quadratic LOESS fit]
+    A4 --> B
     A2[Self-affine fractal] --> B
     A3[Constant Z planes] --> B
     B --> C[Four canonical matrices]
@@ -52,6 +54,7 @@ The scientific launcher changes its visible inputs with the selected source:
 | Source | Required geometry inputs | Z definition |
 |---|---|---|
 | Existing CSV | Four equally shaped matrices | Values supplied by the dataset |
+| Raw DEAP results | `deap_post.h5`, `deap_output.h5`, fit parameters, and boundary | Python-fitted lower and upper crack faces |
 | Synthetic fractal | Grid points, X/Y size and center, `H` or `D`, RMS height, aperture, seed | Parallel self-affine walls |
 | Constant Z planes | Grid points, X/Y size and center, lower Z, upper Z | No fluctuations |
 
@@ -76,6 +79,14 @@ python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-p
 ```
 
 See [Structured surface generation](docs/surface-generation.md) for the spectral model, wall construction, units, reproducibility contract, and limitations.
+
+### MATLAB-free DEAP fitting
+
+For each application, select either `deap` to fit raw discrete-simulation HDF5 results in Python or `csv` to bypass fitting and use an existing quartet. The four bundled DEAP applications reproduce every archived MATLAB grid and face value within `1e-12 m`; the maximum observed face error is `4.55e-15 m`. See [Python DEAP crack-surface fitting](docs/deap-surface-fitting.md), the [four runnable application packages](examples/deap/README.md), and the [machine-readable integrated validation report](docs/validation/deap-surface-report.json).
+
+The `1_simple` case was additionally meshed end to end with Cast3M 2025.0 in both modes. Both completed at error level `0` with no missing outputs and produced byte-identical combined BDFs; Gmsh 4.15.0 accepted that BDF with a headless `-check`. The sanitized [integration report](docs/validation/deap-simple-castem-integration.json) records commands, timings, SHA-256, byte size, card counts, and Gmsh return code.
+
+![Integrated Python fit compared with archived MATLAB surfaces](docs/assets/deap-surface-comparison.png)
 
 ## Verified baseline executions
 
@@ -175,7 +186,7 @@ This image is rendered from the real four-shape Cast3M volume BDF. Its final max
 
 ### Scientific workbench
 
-The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; dynamically exposes CSV, fractal, or constant-plane inputs; supports mode-aware preflight, real XY/hole and three-dimensional wall previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, and one-click Gmsh opening.
+The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; dynamically exposes CSV, Python-fitted DEAP, fractal, or constant-plane inputs; supports mode-aware preflight, real XY/hole and three-dimensional wall previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, and one-click Gmsh opening.
 
 ```powershell
 python castem_pipeline_gui_scientific.py
@@ -198,6 +209,8 @@ The same scientific mesh and FISS settings can be supplied in a plain INI file, 
 ```powershell
 python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only
 python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
+python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode deap --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode csv --validate-only
 ```
 
 The committed configuration lists every surface, path, naming, mesh, hole, export, merge, Gmsh, and FISS option. Paths are resolved relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set `open_gmsh = true` only when a Gmsh window is wanted. See the [headless runner guide](docs/headless-runner.md).
@@ -208,8 +221,8 @@ The committed configuration lists every surface, path, naming, mesh, hole, expor
 |---|---|---|
 | Operating system | Windows | The baseline invokes `cmd.exe` and a Cast3M `.bat` launcher. |
 | Python | 3.10 or newer, with Tkinter | The source uses Python 3.10 type syntax and a Tk desktop GUI. |
-| Python packages | NumPy, Matplotlib | Required when the GUI module is imported. |
-| HDF5 support | h5py | Needed for TXT-to-HDF5 FISS post-processing; the GUI otherwise treats it as optional. |
+| Python packages | NumPy, SciPy, Matplotlib | Core arrays, quadratic LOESS neighborhoods, and GUI/plotting support. |
+| HDF5 support | h5py | Required for raw DEAP fitting and TXT-to-HDF5 FISS post-processing. |
 | Visual recreation | Pillow, meshio, PyVista/VTK | Optional; needed only to recapture documentation assets. |
 | Cast3M | A compatible local installation | Required for mesh generation and `FISS`; not bundled here. |
 | Gmsh | Optional local installation | Used only when opening a generated mesh for visualization. |
@@ -262,12 +275,12 @@ Then:
 
 1. Choose **Load documented example**, or select `source_codes\castem_tool.dgibi` as the mesh template.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
-3. Select **CSV files**, **Synthetic fractal**, or **Constant Z planes**. For CSV mode, select the four files in `examples\input`; for a generated mode, enter the grid dimensions and visible mode-specific parameters.
+3. Select **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**, or **Constant Z planes**. For DEAP fitting, put `deap_post.h5`, `deap_output.h5`, and normally `input.boundary` in the working directory; for CSV mode, select the four existing matrices.
 4. Keep the example naming parameters at `re_ti=60`, `re_crpa=1`, `re_smfa=0.05`, `re_numspa=50`, and `re_opmin=1e-6`.
 5. Review mesh density, holes, inflation, export, merge, and Gmsh options. For holes, choose the reference mode or **Bulk Python hole mesh — fast + inflated**.
 6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
-See [examples/README.md](examples/README.md) for the shared input/output policy, [examples/surfaces/README.md](examples/surfaces/README.md) for generated sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md) for the two-hole walkthrough.
+See [examples/README.md](examples/README.md) for the shared input/output policy, [examples/deap/README.md](examples/deap/README.md) for the four raw-DEAP applications and fit/CSV switch, [examples/surfaces/README.md](examples/surfaces/README.md) for generated sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md) for the two-hole walkthrough.
 
 ## Surface input contract
 
@@ -289,7 +302,7 @@ opening      =  zfit_zmax - zfit_zmin
 
 Use decimal points, finite values, compatible coordinate grids, and `zfit_zmax >= zfit_zmin`. The scientific launcher validates file existence, equal matrix shape, finite values, wall ordering, generated-mode bounds, and hole topology before starting Cast3M. These structural checks are not a physical acceptance test.
 
-Fractal and constant modes create the same four matrices in `_generated_surface_inputs` below the selected run directory. `points_x` and `points_y` are point counts; the unrefined structured grid therefore has `(points_x - 1) × (points_y - 1)` cells. Synthetic generation never edits the source templates or the documented CSV dataset.
+DEAP, fractal, and constant modes create the same four matrices in `_generated_surface_inputs` below the selected run directory. DEAP mode also records `deap-fit-report.json`. `points_x` and `points_y` are point counts; the unrefined structured grid therefore has `(points_x - 1) × (points_y - 1)` cells. Generation never edits the source templates or the documented CSV dataset.
 
 The unchanged post-processing converts x/y/z coordinates to centimetres and opening to micrometres for plots, so it implicitly treats the CSV coordinate values as metres.
 
@@ -418,7 +431,7 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 - Reported HEXA8 Jacobian checks cover element centers and eight natural corners. They do not replace all-integration-point quality metrics, skewness/orthogonality checks, or validation in the target CFD solver.
 - The integrated BDF merger imports `CQUAD4` boundary cards, assigns one `PSHELL` per surface file, and excludes the mean surface. It is not a general-purpose BDF merger.
 - **FISS model parameters:** the patcher replaces only the first matching assignment in the template's Main Program. Because the supplied FISS template repeats material variables in multiple model blocks, some entered overrides can affect an earlier inactive block while the selected model retains a hard-coded value. This behavior is preserved and must be verified in the generated `.dgibi` before relying on a study.
-- Enabling **View mesh in Gmsh** also writes `opti_visu=1`; the supplied Cast3M template performs its own `TRAC` operation before the GUI opens Gmsh.
+- **Open completed mesh in Gmsh** controls only the external Gmsh viewer. Generated mesh DGIBI files always set `opti_visu=0`, so Cast3M does not open its internal `TRAC` visualization.
 - FISS post-processing moves converted text files into a timestamped quarantine directory. Keep the original run directory if raw results matter.
 - Solver meshes and flow results can grow from megabytes to many gigabytes. Generated outputs are ignored by default and should be archived outside Git unless deliberately reviewed.
 - The standalone `source_codes/merge_surface_bdf.py` is retained for provenance but differs from the merger embedded in the GUI.
@@ -440,6 +453,10 @@ Install a Python distribution that includes Tcl/Tk. Tkinter is normally included
 **Cast3M cannot find a CSV**
 
 Confirm all four naming parameters match the example and use exactly scaled `re_smfa`/`re_opmin` values. Inspect the copied filenames in the working directory.
+
+**DEAP fitting cannot find its inputs**
+
+The configured working directory must contain `deap_post.h5` and `deap_output.h5`. Add `input.boundary`, or provide all six `[surface] bounding_box` values. After cloning the large application examples, run `git lfs pull` before fitting cases 2–4.
 
 **Constant surface has zero volume**
 

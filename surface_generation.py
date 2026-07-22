@@ -2,7 +2,8 @@
 
 The preserved Cast3M programs consume four equally shaped CSV matrices.  This
 module keeps that contract while allowing the matrices to come from existing
-files, a reproducible self-affine spectral synthesis, or two constant planes.
+files, fitted DEAP discrete-simulation results, a reproducible self-affine
+spectral synthesis, or two constant planes.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import numpy as np
 
 from python_hole_interpolation import load_surface_csvs
 
-SUPPORTED_SURFACE_MODES = {"csv", "fractal", "constant"}
+SUPPORTED_SURFACE_MODES = {"csv", "deap", "fractal", "constant"}
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,15 @@ class SurfaceSource:
     random_seed: int = 20260721
     constant_zmin: float = 0.0
     constant_zmax: float = 2.0e-4
+    deap_results_dir: Path | None = None
+    deap_time_step: int = 1
+    deap_component: int = 1
+    deap_span: float = 0.05
+    deap_grid_resolution: int = 50
+    deap_opening_threshold: float = 1.0e-8
+    deap_orientation: str = "ZX"
+    deap_magnification: float = 1.0
+    deap_bounding_box: tuple[float, float, float, float, float, float] | None = None
 
     @property
     def normalized_mode(self) -> str:
@@ -82,6 +92,7 @@ class SurfaceGrid:
     zmin: np.ndarray
     zmax: np.ndarray
     mode: str
+    metadata: dict[str, object] | None = None
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -193,7 +204,8 @@ def build_surface_grid(source: SurfaceSource) -> SurfaceGrid:
 
     mode = source.normalized_mode
     if mode not in SUPPORTED_SURFACE_MODES:
-        raise ValueError("surface mode must be csv, fractal, or constant.")
+        raise ValueError("surface mode must be csv, deap, fractal, or constant.")
+    metadata: dict[str, object] | None = None
     if mode == "csv":
         paths = (source.csv_x, source.csv_y, source.csv_zmin, source.csv_zmax)
         if any(path is None for path in paths):
@@ -203,6 +215,26 @@ def build_surface_grid(source: SurfaceSource) -> SurfaceGrid:
             if not path.is_file():
                 raise FileNotFoundError(f"CSV input does not exist: {path}")
         x, y, zmin, zmax = load_surface_csvs(*paths)
+    elif mode == "deap":
+        if source.deap_results_dir is None:
+            raise ValueError("DEAP mode requires deap_results_dir.")
+        from deap_crack_surface import SurfaceConfig, reconstruct_surface
+
+        result = reconstruct_surface(
+            SurfaceConfig(
+                case_dir=source.deap_results_dir,
+                time_step=source.deap_time_step,
+                component=source.deap_component,
+                span=source.deap_span,
+                grid_resolution=source.deap_grid_resolution,
+                opening_threshold=source.deap_opening_threshold,
+                orientation=source.deap_orientation.strip().upper(),
+                magnification=source.deap_magnification,
+                bounding_box=source.deap_bounding_box,
+            )
+        )
+        x, y, zmin, zmax = result.x, result.y, result.z_min, result.z_max
+        metadata = result.metadata
     else:
         x, y = _coordinate_grids(source)
         if mode == "fractal":
@@ -221,7 +253,7 @@ def build_surface_grid(source: SurfaceSource) -> SurfaceGrid:
                 )
             zmin = np.full_like(x, zmin_value)
             zmax = np.full_like(x, zmax_value)
-    grid = SurfaceGrid(x=x, y=y, zmin=zmin, zmax=zmax, mode=mode)
+    grid = SurfaceGrid(x=x, y=y, zmin=zmin, zmax=zmax, mode=mode, metadata=metadata)
     validate_surface_grid(grid)
     return grid
 

@@ -15,3 +15,13 @@ examples/multiple-holes/output/*.json -text
 docs/assets/*.png binary
 docs/assets/*.gif binary
 docs/workflow.mmd -text
+legacy/matlab/*.m -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+legacy/matlab/SHA256SUMS -text
+examples/deap/*/run.ini -text
+examples/deap/*/reference/*.csv -text whitespace=cr-at-eol
+examples/deap/*/results/input.boundary -text whitespace=cr-at-eol
+examples/deap/1_simple/results/*.h5 binary
+examples/deap/2_large/results/*.h5 filter=lfs diff=lfs merge=lfs -text
+examples/deap/3_rebar/results/*.h5 filter=lfs diff=lfs merge=lfs -text
+examples/deap/4_brazilian/results/*.h5 filter=lfs diff=lfs merge=lfs -text
+docs/validation/deap-surface-standalone-report.json -text whitespace=cr-at-eol
