@@ -8,11 +8,11 @@ from .geometry import unit_normals
 from .model import CharacterizationConfig, PreparedSurface
 
 
-def calculate_aperture(
+def calculate_apertures(
     surface: PreparedSurface,
     config: CharacterizationConfig,
-) -> tuple[np.ndarray, np.ndarray, dict[str, object]]:
-    """Return aperture, mid-surface normals, and definition metadata.
+) -> tuple[dict[str, np.ndarray], np.ndarray, dict[str, dict[str, object]]]:
+    """Return every supported aperture definition and shared surface normals.
 
     ``global_z`` is the signed upper-minus-lower difference at matching
     ``(x, y)`` samples. ``local_normal`` projects that point-paired vertical
@@ -25,19 +25,13 @@ def calculate_aperture(
         surface,
         smoothing_sigma=config.normal_smoothing_sigma,
     )
-    if config.aperture_method == "global_z":
-        aperture = np.array(surface.raw_aperture, copy=True)
-        description = "upper minus lower wall along global Z at matching x-y samples"
-    else:
-        aperture = surface.raw_aperture * normals[..., 2]
-        description = (
-            "point-paired wall separation projected onto the finite-difference "
-            "unit normal of the crack mid-surface"
-        )
-    aperture[~surface.valid_mask] = np.nan
-    metadata = {
-        "method": config.aperture_method,
-        "description": description,
+    apertures = {
+        "global_z": np.array(surface.raw_aperture, copy=True),
+        "local_normal": surface.raw_aperture * normals[..., 2],
+    }
+    for aperture in apertures.values():
+        aperture[~surface.valid_mask] = np.nan
+    shared = {
         "normal_basis": "mid-surface",
         "normal_estimator": "second-order finite differences on physical x/y axes",
         "normal_smoothing_sigma_grid_points": config.normal_smoothing_sigma,
@@ -46,4 +40,21 @@ def calculate_aperture(
             "not applicable: the application supplies point-aligned upper and lower grids"
         ),
     }
-    return aperture, normals, metadata
+    definitions = {
+        "global_z": {
+            "method": "global_z",
+            "description": (
+                "upper minus lower wall along global Z at matching x-y samples"
+            ),
+            **shared,
+        },
+        "local_normal": {
+            "method": "local_normal",
+            "description": (
+                "point-paired wall separation projected onto the finite-difference "
+                "unit normal of the crack mid-surface"
+            ),
+            **shared,
+        },
+    }
+    return apertures, normals, definitions

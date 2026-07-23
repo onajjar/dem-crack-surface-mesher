@@ -1729,14 +1729,18 @@ class ScientificApp(PythonHoleInterpolationApp):
         return True
 
     def _on_characterization_complete(self, result) -> None:
-        aperture = result.summary["aperture"]["statistics"]
-        hydraulic = result.summary["hydraulic"]
+        apertures = result.summary["apertures"]
+        hydraulic = result.summary["hydraulic_by_aperture_and_direction"][
+            "local_normal"
+        ]
         self._log(
-            "Characterization complete: "
-            f"mean aperture={aperture['arithmetic_mean']:.8g}; "
-            f"cubic mean={aperture['global_cubic_mean']:.8g}; "
-            "flow-path equivalent="
-            f"{hydraulic['global_equivalent_hydraulic_aperture']:.8g}\n"
+            "Automatic characterization complete: "
+            "global-Z/local-normal mean="
+            f"{apertures['global_z']['statistics']['arithmetic_mean']:.8g}/"
+            f"{apertures['local_normal']['statistics']['arithmetic_mean']:.8g}; "
+            "local-normal equivalent X/Y="
+            f"{hydraulic['X']['global_equivalent_hydraulic_aperture']:.8g}/"
+            f"{hydraulic['Y']['global_equivalent_hydraulic_aperture']:.8g}\n"
         )
         self.run_summary_var.set(
             f"Characterization report: "

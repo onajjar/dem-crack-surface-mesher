@@ -219,8 +219,10 @@ geometry, mesh/holes, characterization, run/results, and FISS flow into focused 
 exposes CSV, Python-fitted DEAP, fractal, or constant-plane inputs; and opens a
 single embedded non-blocking **Characterization** tab. Users can
 characterize only, characterize then continue directly to mesh, save/reload
-settings, cancel expensive work, generate synthetic cracks, and export reports
-without adding MATLAB as a runtime dependency.
+synthetic settings, cancel expensive work, generate synthetic cracks, and
+export reports without adding MATLAB as a runtime dependency. Measured-crack
+analysis requires no parameter entry: both aperture definitions, X/Y hydraulic
+paths, X/Y tortuosities, and both X/Y Hurst methods run automatically.
 
 ```powershell
 python.exe .\castem_pipeline_gui_scientific.py
@@ -239,6 +241,8 @@ Scientific definitions are documented in
 [docs/crack_characterization.md](docs/crack_characterization.md); synthetic
 generation is documented in
 [docs/synthetic_crack_generation.md](docs/synthetic_crack_generation.md).
+The [automatic analysis and example guide](examples/characterization/AUTOMATIC_ANALYSIS_GUIDE.md)
+explains every result and every synthetic-only input.
 
 ### Headless text-file runner
 

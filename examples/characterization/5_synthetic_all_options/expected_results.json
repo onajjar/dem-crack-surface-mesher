@@ -1,0 +1,24 @@
+{
+  "global_z_arithmetic_mean": 0.0001454718103521662,
+  "local_normal_arithmetic_mean": 0.0001454627058822467,
+  "local_normal_standard_deviation": 6.83851652088917e-05,
+  "local_normal_cubic_mean": 0.0001707309402920281,
+  "global_z_equivalent_x": 0.00015712869899445816,
+  "global_z_equivalent_y": 5.6633342062041233e-05,
+  "local_normal_equivalent_x": 0.00015711895656606609,
+  "local_normal_equivalent_y": 5.6629843128074e-05,
+  "mid_surface_tortuosity_x": 1.0000500338887244,
+  "mid_surface_tortuosity_y": 1.0000129197991674,
+  "warnings": [
+    "lower X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "lower Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "15 X-direction paths for global_z aperture contain opening at or below the cutoff and were assigned zero path conductance.",
+    "40 Y-direction paths for global_z aperture contain opening at or below the cutoff and were assigned zero path conductance.",
+    "15 X-direction paths for local_normal aperture contain opening at or below the cutoff and were assigned zero path conductance.",
+    "40 Y-direction paths for local_normal aperture contain opening at or below the cutoff and were assigned zero path conductance."
+  ]
+}

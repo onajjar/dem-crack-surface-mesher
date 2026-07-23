@@ -86,21 +86,7 @@ class CharacterizationPanel(ttk.Frame):
         self.after(100, self._poll_worker)
 
     def _build_variables(self, default_output: Path) -> None:
-        self.aperture_method = tk.StringVar(value="local_normal")
-        self.flow_direction = tk.StringVar(value="Y")
-        self.custom_flow = tk.StringVar(value="1, 1, 0")
-        self.tortuosity_direction = tk.StringVar(value="flow")
-        self.custom_tortuosity = tk.StringVar(value="1, 1, 0")
-        self.aperture_cutoff = tk.StringVar(value="1e-12")
-        self.length_unit = tk.StringVar(value="m")
-        self.normal_smoothing = tk.StringVar(value="0")
-        self.interpolate_missing = tk.BooleanVar(value=False)
-        self.allow_negative = tk.BooleanVar(value=False)
-        self.hurst_min_lag = tk.StringVar(value="1")
-        self.hurst_max_fraction = tk.StringVar(value="0.25")
-        self.hurst_bootstrap = tk.StringVar(value="100")
         self.seed = tk.StringVar(value="20260723")
-        self.formats = tk.StringVar(value="png")
         self.output_directory = tk.StringVar(value=str(default_output))
         self.synthetic_enabled = tk.BooleanVar(value=False)
         self.synthetic_points_x = tk.StringVar(value="64")
@@ -117,8 +103,16 @@ class CharacterizationPanel(ttk.Frame):
         self.synthetic_minimum = tk.StringVar(value="0")
         self.synthetic_maximum = tk.StringVar(value="")
         self.synthetic_contact = tk.StringVar(value="0")
+        self.synthetic_slope_x = tk.StringVar(value="0")
+        self.synthetic_slope_y = tk.StringVar(value="0")
+        self.synthetic_positive = tk.BooleanVar(value=True)
         self.synthetic_realizations = tk.StringVar(value="1")
-        self.status = tk.StringVar(value="Ready. Review definitions, then calculate.")
+        self.synthetic_preset_note = tk.StringVar(
+            value="Choose a preset or edit the synthetic targets."
+        )
+        self.status = tk.StringVar(
+            value="Ready. Automatic X/Y characterization requires no analysis inputs."
+        )
         self.progress = tk.DoubleVar(value=0.0)
         self.result_text: tk.Text
 
@@ -179,193 +173,162 @@ class CharacterizationPanel(ttk.Frame):
             style="Scientific.TNotebook",
             height=430,
         )
+        self.notebook = notebook
         notebook.pack(fill="x", expand=False)
         analysis = ttk.Frame(notebook, style="Card.TFrame", padding=14)
         synthesis = ttk.Frame(notebook, style="Card.TFrame", padding=14)
         results = ttk.Frame(notebook, style="Card.TFrame", padding=14)
-        notebook.add(analysis, text="Input & definitions")
+        notebook.add(analysis, text="Automatic analysis")
         notebook.add(synthesis, text="Synthetic surface")
         notebook.add(results, text="Results & export")
         for tab in (analysis, synthesis, results):
             tab.columnconfigure(1, weight=1)
 
-        definitions = ttk.LabelFrame(
+        automatic = ttk.LabelFrame(
             analysis,
-            text="Aperture and directional definitions",
+            text="Always calculated — no parameters required",
             style="Section.TLabelframe",
             padding=12,
         )
-        definitions.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
-        definitions.columnconfigure(1, weight=1)
-        diagnostics = ttk.LabelFrame(
+        automatic.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
+        defaults = ttk.LabelFrame(
             analysis,
-            text="Numerical diagnostics",
+            text="Automatic numerical policy",
             style="Section.TLabelframe",
             padding=12,
         )
-        diagnostics.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
-        diagnostics.columnconfigure(1, weight=1)
+        defaults.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
         analysis.columnconfigure(0, weight=1)
         analysis.columnconfigure(1, weight=1)
 
-        self._row(
-            definitions,
-            0,
-            "Aperture definition",
-            self.aperture_method,
-            (
-                "global_z uses upper minus lower Z at matching samples. local_normal "
-                "projects that separation onto finite-difference mid-surface normals."
-            ),
-            values=("local_normal", "global_z"),
+        automatic_items = (
+            "✓ Global-Z and preferred local-normal aperture fields",
+            "✓ Full classical, robust, percentile, area, and cubic statistics",
+            "✓ X and Y path-equivalent cubic-law aperture",
+            "✓ X and Y geometrical tortuosity for both walls and mid-surface",
+            "✓ X and Y Hurst estimates: structure function and profile PSD",
+            "✓ Roughness, slopes, orientation, area, volume, contact, and connectivity",
+            "✓ Autocorrelation, bottlenecks, gradients, and conductance proxies",
         )
-        self._row(
-            definitions,
-            1,
-            "Flow direction",
-            self.flow_direction,
-            (
-                "The global vector is projected into the least-squares crack plane. "
-                "A Z direction normal to a flat crack is undefined and will be rejected."
-            ),
-            values=("X", "Y", "Z", "custom", "auto"),
+        for row, text in enumerate(automatic_items):
+            ttk.Label(
+                automatic,
+                text=text,
+                style="Card.TLabel",
+                wraplength=540,
+                justify="left",
+            ).grid(row=row, column=0, sticky="w", pady=5)
+
+        policy_items = (
+            ("Coordinates", "Used exactly as reconstructed; reported in metres."),
+            ("Directions", "Both global X and global Y; no Z choice is needed."),
+            ("Local normals", "Mid-surface finite differences; no smoothing."),
+            ("Closed opening", "b ≤ 1×10⁻¹² m is closed for cubic resistance."),
+            ("Invalid values", "Reported explicitly; negative openings are rejected."),
+            ("Hurst range", "Resolution-aware automatic range, ≤ 25% of profile."),
+            ("Uncertainty", "100 deterministic bootstrap resamples and fit warnings."),
         )
-        self._row(
-            definitions,
-            2,
-            "Custom flow vector",
-            self.custom_flow,
-            "Three global Cartesian components used when Flow direction is custom.",
-        )
-        self._row(
-            definitions,
-            3,
-            "Tortuosity direction",
-            self.tortuosity_direction,
-            "Geometrical profile-length/projected-length direction; never labeled hydraulic.",
-            values=("flow", "transverse", "X", "Y", "Z", "custom"),
-        )
-        self._row(
-            definitions,
-            4,
-            "Custom tortuosity vector",
-            self.custom_tortuosity,
-            "Three global Cartesian components used for custom tortuosity profiles.",
-        )
-        self._row(
-            definitions,
-            5,
-            "Hydraulic aperture cutoff",
-            self.aperture_cutoff,
-            (
-                "Samples at or below this physical opening are treated as closed in "
-                "1/b³ resistance. They remain reported in opening statistics."
-            ),
-        )
-        self._row(
-            definitions,
-            6,
-            "Length unit",
-            self.length_unit,
-            "Metadata only. Input coordinates are preserved and never rescaled.",
-        )
-        self._row(
-            diagnostics,
-            0,
-            "Normal smoothing σ [grid points]",
-            self.normal_smoothing,
-            "Optional Gaussian smoothing used only before estimating mid-surface normals.",
-        )
-        self._row(
-            diagnostics,
-            1,
-            "Hurst minimum lag [samples]",
-            self.hurst_min_lag,
-            "Smallest structure-function separation; use at least one grid interval.",
-        )
-        self._row(
-            diagnostics,
-            2,
-            "Hurst maximum scale fraction",
-            self.hurst_max_fraction,
-            "Largest fitted scale as a fraction of profile length; capped at 0.5.",
-        )
-        self._row(
-            diagnostics,
-            3,
-            "Bootstrap resamples",
-            self.hurst_bootstrap,
-            "Profile-resampling count for 95% Hurst confidence intervals; zero disables.",
-        )
-        self._row(
-            diagnostics,
-            4,
-            "Random seed",
-            self.seed,
-            "Reproducible seed for Hurst bootstrap and synthetic surface generation.",
-        )
-        ttk.Checkbutton(
-            diagnostics,
-            text="Interpolate missing wall heights (linear, nearest boundary fallback)",
-            variable=self.interpolate_missing,
-            style="Card.TCheckbutton",
-        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
-        ttk.Checkbutton(
-            diagnostics,
-            text="Permit negative geometrical aperture (still excluded hydraulically)",
-            variable=self.allow_negative,
-            style="Card.TCheckbutton",
-        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=4)
+        for row, (name, value) in enumerate(policy_items):
+            ttk.Label(
+                defaults,
+                text=name,
+                style="Card.TLabel",
+                font=("Segoe UI Semibold", 9),
+            ).grid(row=row, column=0, sticky="nw", padx=(0, 9), pady=5)
+            ttk.Label(
+                defaults,
+                text=value,
+                style="CardMuted.TLabel",
+                wraplength=360,
+                justify="left",
+            ).grid(row=row, column=1, sticky="nw", pady=5)
 
         ttk.Checkbutton(
             synthesis,
             text="Generate and verify a statistically representative synthetic surface",
             variable=self.synthetic_enabled,
             style="Card.TCheckbutton",
-        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
-        synthetic_rows = (
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        presets = ttk.Frame(synthesis, style="Card.TFrame")
+        presets.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        ttk.Label(
+            presets,
+            text="Documented presets:",
+            style="Card.TLabel",
+        ).pack(side="left")
+        for label, key in (
+            ("Planar opening", "planar"),
+            ("Anisotropic rough", "rough"),
+            ("Bounded contact ensemble", "contact"),
+        ):
+            ttk.Button(
+                presets,
+                text=label,
+                style="Quiet.TButton",
+                command=lambda preset=key: self._apply_synthetic_preset(preset),
+            ).pack(side="left", padx=(7, 0))
+        ttk.Label(
+            presets,
+            textvariable=self.synthetic_preset_note,
+            style="CardMuted.TLabel",
+        ).pack(side="right")
+        grid_rows = (
             ("Grid points X", self.synthetic_points_x),
             ("Grid points Y", self.synthetic_points_y),
             ("Size X", self.synthetic_size_x),
             ("Size Y", self.synthetic_size_y),
+            ("Random seed", self.seed),
+            ("Number of realizations", self.synthetic_realizations),
+        )
+        aperture_rows = (
             ("Mean aperture", self.synthetic_mean_aperture),
             ("Aperture standard deviation", self.synthetic_aperture_std),
             ("Mid-surface RMS roughness", self.synthetic_mid_rms),
+            ("Minimum aperture", self.synthetic_minimum),
+            ("Maximum aperture (optional)", self.synthetic_maximum),
+            ("Contact-area fraction", self.synthetic_contact),
+        )
+        anisotropy_rows = (
             ("Hurst exponent X", self.synthetic_hurst_x),
             ("Hurst exponent Y", self.synthetic_hurst_y),
             ("Correlation length X (optional)", self.synthetic_correlation_x),
             ("Correlation length Y (optional)", self.synthetic_correlation_y),
-            ("Minimum aperture", self.synthetic_minimum),
-            ("Maximum aperture (optional)", self.synthetic_maximum),
-            ("Contact-area fraction", self.synthetic_contact),
-            ("Number of realizations", self.synthetic_realizations),
+            ("Mean-plane slope X", self.synthetic_slope_x),
+            ("Mean-plane slope Y", self.synthetic_slope_y),
         )
-        synthetic_geometry = ttk.LabelFrame(
-            synthesis,
-            text="Grid, aperture, and roughness",
-            style="Section.TLabelframe",
-            padding=12,
+        synthetic_groups = (
+            ("Grid and ensemble", grid_rows),
+            ("Aperture and roughness", aperture_rows),
+            ("Anisotropy and mean plane", anisotropy_rows),
         )
-        synthetic_geometry.grid(row=1, column=0, sticky="nsew", padx=(0, 7))
-        synthetic_geometry.columnconfigure(1, weight=1)
-        synthetic_statistics = ttk.LabelFrame(
-            synthesis,
-            text="Scaling, bounds, and ensemble",
-            style="Section.TLabelframe",
-            padding=12,
-        )
-        synthetic_statistics.grid(row=1, column=1, sticky="nsew", padx=(7, 0))
-        synthetic_statistics.columnconfigure(1, weight=1)
-        for index, (label, variable) in enumerate(synthetic_rows):
-            target = synthetic_geometry if index < 8 else synthetic_statistics
-            row = index if index < 8 else index - 8
-            self._row(
-                target,
-                row,
-                label,
-                variable,
-                "Synthetic spectral target; achieved values are recalculated and exported.",
+        for column, (title, rows) in enumerate(synthetic_groups):
+            group = ttk.LabelFrame(
+                synthesis,
+                text=title,
+                style="Section.TLabelframe",
+                padding=10,
             )
+            padx = (0, 5) if column == 0 else ((5, 5) if column == 1 else (5, 0))
+            group.grid(row=2, column=column, sticky="nsew", padx=padx)
+            group.columnconfigure(1, weight=1)
+            synthesis.columnconfigure(column, weight=1)
+            for row, (label, variable) in enumerate(rows):
+                self._row(
+                    group,
+                    row,
+                    label,
+                    variable,
+                    (
+                        "Synthetic spectral target; achieved values are "
+                        "recalculated and exported."
+                    ),
+                )
+        ttk.Checkbutton(
+            synthesis,
+            text="Enforce non-negative aperture",
+            variable=self.synthetic_positive,
+            style="Card.TCheckbutton",
+        ).grid(row=3, column=1, sticky="w", padx=5, pady=(8, 0))
 
         output_frame = ttk.Frame(results, style="Card.TFrame")
         output_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
@@ -385,13 +348,14 @@ class CharacterizationPanel(ttk.Frame):
         ).grid(
             row=0, column=1, padx=(7, 0)
         )
-        self._row(
+        ttk.Label(
             results,
-            1,
-            "Figure formats",
-            self.formats,
-            "Comma-separated publication formats: png, pdf, svg.",
-        )
+            text=(
+                "PNG figures and all JSON/CSV/Markdown results are exported "
+                "automatically."
+            ),
+            style="CardMuted.TLabel",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
         self.result_text = tk.Text(
             results,
             height=20,
@@ -441,7 +405,7 @@ class CharacterizationPanel(ttk.Frame):
         self.cancel_button.pack(side="left", padx=(7, 0))
         ttk.Button(
             buttons,
-            text="Save settings…",
+            text="Save synthetic settings…",
             style="Quiet.TButton",
             command=self._save_settings,
         ).pack(
@@ -449,43 +413,101 @@ class CharacterizationPanel(ttk.Frame):
         )
         ttk.Button(
             buttons,
-            text="Load settings…",
+            text="Load synthetic settings…",
             style="Quiet.TButton",
             command=self._load_settings,
         ).pack(
             side="right", padx=(0, 7)
         )
 
-    @staticmethod
-    def _parse_vector(value: str) -> tuple[float, float, float]:
-        parts = [part for part in value.replace(",", " ").split() if part]
-        if len(parts) != 3:
-            raise ValueError("Custom flow vector must contain exactly three components.")
-        return tuple(float(part) for part in parts)
+    def _apply_synthetic_preset(self, preset: str) -> None:
+        presets = {
+            "planar": {
+                "synthetic_points_x": "48",
+                "synthetic_points_y": "40",
+                "synthetic_size_x": "1.2",
+                "synthetic_size_y": "0.9",
+                "synthetic_mean_aperture": "2e-4",
+                "synthetic_aperture_std": "0",
+                "synthetic_mid_rms": "0",
+                "synthetic_hurst_x": "0.8",
+                "synthetic_hurst_y": "0.8",
+                "synthetic_correlation_x": "",
+                "synthetic_correlation_y": "",
+                "synthetic_minimum": "2e-4",
+                "synthetic_maximum": "2e-4",
+                "synthetic_contact": "0",
+                "synthetic_slope_x": "0",
+                "synthetic_slope_y": "0",
+                "seed": "20260723",
+                "synthetic_realizations": "1",
+            },
+            "rough": {
+                "synthetic_points_x": "96",
+                "synthetic_points_y": "72",
+                "synthetic_size_x": "1.2",
+                "synthetic_size_y": "0.9",
+                "synthetic_mean_aperture": "2e-4",
+                "synthetic_aperture_std": "5e-5",
+                "synthetic_mid_rms": "3e-5",
+                "synthetic_hurst_x": "0.8",
+                "synthetic_hurst_y": "0.6",
+                "synthetic_correlation_x": "0.25",
+                "synthetic_correlation_y": "0.08",
+                "synthetic_minimum": "1e-6",
+                "synthetic_maximum": "",
+                "synthetic_contact": "0",
+                "synthetic_slope_x": "0",
+                "synthetic_slope_y": "0",
+                "seed": "20260724",
+                "synthetic_realizations": "1",
+            },
+            "contact": {
+                "synthetic_points_x": "80",
+                "synthetic_points_y": "80",
+                "synthetic_size_x": "1.0",
+                "synthetic_size_y": "1.0",
+                "synthetic_mean_aperture": "1.5e-4",
+                "synthetic_aperture_std": "6e-5",
+                "synthetic_mid_rms": "4e-5",
+                "synthetic_hurst_x": "0.75",
+                "synthetic_hurst_y": "0.55",
+                "synthetic_correlation_x": "0.18",
+                "synthetic_correlation_y": "0.06",
+                "synthetic_minimum": "0",
+                "synthetic_maximum": "3e-4",
+                "synthetic_contact": "0.08",
+                "synthetic_slope_x": "0.01",
+                "synthetic_slope_y": "-0.005",
+                "seed": "20260725",
+                "synthetic_realizations": "3",
+            },
+        }
+        notes = {
+            "planar": "Constant opening: analytical equality checks.",
+            "rough": "Anisotropic Hurst and correlation targets.",
+            "contact": "Bounds, contacts, slopes, and three realizations.",
+        }
+        self.synthetic_enabled.set(True)
+        self.synthetic_positive.set(True)
+        self._apply_settings(presets[preset])
+        self.synthetic_preset_note.set(notes[preset])
 
     def _config(self) -> CharacterizationConfig:
         return CharacterizationConfig(
-            aperture_method=self.aperture_method.get(),
-            flow_direction=self.flow_direction.get(),
-            custom_flow_vector=self._parse_vector(self.custom_flow.get()),
-            tortuosity_direction=self.tortuosity_direction.get(),
-            custom_tortuosity_vector=self._parse_vector(
-                self.custom_tortuosity.get()
-            ),
-            aperture_cutoff=float(self.aperture_cutoff.get()),
-            allow_negative_aperture=self.allow_negative.get(),
-            interpolate_missing=self.interpolate_missing.get(),
-            length_unit=self.length_unit.get(),
-            normal_smoothing_sigma=float(self.normal_smoothing.get()),
-            hurst_min_lag=int(self.hurst_min_lag.get()),
-            hurst_max_scale_fraction=float(self.hurst_max_fraction.get()),
-            hurst_bootstrap_samples=int(self.hurst_bootstrap.get()),
-            random_seed=int(self.seed.get()),
-            publication_formats=tuple(
-                item.strip().lower()
-                for item in self.formats.get().split(",")
-                if item.strip()
-            ),
+            aperture_method="local_normal",
+            flow_direction="Y",
+            tortuosity_direction="Y",
+            aperture_cutoff=1.0e-12,
+            allow_negative_aperture=False,
+            interpolate_missing=False,
+            length_unit="m",
+            normal_smoothing_sigma=0.0,
+            hurst_min_lag=1,
+            hurst_max_scale_fraction=0.25,
+            hurst_bootstrap_samples=100,
+            random_seed=20260723,
+            publication_formats=("png",),
         ).validated()
 
     @staticmethod
@@ -514,15 +536,41 @@ class CharacterizationPanel(ttk.Frame):
             minimum_aperture=float(self.synthetic_minimum.get()),
             maximum_aperture=self._optional_float(self.synthetic_maximum.get()),
             contact_fraction=float(self.synthetic_contact.get()),
+            positive_aperture=self.synthetic_positive.get(),
+            mean_plane_slopes=(
+                float(self.synthetic_slope_x.get()),
+                float(self.synthetic_slope_y.get()),
+            ),
             random_seed=int(self.seed.get()),
             realizations=int(self.synthetic_realizations.get()),
         ).validated()
 
     def _settings(self) -> dict[str, Any]:
+        names = (
+            "synthetic_enabled",
+            "synthetic_points_x",
+            "synthetic_points_y",
+            "synthetic_size_x",
+            "synthetic_size_y",
+            "synthetic_mean_aperture",
+            "synthetic_aperture_std",
+            "synthetic_mid_rms",
+            "synthetic_hurst_x",
+            "synthetic_hurst_y",
+            "synthetic_correlation_x",
+            "synthetic_correlation_y",
+            "synthetic_minimum",
+            "synthetic_maximum",
+            "synthetic_contact",
+            "synthetic_slope_x",
+            "synthetic_slope_y",
+            "synthetic_positive",
+            "seed",
+            "synthetic_realizations",
+        )
         return {
-            key: variable.get()
-            for key, variable in self.__dict__.items()
-            if isinstance(variable, (tk.StringVar, tk.BooleanVar))
+            name: getattr(self, name).get()
+            for name in names
         }
 
     def _apply_settings(self, values: dict[str, Any]) -> None:
@@ -633,15 +681,23 @@ class CharacterizationPanel(ttk.Frame):
         self._set_running(False)
         self.progress.set(100)
         self.status.set(f"Complete — {result.output_directory}")
-        aperture = result.summary["aperture"]["statistics"]
-        hydraulic = result.summary["hydraulic"]
-        tortuosity = result.summary["tortuosity"]["mid"]
+        apertures = result.summary["apertures"]
+        hydraulic = result.summary["hydraulic_by_aperture_and_direction"][
+            "local_normal"
+        ]
+        tortuosity = result.summary["tortuosity"]["directions"]
         text = (
-            f"Arithmetic mean aperture: {aperture['arithmetic_mean']:.8g}\n"
-            f"Cubic-mean aperture: {aperture['global_cubic_mean']:.8g}\n"
-            f"Flow-path equivalent aperture: "
-            f"{hydraulic['global_equivalent_hydraulic_aperture']:.8g}\n"
-            f"Mean geometrical tortuosity: {tortuosity['mean']:.8g}\n"
+            "Automatic comprehensive analysis complete\n\n"
+            "Mean aperture — global Z / local normal: "
+            f"{apertures['global_z']['statistics']['arithmetic_mean']:.8g} / "
+            f"{apertures['local_normal']['statistics']['arithmetic_mean']:.8g}\n"
+            "Local-normal equivalent aperture — X / Y: "
+            f"{hydraulic['X']['global_equivalent_hydraulic_aperture']:.8g} / "
+            f"{hydraulic['Y']['global_equivalent_hydraulic_aperture']:.8g}\n"
+            "Mid-surface geometrical tortuosity — X / Y: "
+            f"{tortuosity['X']['mid']['mean']:.8g} / "
+            f"{tortuosity['Y']['mid']['mean']:.8g}\n"
+            "Hurst fits: X and Y × structure function and profile PSD\n"
             f"Warnings: {len(result.warnings)}\n\n"
             f"Report: {result.exported_files.get('characterization_report')}"
         )

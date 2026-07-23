@@ -12,8 +12,6 @@
   "correlation_length_x": 0.25,
   "correlation_length_y": 0.08,
   "minimum_aperture": 0.000001,
-  "flow_direction": "X",
-  "aperture_method": "local_normal",
   "length_unit": "m",
   "random_seed": 202
 }

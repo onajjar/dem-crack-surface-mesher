@@ -14,6 +14,13 @@ from .geometry import surface_gradients
 from .model import AnalysisResult, CharacterizationConfig, PreparedSurface
 
 
+def _bounded_histogram_bins(values: np.ndarray) -> int:
+    """Avoid pathological automatic bin counts for nearly discrete fields."""
+
+    finite_count = int(np.count_nonzero(np.isfinite(values)))
+    return int(np.clip(np.sqrt(max(finite_count, 1)), 12, 80))
+
+
 def _save(
     figure: plt.Figure,
     stem: str,
@@ -112,16 +119,34 @@ def _aperture_figure(
         label=f"Aperture [{config.length_unit}]",
     )
     axes[0, 0].set_title("Local aperture")
-    values = aperture[np.isfinite(aperture)]
-    axes[0, 1].hist(values, bins="auto", density=True, color="#1668a8", alpha=0.78)
+    aperture_fields = {
+        "Global Z": result.arrays["aperture_global_z"],
+        "Local normal": result.arrays["aperture_local_normal"],
+    }
+    for label, field in aperture_fields.items():
+        values = field[np.isfinite(field)]
+        axes[0, 1].hist(
+            values,
+            bins=_bounded_histogram_bins(values),
+            density=True,
+            alpha=0.48,
+            label=label,
+        )
     axes[0, 1].set_xlabel(f"Aperture [{config.length_unit}]")
     axes[0, 1].set_ylabel("Probability density")
-    axes[0, 1].set_title("Aperture probability density")
-    sorted_values = np.sort(values)
-    axes[1, 0].plot(sorted_values, np.linspace(0, 1, sorted_values.size), color="#0f766e")
+    axes[0, 1].set_title("Both aperture definitions")
+    axes[0, 1].legend()
+    for label, field in aperture_fields.items():
+        sorted_values = np.sort(field[np.isfinite(field)])
+        axes[1, 0].plot(
+            sorted_values,
+            np.linspace(0, 1, sorted_values.size),
+            label=label,
+        )
     axes[1, 0].set_xlabel(f"Aperture [{config.length_unit}]")
     axes[1, 0].set_ylabel("Cumulative probability")
     axes[1, 0].set_title("Cumulative aperture distribution")
+    axes[1, 0].legend()
     resistance = np.full_like(aperture, np.nan)
     open_mask = np.isfinite(aperture) & (aperture > config.aperture_cutoff)
     resistance[open_mask] = aperture[open_mask] ** -3
@@ -145,10 +170,15 @@ def _aperture_figure(
         axis.grid(False)
     mean = result.summary["aperture"]["statistics"]["arithmetic_mean"]
     cubic = result.summary["aperture"]["statistics"]["global_cubic_mean"]
-    equivalent = result.summary["hydraulic"]["global_equivalent_hydraulic_aperture"]
+    hydraulic = result.summary["hydraulic_by_aperture_and_direction"][
+        "local_normal"
+    ]
+    equivalent_x = hydraulic["X"]["global_equivalent_hydraulic_aperture"]
+    equivalent_y = hydraulic["Y"]["global_equivalent_hydraulic_aperture"]
     figure.suptitle(
         f"Aperture characterization — mean={mean:.4g}, cubic={cubic:.4g}, "
-        f"path-equivalent={equivalent:.4g} {config.length_unit}"
+        f"equivalent X/Y={equivalent_x:.4g}/{equivalent_y:.4g} "
+        f"{config.length_unit}"
     )
     return figure
 
@@ -159,23 +189,55 @@ def _directional_figure(
 ) -> plt.Figure:
     figure, axes = plt.subplots(1, 2, figsize=(12.0, 4.8), constrained_layout=True)
     paths = result.tables["flow_path_equivalent_aperture"]
-    offsets = np.array([row["transverse_offset"] for row in paths], dtype=float)
-    equivalent = np.array([row["equivalent_aperture"] for row in paths], dtype=float)
-    axes[0].plot(offsets, equivalent, marker="o", markersize=3, color="#1668a8")
+    for direction, color in (("X", "#1668a8"), ("Y", "#b45309")):
+        selected = [
+            row
+            for row in paths
+            if row["aperture_definition"] == "local_normal"
+            and row["direction"] == direction
+        ]
+        offsets = np.array(
+            [row["transverse_offset"] for row in selected],
+            dtype=float,
+        )
+        equivalent = np.array(
+            [row["equivalent_aperture"] for row in selected],
+            dtype=float,
+        )
+        axes[0].plot(
+            offsets,
+            equivalent,
+            marker="o",
+            markersize=3,
+            color=color,
+            label=direction,
+        )
     axes[0].set_xlabel(f"Transverse path offset [{config.length_unit}]")
     axes[0].set_ylabel(f"Equivalent aperture [{config.length_unit}]")
-    axes[0].set_title("Series-resistance aperture by flow path")
-    tortuosity = [
-        row
-        for row in result.tables["directional_tortuosity"]
-        if row["surface"] == "mid" and row["direction"] == "flow"
-    ]
-    values = np.array([row["geometrical_tortuosity"] for row in tortuosity], dtype=float)
-    axes[1].hist(values[np.isfinite(values)], bins="auto", color="#0f766e", alpha=0.8)
+    axes[0].set_title("Local-normal series resistance by path")
+    axes[0].legend(title="Direction")
+    for direction, color in (("X", "#1668a8"), ("Y", "#b45309")):
+        tortuosity = [
+            row
+            for row in result.tables["directional_tortuosity"]
+            if row["surface"] == "mid" and row["direction"] == direction
+        ]
+        values = np.array(
+            [row["geometrical_tortuosity"] for row in tortuosity],
+            dtype=float,
+        )
+        axes[1].hist(
+            values[np.isfinite(values)],
+            bins=_bounded_histogram_bins(values),
+            color=color,
+            alpha=0.48,
+            label=direction,
+        )
     axes[1].set_xlabel("Geometrical tortuosity [1]")
     axes[1].set_ylabel("Profile count")
-    axes[1].set_title("Mid-surface flow-profile tortuosity")
-    figure.suptitle(f"Directional flow-path diagnostics ({config.flow_direction} flow)")
+    axes[1].set_title("Automatic mid-surface X/Y tortuosity")
+    axes[1].legend(title="Direction")
+    figure.suptitle("Automatic X/Y directional diagnostics")
     return figure
 
 

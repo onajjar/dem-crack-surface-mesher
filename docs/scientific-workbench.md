@@ -39,26 +39,32 @@ Changing a tracked path or parameter marks the validation state as stale. Mesh a
 
 The embedded characterization tab consumes the active `SurfaceGrid`; it
 does not reload or reinterpret a parallel copy of the crack. Its tabs separate
-coordinate/aperture/flow definitions, optional statistically representative
-surface synthesis, and exports. It supports settings save/load, input
-validation, unit metadata, progress, cancellation, characterize-only, and
+automatic analysis, optional statistically representative surface synthesis,
+and exports. Ordinary characterization has no scientific input fields: both
+apertures, both X/Y directions, both Hurst methods, and all other supported
+metrics are always evaluated. It supports synthetic-settings save/load, input
+validation, progress, cancellation, characterize-only, and
 characterize-then-mesh operation. Work runs in a background Python thread and
 passes progress through a queue, keeping Tk responsive.
 
-Available flow choices are global X, Y, Z, automatic, and a custom
-three-component vector. The global vector is projected into the fitted crack
-plane; a vector with no in-plane projection is rejected rather than silently
-replaced. Local-normal aperture is the default. Tooltips state the aperture,
-tortuosity, cutoff, and scaling-fit definitions.
+The automatic policy evaluates global-Z and local-normal opening, X/Y
+path-equivalent aperture, X/Y lower/upper/mid geometrical tortuosity, and X/Y
+structure-function plus profile-PSD Hurst fits. Z is not requested for this
+height-field surface representation. Editable parameters appear only under
+**Synthetic surface**, which includes three documented presets.
 
 Reports distinguish arithmetic aperture, global cubic mean, projected-area
 cubic mean, path-equivalent hydraulic aperture, geometrical tortuosity, and
 quantities requiring CFD validation. See
 [`crack_characterization.md`](crack_characterization.md) for formulas and
 [`synthetic_crack_generation.md`](synthetic_crack_generation.md) for the
-spectral generator.
+spectral generator. The
+[`automatic analysis guide`](../examples/characterization/AUTOMATIC_ANALYSIS_GUIDE.md)
+maps every calculation, output, example, and synthetic-only input.
 
-![Advanced characterization input and scientific-definition controls](assets/advanced-crack-characterization.png)
+![Automatic parameter-free characterization](assets/advanced-crack-characterization.png)
+
+![Synthetic-only controls and documented preset](assets/advanced-crack-characterization-synthetic.png)
 
 When **Export STL surfaces** is selected, the generated DGIBI source comments
 out the native Cast3M STL block. After Cast3M has successfully written the

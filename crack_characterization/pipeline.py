@@ -11,14 +11,12 @@ import numpy as np
 
 from surface_generation import SurfaceGrid, write_surface_grid
 
-from .aperture import calculate_aperture
+from .aperture import calculate_apertures
 from .export import export_results
 from .flow_metrics import (
     ProfileSet,
-    build_profile_set,
     equivalent_hydraulic_aperture,
     geometrical_tortuosity,
-    resolve_in_plane_direction,
 )
 from .geometry import (
     open_region_statistics,
@@ -144,51 +142,13 @@ def _synthetic_validation_rows(
 
 def _directional_tortuosity(
     surface: PreparedSurface,
-    flow_profiles: ProfileSet,
-    config: CharacterizationConfig,
+    profiles_xy: dict[str, ProfileSet],
 ) -> tuple[dict[str, object], list[dict[str, object]]]:
-    """Evaluate the required flow, transverse, X, Y, and selected directions."""
-
-    direction_sets: dict[str, ProfileSet] = {
-        "flow": flow_profiles,
-        "transverse": build_profile_set(
-            surface,
-            flow_profiles.transverse_xy,
-            -flow_profiles.direction_xy,
-        ),
-    }
-    for label in ("X", "Y"):
-        direction, transverse, _ = resolve_in_plane_direction(
-            surface,
-            label,
-            config.custom_tortuosity_vector,
-        )
-        direction_sets[label] = build_profile_set(surface, direction, transverse)
-
-    selected = config.tortuosity_direction.strip().lower()
-    selected_label = {
-        "flow": "flow",
-        "transverse": "transverse",
-        "x": "X",
-        "y": "Y",
-    }.get(selected)
-    if selected_label is None:
-        requested = "custom" if selected == "custom" else selected.upper()
-        direction, transverse, _ = resolve_in_plane_direction(
-            surface,
-            requested,
-            config.custom_tortuosity_vector,
-        )
-        selected_label = f"selected_{requested}"
-        direction_sets[selected_label] = build_profile_set(
-            surface,
-            direction,
-            transverse,
-        )
+    """Evaluate geometrical tortuosity automatically along global X and Y."""
 
     directional_summaries: dict[str, object] = {}
     rows: list[dict[str, object]] = []
-    for label, profiles in direction_sets.items():
+    for label, profiles in profiles_xy.items():
         directional_summary, directional_rows = geometrical_tortuosity(
             surface,
             profiles,
@@ -196,22 +156,63 @@ def _directional_tortuosity(
         )
         directional_summaries[label] = directional_summary
         rows.extend(directional_rows)
-    flow_summary = directional_summaries["flow"]
-    transverse_summary = directional_summaries["transverse"]
-    assert isinstance(flow_summary, dict)
-    assert isinstance(transverse_summary, dict)
+    x_summary = directional_summaries["X"]
+    y_summary = directional_summaries["Y"]
+    assert isinstance(x_summary, dict)
+    assert isinstance(y_summary, dict)
     summaries: dict[str, object] = {
-        "lower": flow_summary["lower"],
-        "upper": flow_summary["upper"],
-        "mid": flow_summary["mid"],
-        "mid_transverse": transverse_summary["mid"],
+        "lower": y_summary["lower"],
+        "upper": y_summary["upper"],
+        "mid": y_summary["mid"],
+        "mid_transverse": x_summary["mid"],
         "directions": directional_summaries,
-        "selected_direction": selected_label,
+        "automatic_directions": ["X", "Y"],
     }
     summaries["definition"] = (
         "geometrical profile length divided by projected profile length"
     )
     return summaries, rows
+
+
+def _all_hydraulic_directions(
+    surface: PreparedSurface,
+    apertures: dict[str, np.ndarray],
+    config: CharacterizationConfig,
+) -> tuple[
+    dict[str, dict[str, dict[str, object]]],
+    list[dict[str, object]],
+    dict[str, ProfileSet],
+]:
+    """Evaluate both apertures in X/Y plus any legacy configured direction."""
+
+    requested = ["X", "Y"]
+    configured = config.flow_direction.strip().upper()
+    if configured not in requested:
+        requested.append(configured)
+    summaries: dict[str, dict[str, dict[str, object]]] = {}
+    rows: list[dict[str, object]] = []
+    profiles_by_direction: dict[str, ProfileSet] = {}
+    for aperture_method, aperture in apertures.items():
+        method_summaries: dict[str, dict[str, object]] = {}
+        for direction in requested:
+            direction_config = replace(config, flow_direction=direction)
+            hydraulic, direction_rows, profiles = equivalent_hydraulic_aperture(
+                surface,
+                aperture,
+                direction_config,
+            )
+            method_summaries[direction] = hydraulic
+            profiles_by_direction.setdefault(direction, profiles)
+            for row in direction_rows:
+                rows.append(
+                    {
+                        "aperture_definition": aperture_method,
+                        "direction": direction,
+                        **row,
+                    }
+                )
+        summaries[aperture_method] = method_summaries
+    return summaries, rows, profiles_by_direction
 
 
 def characterize_surface(
@@ -229,29 +230,52 @@ def characterize_surface(
     config = (config or CharacterizationConfig()).validated()
     _notify(progress, 0.03, "Validating structured crack walls", cancelled)
     surface = prepare_surface(grid, config)
-    aperture, normals, aperture_definition = calculate_aperture(surface, config)
-    _notify(progress, 0.15, "Calculating aperture statistics", cancelled)
-    aperture_result = aperture_statistics(
+    apertures, normals, aperture_definitions = calculate_apertures(
         surface,
-        aperture,
-        cutoff=config.aperture_cutoff,
-    )
-    _notify(progress, 0.27, "Resolving flow paths and cubic-law resistance", cancelled)
-    hydraulic, flow_rows, flow_profiles = equivalent_hydraulic_aperture(
-        surface,
-        aperture,
         config,
     )
+    preferred_method = "local_normal"
+    aperture = apertures[preferred_method]
+    _notify(
+        progress,
+        0.15,
+        "Calculating both global-Z and local-normal aperture statistics",
+        cancelled,
+    )
+    aperture_results = {
+        method: aperture_statistics(
+            surface,
+            values,
+            cutoff=config.aperture_cutoff,
+        )
+        for method, values in apertures.items()
+    }
+    aperture_result = aperture_results[preferred_method]
+    _notify(
+        progress,
+        0.27,
+        "Resolving X/Y cubic-law paths for both aperture definitions",
+        cancelled,
+    )
+    hydraulic_directions, flow_rows, profiles_by_direction = (
+        _all_hydraulic_directions(
+            surface,
+            apertures,
+            config,
+        )
+    )
+    selected_method = config.aperture_method
+    selected_direction = config.flow_direction.strip().upper()
+    hydraulic = hydraulic_directions[selected_method][selected_direction]
     _notify(progress, 0.40, "Calculating directional geometrical tortuosity", cancelled)
     tortuosity, tortuosity_rows = _directional_tortuosity(
         surface,
-        flow_profiles,
-        config,
+        {key: profiles_by_direction[key] for key in ("X", "Y")},
     )
     _notify(progress, 0.52, "Calculating roughness and Hurst diagnostics", cancelled)
     roughness, hurst_rows, roughness_arrays, roughness_warnings = roughness_analysis(
         surface,
-        flow_profiles,
+        profiles_by_direction["X"],
         config,
     )
     _notify(progress, 0.70, "Calculating geometry, orientation, and connectivity", cancelled)
@@ -292,11 +316,15 @@ def characterize_surface(
         ],
     }
     warnings = [*surface.warnings, *roughness_warnings]
-    if hydraulic["closed_or_disconnected_paths"]:
-        warnings.append(
-            f"{hydraulic['closed_or_disconnected_paths']} flow paths contain aperture "
-            "at or below the cutoff and were assigned zero path conductance."
-        )
+    for method, directions in hydraulic_directions.items():
+        for direction, direction_summary in directions.items():
+            closed_paths = direction_summary["closed_or_disconnected_paths"]
+            if closed_paths:
+                warnings.append(
+                    f"{closed_paths} {direction}-direction paths for {method} aperture "
+                    "contain opening at or below the cutoff and were assigned zero "
+                    "path conductance."
+                )
     summary: dict[str, Any] = {
         "schema_version": 1,
         "software": {
@@ -320,9 +348,19 @@ def characterize_surface(
             "interpolate_missing": config.interpolate_missing,
             "invalid_samples_preserved_in_counts": True,
         },
-        "aperture_definition": aperture_definition,
+        "analysis_mode": {
+            "automatic": True,
+            "aperture_definitions": ["global_z", "local_normal"],
+            "directions": ["X", "Y"],
+            "hurst_methods": ["structure_function", "power_spectral_density"],
+            "user_analysis_inputs_required": False,
+        },
+        "aperture_definition": aperture_definitions[preferred_method],
+        "aperture_definitions": aperture_definitions,
         "aperture": aperture_result,
+        "apertures": aperture_results,
         "hydraulic": hydraulic,
+        "hydraulic_by_aperture_and_direction": hydraulic_directions,
         "tortuosity": tortuosity,
         "roughness": roughness,
         "geometry": geometry,
@@ -334,15 +372,24 @@ def characterize_surface(
             "requires_cfd_validation": True,
         },
     }
-    combined_aperture = {
-        **aperture_result["statistics"],
-        **aperture_result["counts"],
-    }
+    aperture_rows: list[dict[str, Any]] = []
+    for method, method_result in aperture_results.items():
+        combined_aperture = {
+            **method_result["statistics"],
+            **method_result["counts"],
+        }
+        aperture_rows.extend(
+            {
+                "aperture_definition": method,
+                **row,
+            }
+            for row in statistics_table(
+                combined_aperture,
+                length_unit=config.length_unit,
+            )
+        )
     tables: dict[str, list[dict[str, Any]]] = {
-        "aperture_statistics": statistics_table(
-            combined_aperture,
-            length_unit=config.length_unit,
-        ),
+        "aperture_statistics": aperture_rows,
         "directional_tortuosity": tortuosity_rows,
         "flow_path_equivalent_aperture": flow_rows,
         "hurst_analysis": hurst_rows,
@@ -355,6 +402,8 @@ def characterize_surface(
     }
     arrays = {
         "aperture": aperture,
+        "aperture_global_z": apertures["global_z"],
+        "aperture_local_normal": apertures["local_normal"],
         "mid_surface": surface.mid,
         "normal_x": normals[..., 0],
         "normal_y": normals[..., 1],

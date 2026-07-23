@@ -101,8 +101,9 @@ python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-p
 
 ## Run advanced characterization examples
 
-Four deterministic planar, anisotropic, bottleneck, and synthetic-from-measured
-examples are documented in [`examples/characterization`](characterization/README.md).
+Five deterministic planar, anisotropic, bottleneck, synthetic-from-measured,
+and all-options synthetic examples are documented in
+[`examples/characterization`](characterization/README.md).
 Generate their mesh-compatible CSV surfaces, full metric exports, validation
 reports, and publication figures with:
 
@@ -113,6 +114,12 @@ python examples\characterization\run_examples.py
 For a headless application run, set `operation = characterize` or
 `operation = characterize_and_mesh` and enable the documented
 `[characterization]` section in `scientific-run.ini`.
+
+For the embedded Characterization tab, no aperture definition, direction,
+tortuosity method, or Hurst method is selected: the complete X/Y analysis runs
+automatically. See the
+[automatic-analysis guide](characterization/AUTOMATIC_ANALYSIS_GUIDE.md) for
+the output map and the synthetic-only input definitions.
 
 ## Run without the GUI
 

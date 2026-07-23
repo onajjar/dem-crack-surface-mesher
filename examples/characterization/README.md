@@ -1,6 +1,6 @@
 # Advanced characterization examples
 
-These four deterministic cases use the same `SurfaceGrid` contract as the
+These five deterministic cases use the same `SurfaceGrid` contract as the
 Scientific Workbench and Cast3M mesh path:
 
 1. `1_planar_constant`: flat parallel walls with a constant aperture.
@@ -8,15 +8,24 @@ Scientific Workbench and Cast3M mesh path:
 3. `3_hydraulic_bottleneck`: variable opening with one narrow high-resistance band.
 4. `4_synthetic_from_characteristics`: a new realization targeted from the
    measured descriptors of case 2.
+5. `5_synthetic_all_options`: bounds, contacts, anisotropy, mean-plane slopes,
+   positivity, reproducible seed, and a three-member ensemble.
+
+Read [`AUTOMATIC_ANALYSIS_GUIDE.md`](AUTOMATIC_ANALYSIS_GUIDE.md) first. It
+explains why ordinary characterization has no scientific input fields, lists
+everything calculated automatically, maps every output, and documents every
+synthetic-only input.
 
 Run all cases from the repository root:
 
 ```powershell
-python examples\characterization\run_examples.py
+python.exe .\examples\characterization\run_examples.py
 ```
 
-Each `config.json` is the complete reproducibility input. Generated CSV surfaces,
-tables, reports, and PNG/PDF figures are written below each case in
+The first three `config.json` files describe only the known test geometry; they
+do not select an aperture, direction, tortuosity, or Hurst method. Analysis is
+automatic. Synthetic cases contain generation targets. Generated CSV surfaces,
+tables, reports, and PNG figures are written below each case in
 `generated_output/`; that directory is intentionally ignored by Git. The
 committed `expected_results.json` and `reference_summary.png` are compact
 reviewed references produced by the same script.

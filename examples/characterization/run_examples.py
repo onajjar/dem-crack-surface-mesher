@@ -1,4 +1,4 @@
-"""Generate, characterize, and validate the four documented example cases."""
+"""Generate, characterize, and validate all documented example cases."""
 
 from __future__ import annotations
 
@@ -90,31 +90,77 @@ def _bottleneck(config: dict[str, object]) -> SurfaceGrid:
 
 def _characterization_config(config: dict[str, object]) -> CharacterizationConfig:
     return CharacterizationConfig(
-        aperture_method=str(config["aperture_method"]),
-        flow_direction=str(config["flow_direction"]),
-        length_unit=str(config["length_unit"]),
+        aperture_method="local_normal",
+        flow_direction="Y",
+        tortuosity_direction="Y",
+        length_unit=str(config.get("length_unit", "m")),
         aperture_cutoff=1.0e-12,
-        hurst_bootstrap_samples=50,
+        hurst_bootstrap_samples=10,
         random_seed=int(config["random_seed"]),
-        publication_formats=("png", "pdf"),
-        figure_dpi=180,
+        publication_formats=("png",),
+        figure_dpi=150,
     )
 
 
 def _reference_payload(result) -> dict[str, object]:
-    aperture = result.summary["aperture"]["statistics"]
-    hydraulic = result.summary["hydraulic"]
-    tortuosity = result.summary["tortuosity"]["mid"]
+    apertures = result.summary["apertures"]
+    hydraulic = result.summary["hydraulic_by_aperture_and_direction"]
+    tortuosity = result.summary["tortuosity"]["directions"]
     return {
-        "arithmetic_mean_aperture": aperture["arithmetic_mean"],
-        "aperture_standard_deviation": aperture["standard_deviation"],
-        "cubic_mean_aperture": aperture["global_cubic_mean"],
-        "flow_path_equivalent_aperture": hydraulic[
+        "global_z_arithmetic_mean": apertures["global_z"]["statistics"][
+            "arithmetic_mean"
+        ],
+        "local_normal_arithmetic_mean": apertures["local_normal"]["statistics"][
+            "arithmetic_mean"
+        ],
+        "local_normal_standard_deviation": apertures["local_normal"][
+            "statistics"
+        ]["standard_deviation"],
+        "local_normal_cubic_mean": apertures["local_normal"]["statistics"][
+            "global_cubic_mean"
+        ],
+        "global_z_equivalent_x": hydraulic["global_z"]["X"][
             "global_equivalent_hydraulic_aperture"
         ],
-        "mean_mid_surface_geometrical_tortuosity": tortuosity["mean"],
+        "global_z_equivalent_y": hydraulic["global_z"]["Y"][
+            "global_equivalent_hydraulic_aperture"
+        ],
+        "local_normal_equivalent_x": hydraulic["local_normal"]["X"][
+            "global_equivalent_hydraulic_aperture"
+        ],
+        "local_normal_equivalent_y": hydraulic["local_normal"]["Y"][
+            "global_equivalent_hydraulic_aperture"
+        ],
+        "mid_surface_tortuosity_x": tortuosity["X"]["mid"]["mean"],
+        "mid_surface_tortuosity_y": tortuosity["Y"]["mid"]["mean"],
         "warnings": result.warnings,
     }
+
+
+def _all_options_target(config: dict[str, object]) -> SyntheticConfig:
+    return SyntheticConfig(
+        points_x=int(config["points_x"]),
+        points_y=int(config["points_y"]),
+        size_x=float(config["size_x"]),
+        size_y=float(config["size_y"]),
+        mean_aperture=float(config["mean_aperture"]),
+        aperture_std=float(config["aperture_standard_deviation"]),
+        mid_surface_rms=float(config["mid_surface_rms"]),
+        hurst_x=float(config["hurst_x"]),
+        hurst_y=float(config["hurst_y"]),
+        correlation_length_x=float(config["correlation_length_x"]),
+        correlation_length_y=float(config["correlation_length_y"]),
+        minimum_aperture=float(config["minimum_aperture"]),
+        maximum_aperture=float(config["maximum_aperture"]),
+        contact_fraction=float(config["contact_fraction"]),
+        positive_aperture=bool(config["positive_aperture"]),
+        mean_plane_slopes=(
+            float(config["mean_plane_slope_x"]),
+            float(config["mean_plane_slope_y"]),
+        ),
+        random_seed=int(config["random_seed"]),
+        realizations=int(config["realizations"]),
+    )
 
 
 def _run_case(
@@ -185,6 +231,15 @@ def main() -> int:
         synthetic_config,
         synthetic_grid,
         synthetic=target,
+    )
+
+    all_options_dir, all_options_config = _load("5_synthetic_all_options")
+    all_options_target = _all_options_target(all_options_config)
+    _run_case(
+        all_options_dir,
+        all_options_config,
+        generate_synthetic_surface(all_options_target),
+        synthetic=all_options_target,
     )
     print("All characterization examples completed.")
     return 0

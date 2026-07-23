@@ -87,8 +87,7 @@ with Tk through a queue, so the main interface remains responsive.
 
 - Global-Z aperture is `z_upper - z_lower` at matching structured samples.
 - Preferred local-normal aperture projects the paired wall separation onto
-  finite-difference mid-surface normals, optionally estimated after Gaussian
-  smoothing in grid-point units.
+  unsmoothed finite-difference mid-surface normals.
 - Arithmetic, harmonic, geometric, RMS, cubic, projected-area cubic, robust,
   percentile, line-profile, and surface-area-weighted statistics retain the
   physical input unit.
@@ -96,8 +95,7 @@ with Tk through a queue, so the main interface remains responsive.
   series and combines path conductances in parallel with transverse control
   widths.
 - Geometrical tortuosity is profile arc length divided by projected length. It
-  is evaluated for lower, upper, and mid surfaces along flow, transverse, X,
-  Y, and a selected projected Z/custom direction.
+  is evaluated automatically for lower, upper, and mid surfaces along X and Y.
 - Roughness is evaluated after least-squares plane removal. Directional Hurst
   fits use a second-order structure function and a one-dimensional profile
   PSD, each with scale range, point count, R², bootstrap interval, and a
@@ -108,6 +106,11 @@ with Tk through a queue, so the main interface remains responsive.
 
 Complete formulas, weighting rules, units, and caveats are in
 `docs/crack_characterization.md`.
+
+The embedded tab no longer asks for aperture, flow, tortuosity, or Hurst
+parameters. Both aperture definitions, X/Y hydraulic paths, X/Y tortuosities,
+and both X/Y Hurst estimators always run. Only optional synthetic generation
+has editable scientific parameters.
 
 ## Validation
 
@@ -145,7 +148,7 @@ Final verification on Windows/Python 3.13:
 Ruff:  passed
 Pytest: 72 passed
 Protected baseline: 6/6 hashes match
-Four characterization examples: passed
+Five characterization examples: passed
 Single-launcher headless characterize-only run: passed
 Embedded Workbench tab capture: passed at 1440 x 900
 ```
@@ -182,10 +185,10 @@ license was removed.
 
 ## Examples and outputs
 
-Four complete deterministic examples are under
+Five complete deterministic examples are under
 `examples/characterization/`. Each includes configuration, expected results,
 and a compact summary figure; the runner regenerates full CSV inputs, reports,
-tables, and PNG/PDF figures in ignored `generated_output/` directories.
+tables, and PNG figures in ignored `generated_output/` directories.
 
 The machine-readable output contract includes
 `characterization_summary.json`, `characterization_summary.csv`,

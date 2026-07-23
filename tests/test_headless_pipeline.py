@@ -86,8 +86,9 @@ def test_characterization_only_config_does_not_require_castem() -> None:
     assert validate_setup(setup, check_castem=True) == ()
 
 
-def test_characterization_custom_vector_parser_is_strict() -> None:
+def test_embedded_characterization_uses_automatic_analysis_defaults() -> None:
     assert issubclass(CharacterizationPanel, ttk.Frame)
-    assert CharacterizationPanel._parse_vector("1, 2, 3") == (1.0, 2.0, 3.0)
-    with pytest.raises(ValueError, match="three components"):
-        CharacterizationPanel._parse_vector("1, 2")
+    config = CharacterizationPanel._config(object())
+    assert config.aperture_method == "local_normal"
+    assert config.flow_direction == "Y"
+    assert config.hurst_bootstrap_samples == 100

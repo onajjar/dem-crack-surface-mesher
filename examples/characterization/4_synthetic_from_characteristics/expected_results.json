@@ -1,15 +1,20 @@
 {
-  "arithmetic_mean_aperture": 0.00019999994870652902,
-  "aperture_standard_deviation": 3.9999987084788155e-05,
-  "cubic_mean_aperture": 0.0002075590417200069,
-  "flow_path_equivalent_aperture": 0.0002036666716488772,
-  "mean_mid_surface_geometrical_tortuosity": 1.000000013340718,
+  "global_z_arithmetic_mean": 0.0001999999698890787,
+  "local_normal_arithmetic_mean": 0.00019999994870652902,
+  "local_normal_standard_deviation": 3.9999987084788155e-05,
+  "local_normal_cubic_mean": 0.0002075590417200069,
+  "global_z_equivalent_x": 0.00020366669277681603,
+  "global_z_equivalent_y": 0.00018477376462535414,
+  "local_normal_equivalent_x": 0.0002036666716488772,
+  "local_normal_equivalent_y": 0.00018477374388066388,
+  "mid_surface_tortuosity_x": 1.000000013340718,
+  "mid_surface_tortuosity_y": 1.0000001197537554,
   "warnings": [
-    "lower flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
-    "lower transverse power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
-    "upper flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
-    "upper transverse power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
-    "mid flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
-    "mid transverse power_spectral_density: Estimated H is outside the physical self-affine range [0, 1]."
+    "lower X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "lower Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1]."
   ]
 }

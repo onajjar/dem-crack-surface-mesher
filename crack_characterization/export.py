@@ -59,9 +59,10 @@ def _markdown_report(
     exported: dict[str, Path],
 ) -> str:
     summary = result.summary
-    aperture = summary["aperture"]["statistics"]
-    hydraulic = summary["hydraulic"]
-    tortuosity = summary["tortuosity"]["mid"]
+    local_aperture = summary["apertures"]["local_normal"]["statistics"]
+    global_aperture = summary["apertures"]["global_z"]["statistics"]
+    hydraulic = summary["hydraulic_by_aperture_and_direction"]["local_normal"]
+    tortuosity = summary["tortuosity"]["directions"]
     lines = [
         "# Advanced crack characterization report",
         "",
@@ -69,8 +70,10 @@ def _markdown_report(
         f"- Source mode: `{summary['source']['mode']}`",
         f"- Grid: {summary['source']['points_x']} × {summary['source']['points_y']} points",
         f"- Coordinate unit: `{config.length_unit}`",
-        f"- Aperture definition: `{config.aperture_method}`",
-        f"- Selected flow direction: `{config.flow_direction}`",
+        "- Analysis mode: automatic comprehensive characterization",
+        "- Aperture definitions: `global_z` and preferred `local_normal`",
+        "- Directions: global `X` and `Y`",
+        "- Hurst estimators: structure function and profile PSD",
         f"- Configured hydraulic cutoff: {config.aperture_cutoff:.8g} {config.length_unit}",
         "",
         "## Principal results",
@@ -78,36 +81,50 @@ def _markdown_report(
         "| Quantity | Value | Interpretation |",
         "|---|---:|---|",
         (
-            f"| Arithmetic mean aperture | {aperture['arithmetic_mean']:.8g} "
-            f"{config.length_unit} | Geometrical statistic |"
+            f"| Global-Z arithmetic mean | {global_aperture['arithmetic_mean']:.8g} "
+            f"{config.length_unit} | Point-paired vertical separation |"
         ),
         (
-            f"| Cubic-mean aperture | {aperture['global_cubic_mean']:.8g} "
+            f"| Local-normal arithmetic mean | {local_aperture['arithmetic_mean']:.8g} "
+            f"{config.length_unit} | Preferred geometrical opening |"
+        ),
+        (
+            f"| Local-normal cubic-mean aperture | {local_aperture['global_cubic_mean']:.8g} "
             f"{config.length_unit} | Global conductance proxy; not a series-flow equivalent |"
         ),
         (
             f"| Area-weighted cubic mean | "
-            f"{aperture['projected_area_weighted_cubic_mean']:.8g} "
+            f"{local_aperture['projected_area_weighted_cubic_mean']:.8g} "
             f"{config.length_unit} | Projected-area-weighted conductance proxy |"
         ),
         (
-            f"| Flow-path equivalent aperture | "
-            f"{hydraulic['global_equivalent_hydraulic_aperture']:.8g} "
-            f"{config.length_unit} | Cubic-law series/parallel proxy; requires CFD validation |"
+            f"| Local-normal path-equivalent aperture X | "
+            f"{hydraulic['X']['global_equivalent_hydraulic_aperture']:.8g} "
+            f"{config.length_unit} | X cubic-law series/parallel proxy |"
         ),
         (
-            f"| Mean mid-surface tortuosity | {tortuosity['mean']:.8g} | "
-            "Purely geometrical profile tortuosity |"
+            f"| Local-normal path-equivalent aperture Y | "
+            f"{hydraulic['Y']['global_equivalent_hydraulic_aperture']:.8g} "
+            f"{config.length_unit} | Y cubic-law series/parallel proxy |"
+        ),
+        (
+            f"| Mean mid-surface tortuosity X | "
+            f"{tortuosity['X']['mid']['mean']:.8g} | Purely geometrical |"
+        ),
+        (
+            f"| Mean mid-surface tortuosity Y | "
+            f"{tortuosity['Y']['mid']['mean']:.8g} | Purely geometrical |"
         ),
         "",
         "## Definitions and assumptions",
         "",
         "- Arithmetic aperture is the mean of valid geometrical openings.",
         "- Cubic mean is `(mean(b^3))^(1/3)`; the area-weighted form uses projected node-control areas.",
-        "- Each flow path uses the inverse cubic mean of resistance in series. Paths are combined in parallel by projected transverse width.",
+        "- Both aperture definitions and both X/Y hydraulic directions are evaluated automatically.",
+        "- Each path uses inverse cubic resistance in series; paths are combined in parallel by projected transverse width.",
         "- Geometrical tortuosity is profile arc length divided by projected length. It is not called hydraulic tortuosity.",
         "- Local-normal aperture projects paired global-Z wall separation onto normals estimated from the mid-surface.",
-        "- Hurst fits report method, scaling range, sample count, R², bootstrap interval, and reliability warnings.",
+        "- X/Y Hurst fits run both methods and report scale, sample count, R², bootstrap interval, and reliability warnings.",
         "",
         "## Warnings and exclusions",
         "",

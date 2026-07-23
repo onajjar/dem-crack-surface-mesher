@@ -7,7 +7,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "docs" / "assets" / "advanced-crack-characterization.png"
+OUTPUT_AUTOMATIC = (
+    ROOT / "docs" / "assets" / "advanced-crack-characterization.png"
+)
+OUTPUT_SYNTHETIC = (
+    ROOT / "docs" / "assets" / "advanced-crack-characterization-synthetic.png"
+)
 sys.dont_write_bytecode = True
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 sys.path.insert(0, str(ROOT))
@@ -28,7 +33,7 @@ def main() -> int:
     app.lift()
     app.focus_force()
 
-    def capture() -> None:
+    def grab(path: Path) -> None:
         app.update()
         app.update_idletasks()
         if app.winfo_width() < 1100 or app.winfo_height() < 700:
@@ -41,9 +46,16 @@ def main() -> int:
             bbox=(x, y, x + app.winfo_width(), y + app.winfo_height()),
             all_screens=True,
         ).convert("RGB")
-        OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-        image.save(OUTPUT, optimize=True)
-        print(f"Wrote {OUTPUT} ({image.width}x{image.height})")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        image.save(path, optimize=True)
+        print(f"Wrote {path} ({image.width}x{image.height})")
+
+    def capture() -> None:
+        grab(OUTPUT_AUTOMATIC)
+        app.characterization_panel.notebook.select(1)
+        app.characterization_panel._apply_synthetic_preset("rough")
+        app.update()
+        grab(OUTPUT_SYNTHETIC)
         app.destroy()
 
     app.after(2200, capture)

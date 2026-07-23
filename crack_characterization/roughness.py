@@ -288,15 +288,15 @@ def autocorrelation_map(values: np.ndarray, valid: np.ndarray) -> np.ndarray:
 
 def roughness_analysis(
     surface: PreparedSurface,
-    flow_profiles: ProfileSet,
+    x_profiles: ProfileSet,
     config: CharacterizationConfig,
 ) -> tuple[dict[str, object], list[dict[str, object]], dict[str, np.ndarray], list[str]]:
-    """Analyze upper, lower, and mid walls in flow and transverse directions."""
+    """Analyze upper, lower, and mid walls automatically along X and Y."""
 
-    transverse_profiles = build_profile_set(
+    y_profiles = build_profile_set(
         surface,
-        flow_profiles.transverse_xy,
-        -flow_profiles.direction_xy,
+        x_profiles.transverse_xy,
+        -x_profiles.direction_xy,
     )
     summary: dict[str, object] = {}
     fit_rows: list[dict[str, object]] = []
@@ -310,20 +310,20 @@ def roughness_analysis(
     ):
         metrics = _roughness_metrics(surface, height)
         directional_profiles = {
-            "flow": _clean_profiles(surface, height, flow_profiles),
-            "transverse": _clean_profiles(surface, height, transverse_profiles),
+            "X": _clean_profiles(surface, height, x_profiles),
+            "Y": _clean_profiles(surface, height, y_profiles),
         }
-        metrics["correlation_length_flow"] = _autocorrelation_length(
-            directional_profiles["flow"]
+        metrics["correlation_length_x"] = _autocorrelation_length(
+            directional_profiles["X"]
         )
-        metrics["correlation_length_transverse"] = _autocorrelation_length(
-            directional_profiles["transverse"]
+        metrics["correlation_length_y"] = _autocorrelation_length(
+            directional_profiles["Y"]
         )
-        flow_length = metrics["correlation_length_flow"]
-        transverse_length = metrics["correlation_length_transverse"]
+        x_length = metrics["correlation_length_x"]
+        y_length = metrics["correlation_length_y"]
         metrics["correlation_anisotropy_ratio"] = (
-            max(flow_length, transverse_length) / min(flow_length, transverse_length)
-            if flow_length and transverse_length
+            max(x_length, y_length) / min(x_length, y_length)
+            if x_length and y_length
             else None
         )
         summary[surface_name] = metrics

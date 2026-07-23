@@ -13,6 +13,7 @@ from crack_characterization import (
     characterize_surface,
     generate_synthetic_surface,
 )
+from crack_characterization.visualization import _bounded_histogram_bins
 from surface_generation import SurfaceGrid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,6 +71,17 @@ def test_parallel_planar_crack_has_exact_analytical_metrics() -> None:
     assert np.isclose(tortuosity["mean"], 1.0)
     flat_fits = result.tables["hurst_analysis"]
     assert all(row["hurst_exponent"] is None for row in flat_fits)
+    assert {"X", "Y"} == {row["direction"] for row in flat_fits}
+    assert {"structure_function", "power_spectral_density"} == {
+        row["method"] for row in flat_fits
+    }
+    assert {"global_z", "local_normal"} == {
+        row["aperture_definition"]
+        for row in result.tables["aperture_statistics"]
+    }
+    assert {"X", "Y"} == set(
+        result.summary["hydraulic_by_aperture_and_direction"]["local_normal"]
+    )
     assert any("flat" in warning.lower() for warning in result.warnings)
 
 
@@ -89,13 +101,18 @@ def test_inclined_plane_local_normal_aperture_and_tortuosity() -> None:
         expected_aperture,
         rtol=1.0e-12,
     )
+    assert np.isclose(
+        result.summary["apertures"]["global_z"]["statistics"]["arithmetic_mean"],
+        2.0e-4,
+        rtol=1.0e-12,
+    )
     normal = np.array([-slope_x, -slope_y, 1.0])
     normal /= np.linalg.norm(normal)
     projected_x = np.array([1.0, 0.0, 0.0]) - normal[0] * normal
     parameter_direction = projected_x[:2] / np.linalg.norm(projected_x[:2])
     directional_slope = slope_x * parameter_direction[0] + slope_y * parameter_direction[1]
     assert np.isclose(
-        result.summary["tortuosity"]["mid"]["mean"],
+        result.summary["tortuosity"]["directions"]["X"]["mid"]["mean"],
         np.sqrt(1.0 + directional_slope**2),
         rtol=1.0e-12,
     )
@@ -107,11 +124,13 @@ def test_sinusoidal_mid_surface_preserves_constant_global_aperture() -> None:
     result = characterize_surface(_grid(points_x=33, points_y=25, mid=mid), _config())
 
     assert np.isclose(
-        result.summary["aperture"]["statistics"]["standard_deviation"],
+        result.summary["apertures"]["global_z"]["statistics"][
+            "standard_deviation"
+        ],
         0.0,
         atol=1.0e-18,
     )
-    assert result.summary["tortuosity"]["mid"]["mean"] > 1.0
+    assert result.summary["tortuosity"]["directions"]["X"]["mid"]["mean"] > 1.0
 
 
 def test_varying_aperture_series_resistance_matches_independent_integration() -> None:
@@ -140,6 +159,10 @@ def test_strong_bottleneck_reduces_equivalent_aperture() -> None:
         result.summary["hydraulic"]["global_equivalent_hydraulic_aperture"]
         < result.summary["aperture"]["statistics"]["arithmetic_mean"]
     )
+    nearly_discrete = np.concatenate(
+        (np.full(100_000, 3.0e-4), np.array([2.0e-5, 2.0000001e-5]))
+    )
+    assert _bounded_histogram_bins(nearly_discrete) == 80
 
 
 def test_zero_aperture_barrier_marks_every_flow_path_closed() -> None:
@@ -199,10 +222,16 @@ def test_flow_along_x_y_and_custom_oblique_are_distinct_supported_cases() -> Non
         for item in (along_x, along_y, oblique)
     }
     assert len(values) == 3
-    assert oblique.summary["tortuosity"]["selected_direction"] == "selected_custom"
-    assert {"flow", "transverse", "X", "Y", "selected_custom"}.issubset(
-        {row["direction"] for row in oblique.tables["directional_tortuosity"]}
+    assert {
+        "X",
+        "Y",
+        "CUSTOM",
+    } == set(
+        oblique.summary["hydraulic_by_aperture_and_direction"]["local_normal"]
     )
+    assert {"X", "Y"} == {
+        row["direction"] for row in oblique.tables["directional_tortuosity"]
+    }
 
 
 def test_global_z_flow_is_rejected_for_flat_height_graph() -> None:

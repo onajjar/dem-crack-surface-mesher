@@ -29,8 +29,16 @@
   aperture, robust statistics, directional geometrical tortuosity, cubic-law
   flow-path proxies, roughness/Hurst diagnostics, orientation/connectivity,
   anisotropic synthetic generation, publication figures, and complete exports.
+- Made measured-surface characterization parameter-free in the embedded tab:
+  both aperture definitions, X/Y cubic-law paths, X/Y wall and mid-surface
+  tortuosity, both X/Y Hurst estimators, and all other supported descriptors
+  are calculated in one run. Editable scientific controls are now limited to
+  optional synthetic-surface generation.
+- Added three documented synthetic presets, an all-options ensemble example,
+  and bounded plotting bins that prevent pathological memory use for nearly
+  discrete bottleneck distributions.
 - Added a dedicated non-blocking Workbench tab, characterize-only and
-  characterize-then-mesh headless operations, four validated examples,
+  characterize-then-mesh headless operations, five validated examples,
   independent MATLAB analytical reference data, and a documented legacy
   algorithm/cleanup audit.
 

@@ -8,8 +8,6 @@
   "bottleneck_aperture": 0.00002,
   "bottleneck_x": 0.6,
   "bottleneck_width": 0.04,
-  "flow_direction": "X",
-  "aperture_method": "global_z",
   "length_unit": "m",
   "random_seed": 303
 }

@@ -11,30 +11,23 @@ The mid-surface is
 z_m(x,y)=\frac{z_{\max}(x,y)+z_{\min}(x,y)}{2}.
 \]
 
-Input values are never rescaled. The configured `length_unit` is metadata used
-in tables, reports, and figures. The current mesh contract is a rectilinear
+Input values are never rescaled. The Workbench reports its reconstructed
+coordinates in metres. The current mesh contract is a rectilinear
 height graph \(z=f(x,y)\); arbitrary unstructured or overhanging walls require
 a future mesh-to-mesh distance implementation.
 
 Preprocessing verifies matching shapes, finite coordinates, unique monotonic
 axes, wall validity, and a minimum 3 × 3 resolution. Descending axes are
-reordered consistently. Missing wall heights are either retained as explicitly
-excluded samples or, when requested, filled by linear interpolation with a
-nearest-neighbor boundary fallback. Negative openings are counted and excluded
-by default. No invalid sample is silently removed from the reported counts.
+reordered consistently. Missing wall heights remain explicitly excluded
+samples. Negative openings are counted and rejected. No invalid sample is
+silently removed from the reported counts.
 
 ## Coordinate and direction definitions
 
-The selected global flow vector is projected into the least-squares mid-surface
-plane. `X`, `Y`, `Z`, `auto`, and a three-component custom vector are accepted.
-If the projected vector has no resolvable in-plane component—global Z for a
-perfectly horizontal crack, for example—the calculation stops with an explicit
-error. The transverse vector is the orthogonal direction in the structured
-surface parameter plane.
-
-Axis-aligned profiles use the original nonuniform physical coordinates.
-Oblique profiles are clipped to the crack rectangle and sampled by linear
-interpolation. Values outside the valid domain remain invalid.
+The embedded Workbench analysis evaluates global X and global Y automatically.
+No direction selection is required and Z is not offered because the current
+crack is represented as a height graph over the X/Y plane. Axis-aligned
+profiles use the original nonuniform physical coordinates.
 
 ## Aperture definitions
 
@@ -61,8 +54,8 @@ b_n=(0,0,b_z)\cdot\mathbf n_m.
 \]
 
 Second-order finite differences use the physical x/y axes; boundaries use
-second-order one-sided differences. Optional Gaussian smoothing is applied only
-before the normal estimate, with sigma expressed in grid points. Because the
+second-order one-sided differences. The automatic Workbench policy applies no
+smoothing before the normal estimate. Because the
 walls are point-aligned, this is a point-pair projection rather than a ray
 intersection with the opposing wall. That distinction is recorded in every
 report.
@@ -144,12 +137,10 @@ For a sampled wall or mid-surface profile,
 {\sum_k|\Delta s_k|}.
 \]
 
-Lower-wall, upper-wall, and mid-surface values are calculated along flow,
-transverse, global X, and global Y directions. A selected projected Z or custom
-global vector is added when requested. Tables include each profile and summary
-mean, median, extrema, standard deviation, and percentiles; the selected
-direction is recorded explicitly. The software deliberately does not call this
-hydraulic tortuosity.
+Lower-wall, upper-wall, and mid-surface values are calculated automatically
+along global X and global Y. Tables include each profile and summary mean,
+median, extrema, standard deviation, and percentiles. The software deliberately
+does not call this hydraulic tortuosity.
 
 ## Roughness and Hurst analysis
 
@@ -159,7 +150,7 @@ peak-to-valley height, height standard deviation, x/y slope standard deviations,
 mean slope magnitude, directional autocorrelation lengths, and a correlation
 anisotropy ratio.
 
-Two directional Hurst estimators are implemented:
+Two Hurst estimators are run automatically in both X and Y:
 
 1. **Second-order structure function.** The RMS increment follows
    \(\sqrt{\langle[z(s+\ell)-z(s)]^2\rangle}\propto\ell^H\).
@@ -200,9 +191,13 @@ Every characterization run writes:
 - `synthetic_surface_validation.csv`
 - `characterization_report.md`
 
-Selected formats among PNG, PDF, and SVG are generated for the wall geometry,
+The embedded Workbench generates PNG figures for the wall geometry,
 aperture/PDF/CDF/resistance maps, flow-path equivalents, tortuosity
 distribution, Hurst diagnostics, slope field, and 2D autocorrelation.
+
+The headless compatibility API still accepts explicit configuration values for
+older INI files, but the interactive Characterization tab does not expose or
+require them.
 
 ## Known limitations
 

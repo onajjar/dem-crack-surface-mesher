@@ -1,0 +1,23 @@
+{
+  "case": "synthetic_all_options",
+  "points_x": 48,
+  "points_y": 40,
+  "size_x": 1.0,
+  "size_y": 0.8,
+  "mean_aperture": 0.00015,
+  "aperture_standard_deviation": 0.00006,
+  "mid_surface_rms": 0.00004,
+  "hurst_x": 0.75,
+  "hurst_y": 0.55,
+  "correlation_length_x": 0.18,
+  "correlation_length_y": 0.06,
+  "minimum_aperture": 0.0,
+  "maximum_aperture": 0.0003,
+  "contact_fraction": 0.08,
+  "positive_aperture": true,
+  "mean_plane_slope_x": 0.01,
+  "mean_plane_slope_y": -0.005,
+  "random_seed": 20260725,
+  "realizations": 3,
+  "length_unit": "m"
+}

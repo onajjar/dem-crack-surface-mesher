@@ -5,8 +5,6 @@
   "size_x": 1.2,
   "size_y": 0.9,
   "aperture": 0.0002,
-  "flow_direction": "X",
-  "aperture_method": "global_z",
   "length_unit": "m",
   "random_seed": 101
 }

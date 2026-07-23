@@ -69,11 +69,17 @@ summary records every seed, CSV path, and target-versus-achieved comparison.
 
 1. Open the embedded **3 Characterization** Workbench tab.
 2. Select **Synthetic surface**.
-3. Enable generation and enter grid, aperture, roughness, Hurst, correlation,
-   contact, and seed targets.
+3. Load **Planar opening**, **Anisotropic rough**, or **Bounded contact
+   ensemble**, then edit only the desired generation targets.
 4. Choose **Characterize only** or **Characterize and continue to mesh**.
 5. Review `synthetic_surface_validation.csv` and the comparison figures before
    using the realization.
+
+The measured-crack analysis has no editable parameters. Synthetic controls
+cover resolution, size, aperture mean/deviation/bounds, roughness, X/Y Hurst,
+X/Y correlation lengths, contact fraction, X/Y mean-plane slopes, positivity,
+seed, and realization count. The complete option-by-option example is
+[`5_synthetic_all_options`](../examples/characterization/5_synthetic_all_options/README.md).
 
 ## Limitations
 
