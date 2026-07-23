@@ -109,6 +109,11 @@ examples/deap/*/results/zfit_zmin_ti*.csv
 examples/deap/*/results/*_ti*_crpa*_smfa*_numsp*_opmin*.dgibi
 examples/deap/*/results/headless-run-report.json
 examples/deap/*/results/_previous_mesh_runs/
+examples/characterization/*/generated_output/
+
+# Large reviewed MATLAB analysis archive remains local; track its audit only.
+legacy/matlab/Crack_Analysis_MATLAB/*
+!legacy/matlab/Crack_Analysis_MATLAB/README.md
 
 # Generated pipeline inputs and patched Cast3M programs at repository root
 /xrange_ti*.csv

@@ -1,0 +1,15 @@
+{
+  "arithmetic_mean_aperture": 0.00019999994870652902,
+  "aperture_standard_deviation": 3.9999987084788155e-05,
+  "cubic_mean_aperture": 0.0002075590417200069,
+  "flow_path_equivalent_aperture": 0.0002036666716488772,
+  "mean_mid_surface_geometrical_tortuosity": 1.000000013340718,
+  "warnings": [
+    "lower flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "lower transverse power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper transverse power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid transverse power_spectral_density: Estimated H is outside the physical self-affine range [0, 1]."
+  ]
+}

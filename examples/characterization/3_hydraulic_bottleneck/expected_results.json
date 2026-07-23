@@ -1,0 +1,20 @@
+{
+  "arithmetic_mean_aperture": 0.00029540983606557376,
+  "aperture_standard_deviation": 3.5555256948789395e-05,
+  "cubic_mean_aperture": 0.00029835210619658255,
+  "flow_path_equivalent_aperture": 7.784634762040963e-05,
+  "mean_mid_surface_geometrical_tortuosity": 1.000000001540717,
+  "warnings": [
+    "lower flow structure_function: Log-log regression R-squared is below 0.90.",
+    "lower flow power_spectral_density: Log-log regression R-squared is below 0.90.",
+    "lower transverse structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "lower transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper flow structure_function: Log-log regression R-squared is below 0.90.",
+    "upper flow power_spectral_density: Log-log regression R-squared is below 0.90.",
+    "upper transverse structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid transverse structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points."
+  ]
+}

@@ -19,8 +19,12 @@ The animated walkthrough in the main README and both workbench screenshots can b
    filenames and displays them read-only; generated modes keep the established
    disabled defaults.
 3. Use **Validate inputs** to check matrices or generated parameters, wall ordering, and hole topology.
-4. Use **Preview surface & holes** to inspect the XY topology together with the real lower and upper three-dimensional walls before a run.
-5. In **Mesh & holes**, choose one mode:
+4. Optionally enable **Perform advanced crack characterization before
+   meshing**, or open the embedded **Characterization** tab for a characterize-only
+   run, synthetic generation, report export, or characterization followed
+   directly by meshing.
+5. Use **Preview surface & holes** to inspect the XY topology together with the real lower and upper three-dimensional walls before a run.
+6. In **Mesh & holes**, choose one mode:
    - **Original T13 hole workflow — reference** preserves the original Cast3M construction, interpolation, and displacement behavior.
    - **Bulk Python hole mesh — fast + inflated** vectorizes the common interpolation path, writes complete lower/upper/mean `CQUAD4` fill meshes, and lets Cast3M read them with `LIRE 'NAS'`.
 6. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
@@ -30,6 +34,31 @@ The animated walkthrough in the main README and both workbench screenshots can b
 The no-hole path remains the preserved baseline regardless of the selected hole mode. The previous `castem_pipeline_gui_python_holes.py` entry point is retained only as a compatibility wrapper and redirects to this workbench.
 
 Changing a tracked path or parameter marks the validation state as stale. Mesh and FISS launches are mutually exclusive, and both buttons remain disabled until the active process finishes. Before a mesh run, prior fixed-name solver artifacts in the selected directory are moved to `_previous_mesh_runs`; after return code `0`, the workbench checks the expected volume and surface files before declaring the run verified.
+
+## Advanced characterization
+
+The embedded characterization tab consumes the active `SurfaceGrid`; it
+does not reload or reinterpret a parallel copy of the crack. Its tabs separate
+coordinate/aperture/flow definitions, optional statistically representative
+surface synthesis, and exports. It supports settings save/load, input
+validation, unit metadata, progress, cancellation, characterize-only, and
+characterize-then-mesh operation. Work runs in a background Python thread and
+passes progress through a queue, keeping Tk responsive.
+
+Available flow choices are global X, Y, Z, automatic, and a custom
+three-component vector. The global vector is projected into the fitted crack
+plane; a vector with no in-plane projection is rejected rather than silently
+replaced. Local-normal aperture is the default. Tooltips state the aperture,
+tortuosity, cutoff, and scaling-fit definitions.
+
+Reports distinguish arithmetic aperture, global cubic mean, projected-area
+cubic mean, path-equivalent hydraulic aperture, geometrical tortuosity, and
+quantities requiring CFD validation. See
+[`crack_characterization.md`](crack_characterization.md) for formulas and
+[`synthetic_crack_generation.md`](synthetic_crack_generation.md) for the
+spectral generator.
+
+![Advanced characterization input and scientific-definition controls](assets/advanced-crack-characterization.png)
 
 When **Export STL surfaces** is selected, the generated DGIBI source comments
 out the native Cast3M STL block. After Cast3M has successfully written the

@@ -25,6 +25,7 @@ from castem_pipeline_gui_python_holes import (
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
+from characterization_gui import CharacterizationPanel
 from dataset_naming import parse_csv_set_metadata
 from python_hole_interpolation import (
     HoleGeometry,
@@ -130,6 +131,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         style.configure("Section.TLabelframe.Label", background=c["card"], foreground=c["navy"], font=("Segoe UI Semibold", 10))
         style.configure("Scientific.TEntry", fieldbackground="#ffffff", foreground=c["ink"], padding=6)
         style.configure("Scientific.TCombobox", fieldbackground="#ffffff", foreground=c["ink"], padding=5)
+        style.configure("Card.TCheckbutton", background=c["card"], foreground=c["ink"], font=("Segoe UI", 9))
+        style.map("Card.TCheckbutton", background=[("active", c["card"])])
         style.configure("Primary.TButton", background=c["teal"], foreground="#ffffff", borderwidth=0, padding=(14, 8), font=("Segoe UI Semibold", 10))
         style.map("Primary.TButton", background=[("active", c["teal_dark"]), ("disabled", "#95bcb8")])
         style.configure("Accent.TButton", background=c["blue"], foreground="#ffffff", borderwidth=0, padding=(12, 7), font=("Segoe UI Semibold", 9))
@@ -174,6 +177,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.fractal_seed_var = tk.StringVar(value="20260721")
         self.constant_zmin_var = tk.StringVar(value="0.0")
         self.constant_zmax_var = tk.StringVar(value="2e-4")
+        self.characterization_enabled_var = tk.BooleanVar(value=False)
 
         shell = ttk.Frame(parent, style="Scientific.TFrame")
         shell.pack(fill="both", expand=True)
@@ -209,15 +213,22 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.notebook.pack(fill="both", expand=True, padx=20, pady=(10, 5))
         self.input_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
         self.mesh_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
+        self.characterization_tab = ttk.Frame(
+            self.notebook,
+            style="Scientific.TFrame",
+            padding=14,
+        )
         self.run_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
         self.fiss_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
         self.notebook.add(self.input_tab, text="1  Geometry & inputs")
         self.notebook.add(self.mesh_tab, text="2  Mesh & holes")
-        self.notebook.add(self.run_tab, text="3  Run & results")
+        self.notebook.add(self.characterization_tab, text="3  Characterization")
+        self.notebook.add(self.run_tab, text="4  Run & results")
         self.notebook.add(self.fiss_tab, text="FISS flow")
 
         self._build_input_tab()
         self._build_mesh_tab()
+        self._build_characterization_tab()
         self._build_run_tab()
         self._build_fiss_tab()
 
@@ -804,6 +815,21 @@ class ScientificApp(PythonHoleInterpolationApp):
             font=("Segoe UI Semibold", 9),
         )
 
+    def _build_characterization_tab(self) -> None:
+        """Embed the optional characterization stage in the Workbench."""
+
+        self.characterization_panel = CharacterizationPanel(
+            self.characterization_tab,
+            surface_source=self._surface_source_from_ui,
+            default_output=(
+                Path(self.workdir_var.get().strip()).expanduser()
+                / "characterization"
+            ),
+            on_complete=self._on_characterization_complete,
+            continue_to_mesh=self._continue_mesh_after_characterization,
+        )
+        self.characterization_panel.pack(fill="both", expand=True)
+
     def _build_run_tab(self) -> None:
         tab = self.run_tab
         tab.columnconfigure(0, weight=2)
@@ -815,13 +841,25 @@ class ScientificApp(PythonHoleInterpolationApp):
         action.columnconfigure(0, weight=1)
         ttk.Label(action, text="Review the pre-flight summary before running Cast3M.", style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=0, column=0, sticky="w")
         ttk.Button(action, text="Validate configuration", style="Accent.TButton", command=self._validate_inputs).grid(row=1, column=0, sticky="ew", pady=(15, 8))
+        ttk.Checkbutton(
+            action,
+            text="Perform advanced crack characterization before meshing",
+            variable=self.characterization_enabled_var,
+        ).grid(row=2, column=0, sticky="w", pady=(2, 6))
+        self.characterization_button = ttk.Button(
+            action,
+            text="Open characterization tab",
+            style="Quiet.TButton",
+            command=self._show_characterization_tab,
+        )
+        self.characterization_button.grid(row=3, column=0, sticky="ew", pady=3)
         self.mesh_run_button = ttk.Button(action, text="Run mesh converter", style="Primary.TButton", command=self._run_from_workbench)
-        self.mesh_run_button.grid(row=2, column=0, sticky="ew", pady=3)
-        ttk.Button(action, text="Open working directory", style="Quiet.TButton", command=self._open_workdir).grid(row=3, column=0, sticky="ew", pady=(8, 3))
+        self.mesh_run_button.grid(row=4, column=0, sticky="ew", pady=3)
+        ttk.Button(action, text="Open working directory", style="Quiet.TButton", command=self._open_workdir).grid(row=5, column=0, sticky="ew", pady=(8, 3))
         self.gmsh_open_button = ttk.Button(action, text="Open generated mesh in Gmsh", style="Quiet.TButton", command=self._open_mesh_in_gmsh)
-        self.gmsh_open_button.grid(row=4, column=0, sticky="ew", pady=3)
-        ttk.Button(action, text="Open mesh comparison", style="Quiet.TButton", command=self._open_mesh_comparison).grid(row=5, column=0, sticky="ew", pady=3)
-        ttk.Label(action, textvariable=self.run_summary_var, style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=6, column=0, sticky="w", pady=(16, 0))
+        self.gmsh_open_button.grid(row=6, column=0, sticky="ew", pady=3)
+        ttk.Button(action, text="Open mesh comparison", style="Quiet.TButton", command=self._open_mesh_comparison).grid(row=7, column=0, sticky="ew", pady=3)
+        ttk.Label(action, textvariable=self.run_summary_var, style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=8, column=0, sticky="w", pady=(16, 0))
 
         progress = self._card(tab, "Run state")
         progress.grid(row=0, column=1, sticky="new", pady=(0, 10))
@@ -948,6 +986,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.fractal_seed_var,
             self.constant_zmin_var,
             self.constant_zmax_var,
+            self.characterization_enabled_var,
             self.re_ti_var,
             self.re_crpa_var,
             self.re_smfa_var,
@@ -1674,9 +1713,48 @@ class ScientificApp(PythonHoleInterpolationApp):
         toolbar.pack(side="bottom", fill="x")
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-    def _run_from_workbench(self) -> None:
+    def _show_characterization_tab(self) -> bool:
+        """Select the embedded characterization workspace."""
+
+        try:
+            workdir = Path(self.workdir_var.get().strip()).expanduser().resolve()
+            self._surface_source_from_ui()
+        except Exception as exc:
+            messagebox.showerror("Advanced characterization", str(exc))
+            return False
+        self.characterization_panel.output_directory.set(
+            str(workdir / "characterization")
+        )
+        self.notebook.select(self.characterization_tab)
+        return True
+
+    def _on_characterization_complete(self, result) -> None:
+        aperture = result.summary["aperture"]["statistics"]
+        hydraulic = result.summary["hydraulic"]
+        self._log(
+            "Characterization complete: "
+            f"mean aperture={aperture['arithmetic_mean']:.8g}; "
+            f"cubic mean={aperture['global_cubic_mean']:.8g}; "
+            "flow-path equivalent="
+            f"{hydraulic['global_equivalent_hydraulic_aperture']:.8g}\n"
+        )
+        self.run_summary_var.set(
+            f"Characterization report: "
+            f"{result.exported_files.get('characterization_report')}"
+        )
+        self._set_status("Crack characterization complete", "success")
+
+    def _continue_mesh_after_characterization(self) -> None:
+        self.notebook.select(self.run_tab)
+        self._run_from_workbench(skip_characterization=True)
+
+    def _run_from_workbench(self, *, skip_characterization: bool = False) -> None:
         if self._active_operation is not None:
             messagebox.showwarning("Solver busy", "Wait for the active Cast3M operation to finish.")
+            return
+        if self.characterization_enabled_var.get() and not skip_characterization:
+            if self._show_characterization_tab():
+                self.characterization_panel.start(continue_after=True)
             return
         if not self._validate_inputs(operation="mesh"):
             messagebox.showerror("Validation", "Correct the configuration issues before launching Cast3M.")
@@ -1729,6 +1807,8 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.fiss_run_button.configure(state=state)
         if hasattr(self, "gmsh_open_button"):
             self.gmsh_open_button.configure(state=state)
+        if hasattr(self, "characterization_button"):
+            self.characterization_button.configure(state=state)
 
     def _finish_operation(self, successful: bool, status: str, summary: str) -> None:
         self.progress.stop()

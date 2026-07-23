@@ -1,15 +1,20 @@
 from dataclasses import replace
 from pathlib import Path
+from tkinter import ttk
 
 import pytest
 
 import castem_pipeline_gui_scientific as scientific
 from castem_pipeline_headless import load_setup, validate_setup
+from characterization_gui import CharacterizationPanel
 from python_hole_interpolation import HoleGeometry
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "examples" / "scientific-run.ini"
 SHAPE_CONFIG = ROOT / "examples" / "shaped-holes" / "all-shapes.ini"
+CHARACTERIZATION_CONFIG = (
+    ROOT / "examples" / "characterization" / "characterize-only.ini"
+)
 
 
 def test_scientific_launcher_dispatches_headless_validation(capsys) -> None:
@@ -69,3 +74,20 @@ def test_non_circular_shapes_are_rejected_in_reference_mode() -> None:
 
     with pytest.raises(ValueError, match="require mesh mode = python"):
         validate_setup(setup)
+
+
+def test_characterization_only_config_does_not_require_castem() -> None:
+    setup = load_setup(CHARACTERIZATION_CONFIG)
+
+    assert setup.operation == "characterize"
+    assert setup.characterization_enabled is True
+    assert setup.characterization.aperture_method == "local_normal"
+    assert setup.characterization.flow_direction == "Y"
+    assert validate_setup(setup, check_castem=True) == ()
+
+
+def test_characterization_custom_vector_parser_is_strict() -> None:
+    assert issubclass(CharacterizationPanel, ttk.Frame)
+    assert CharacterizationPanel._parse_vector("1, 2, 3") == (1.0, 2.0, 3.0)
+    with pytest.raises(ValueError, match="three components"):
+        CharacterizationPanel._parse_vector("1, 2")

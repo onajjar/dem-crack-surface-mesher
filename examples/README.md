@@ -99,6 +99,21 @@ python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hu
 python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-planes.ini
 ```
 
+## Run advanced characterization examples
+
+Four deterministic planar, anisotropic, bottleneck, and synthetic-from-measured
+examples are documented in [`examples/characterization`](characterization/README.md).
+Generate their mesh-compatible CSV surfaces, full metric exports, validation
+reports, and publication figures with:
+
+```powershell
+python examples\characterization\run_examples.py
+```
+
+For a headless application run, set `operation = characterize` or
+`operation = characterize_and_mesh` and enable the documented
+`[characterization]` section in `scientific-run.ini`.
+
 ## Run without the GUI
 
 [`scientific-run.ini`](scientific-run.ini) contains the complete documented two-hole configuration, including mesh, export, merge, Gmsh, and FISS options. Validate or execute it from the repository root:

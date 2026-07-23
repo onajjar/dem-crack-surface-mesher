@@ -2,7 +2,12 @@
 
 [![CI](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml)
 
-A Windows desktop pipeline that loads CSVs, fits raw DEAP discrete-simulation results in Python, or synthesizes structured crack surfaces; converts them into Cast3M meshes; prepares a combined NASTRAN BDF for downstream CFD import; and optionally evaluates crack flow with Cast3M's `FISS` operator.
+A Windows desktop pipeline that loads CSVs, fits raw DEAP discrete-simulation
+results in Python, or synthesizes structured crack surfaces; optionally
+characterizes aperture, geometrical tortuosity, roughness, Hurst scaling,
+orientation, connectivity, and cubic-law hydraulic proxies; converts the same
+surface into Cast3M meshes; prepares a combined NASTRAN BDF for downstream CFD
+import; and optionally evaluates crack flow with Cast3M's `FISS` operator.
 
 > **Baseline status:** `v0.1.0-baseline` preserves the historical T13 program. `castem_pipeline_gui_t13.py` and every file in `source_codes/` remain byte-for-byte protected; current development is isolated in the scientific launcher and its supporting modules.
 
@@ -28,6 +33,9 @@ GitHub-compatible citation metadata are provided in
 
 - Selects an existing four-CSV dataset, reconstructs a DEAP crack surface with the MATLAB-compatible Python quadratic LOESS fit, synthesizes a reproducible self-affine fractal surface, or creates two constant-Z planes.
 - Materializes every source as the same canonical `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin` matrices expected by the preserved Cast3M templates.
+- Optionally characterizes the reconstructed surface before meshing—or without
+  meshing—and exports reproducible statistics, diagnostics, reports, and
+  statistically representative synthetic realizations.
 - Patches parameters only inside the marked `Main Program` section of a `.dgibi` template.
 - Invokes Cast3M through its Windows batch launcher and streams solver output into the GUI.
 - Creates a crack volume mesh and named boundary-surface meshes in NASTRAN BDF format.
@@ -45,7 +53,11 @@ flowchart LR
     A2[Self-affine fractal] --> B
     A3[Constant Z planes] --> B
     B --> C[Four canonical matrices]
-    C --> D[GUI or headless runner]
+    C --> P{Characterize?}
+    P -->|Yes| Q[Aperture, tortuosity, roughness, Hurst and hydraulic proxies]
+    Q --> R[Reports, figures and optional synthetic CSV surface]
+    P -->|No| D[GUI or headless runner]
+    Q --> D
     D --> E[Patch DGIBI Main Program]
     C --> F[Cast3M mesh run]
     E --> F
@@ -202,10 +214,16 @@ This image is rendered from the real four-shape Cast3M volume BDF. Its final max
 
 ### Scientific workbench
 
-The scientific workbench is the single launcher for enhanced use. It separates geometry, mesh/holes, run/results, and FISS flow into focused tabs; dynamically exposes CSV, Python-fitted DEAP, fractal, or constant-plane inputs; supports mode-aware preflight, real XY/hole and three-dimensional wall previews, explicit reference and bulk-inflated hole modes, mutually exclusive solver runs, verified fresh outputs, streamed solver status, and one-click Gmsh opening.
+The scientific workbench is the single launcher for enhanced use. It separates
+geometry, mesh/holes, characterization, run/results, and FISS flow into focused tabs; dynamically
+exposes CSV, Python-fitted DEAP, fractal, or constant-plane inputs; and opens a
+single embedded non-blocking **Characterization** tab. Users can
+characterize only, characterize then continue directly to mesh, save/reload
+settings, cancel expensive work, generate synthetic cracks, and export reports
+without adding MATLAB as a runtime dependency.
 
 ```powershell
-python castem_pipeline_gui_scientific.py
+python.exe .\castem_pipeline_gui_scientific.py
 ```
 
 ![Current scientific workbench walkthrough covering geometry, mesh controls, run results, and FISS setup](docs/assets/demo.gif)
@@ -217,6 +235,10 @@ python castem_pipeline_gui_scientific.py
 ![Scientific workbench: run controls including one-click Gmsh opening](docs/assets/scientific-workbench-run-results.png)
 
 See [docs/scientific-workbench.md](docs/scientific-workbench.md) for use, scope, and safety notes.
+Scientific definitions are documented in
+[docs/crack_characterization.md](docs/crack_characterization.md); synthetic
+generation is documented in
+[docs/synthetic_crack_generation.md](docs/synthetic_crack_generation.md).
 
 ### Headless text-file runner
 
@@ -236,6 +258,11 @@ generated surface modes retain the established defaults. Paths are resolved
 relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set
 `open_gmsh = true` only when a Gmsh window is wanted. See the
 [headless runner guide](docs/headless-runner.md).
+
+Use `operation = characterize` to calculate and export characteristics without
+starting Cast3M, or `operation = characterize_and_mesh` to run the optional
+stage and then mesh the unchanged `SurfaceGrid`. The `[characterization]` and
+`[synthetic]` sections in `examples/scientific-run.ini` document every option.
 
 ## Requirements
 

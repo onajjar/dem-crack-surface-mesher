@@ -1,6 +1,11 @@
 flowchart LR
     DEAP["Raw DEAP results<br/>deap_post.h5 · deap_output.h5"] --> FIT["Python quadratic LOESS<br/>MATLAB-compatible surface"]
     FIT --> SOURCE
+    GUI --> DECISION{"Advanced characterization?"}
+    DECISION -->|yes| CHARACTER["Python characterization<br/>aperture · geometrical tortuosity<br/>roughness/Hurst · cubic-law proxies"]
+    CHARACTER --> REPORT["JSON/CSV report · figures<br/>optional synthetic four-CSV surface"]
+    DECISION -->|bypass| DGIBI
+    CHARACTER --> DGIBI
     SOURCE["Surface source<br/>CSV · fitted DEAP · self-affine fractal<br/>constant Z planes"] --> CONTRACT["Canonical matrices<br/>xrange · yrange<br/>zfit_zmin · zfit_zmax"]
     CONTRACT --> GUI["Scientific launcher<br/>GUI or headless<br/>validation · naming"]
     TEMPLATE["Preserved templates<br/>castem_tool.dgibi<br/>fuite_fissure.dgibi"] --> GUI
@@ -23,8 +28,8 @@ flowchart LR
     classDef support fill:#fff1d8,stroke:#c89236,color:#10233f,stroke-width:2px;
 
     class DEAP,FIT,SOURCE,CONTRACT input;
-    class GUI,RESULTS gui;
+    class GUI,CHARACTER,RESULTS gui;
     class CASTEM,FISS castem;
     class MESH mesh;
-    class CFD output;
+    class CFD,REPORT output;
     class TEMPLATE,DGIBI,FSETUP support;

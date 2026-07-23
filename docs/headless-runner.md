@@ -97,8 +97,24 @@ constant_zmax = 2e-4
 - `operation = mesh` runs only mesh generation.
 - `operation = fiss` runs only the configured FISS calculation.
 - `operation = both` runs mesh first and starts FISS only after mesh success.
+- `operation = characterize` calculates and exports crack characteristics
+  without resolving or starting Cast3M.
+- `operation = characterize_and_mesh` characterizes the same reconstructed
+  surface first and continues to Cast3M only after success.
 - `mode = python` uses the accelerated conformal inflated-hole fill.
 - `mode = reference` uses the preserved Cast3M hole construction.
+
+Setting `[characterization] enabled = true` also inserts the optional stage
+before a normal mesh operation. Existing INI files with no section retain their
+previous direct-to-mesh behavior. The complete section in
+[`examples/scientific-run.ini`](../examples/scientific-run.ini) documents
+aperture definition, global/custom flow vector, cutoff, units, normal
+smoothing, Hurst fit range/bootstrap, figures, and output location.
+
+An optional `[synthetic]` section generates a seeded anisotropic surface,
+writes the same four canonical CSVs, reruns characterization, and exports
+target-versus-achieved values. Characterization is Python-only; MATLAB is not a
+runtime dependency.
 
 Any number of consecutively or non-consecutively numbered holes can be listed:
 

@@ -24,6 +24,15 @@
 - Added a compact, clickable publisher DOI citation below the Scientific
   Workbench so the methodological reference remains visible without competing
   with the meshing controls.
+- Added an optional Python-only advanced crack-characterization stage operating
+  on the shared reconstructed `SurfaceGrid`, with global-Z/local-normal
+  aperture, robust statistics, directional geometrical tortuosity, cubic-law
+  flow-path proxies, roughness/Hurst diagnostics, orientation/connectivity,
+  anisotropic synthetic generation, publication figures, and complete exports.
+- Added a dedicated non-blocking Workbench tab, characterize-only and
+  characterize-then-mesh headless operations, four validated examples,
+  independent MATLAB analytical reference data, and a documented legacy
+  algorithm/cleanup audit.
 
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 

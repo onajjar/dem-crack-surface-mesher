@@ -1,0 +1,10 @@
+{
+  "case": "synthetic_from_characteristics",
+  "source_case": "../2_anisotropic_rough/config.json",
+  "points_x": 64,
+  "points_y": 48,
+  "flow_direction": "X",
+  "aperture_method": "local_normal",
+  "length_unit": "m",
+  "random_seed": 404
+}

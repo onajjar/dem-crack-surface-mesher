@@ -1,0 +1,21 @@
+{
+  "arithmetic_mean_aperture": 0.00020000000000000004,
+  "aperture_standard_deviation": 2.710505431213761e-20,
+  "cubic_mean_aperture": 0.00019999999999999998,
+  "flow_path_equivalent_aperture": 0.0002000000000000001,
+  "mean_mid_surface_geometrical_tortuosity": 1.0,
+  "warnings": [
+    "lower flow structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "lower flow power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "lower transverse structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "lower transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper flow structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper flow power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper transverse structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid flow structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid flow power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid transverse structure_function: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points."
+  ]
+}

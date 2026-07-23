@@ -1,0 +1,15 @@
+{
+  "arithmetic_mean_aperture": 0.0001999999698890787,
+  "aperture_standard_deviation": 3.9999989912918226e-05,
+  "cubic_mean_aperture": 0.00020797122846524574,
+  "flow_path_equivalent_aperture": 0.00020101236260179574,
+  "mean_mid_surface_geometrical_tortuosity": 1.0000000166023906,
+  "warnings": [
+    "lower flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "lower transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "upper flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "upper transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",
+    "mid flow power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
+    "mid transverse power_spectral_density: The surface is flat or the usable scaling range has fewer than four points."
+  ]
+}

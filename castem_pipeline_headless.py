@@ -19,6 +19,11 @@ from castem_pipeline_gui_python_holes import (
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
+from crack_characterization import (
+    CharacterizationConfig,
+    SyntheticConfig,
+    characterize_surface,
+)
 from dataset_naming import DatasetNaming, parse_csv_set_metadata
 from python_hole_interpolation import (
     HoleGeometry,
@@ -42,7 +47,14 @@ from surface_generation import (
     write_surface_grid,
 )
 
-SUPPORTED_OPERATIONS = {"mesh", "fiss", "both", "mesh_and_fiss"}
+SUPPORTED_OPERATIONS = {
+    "mesh",
+    "fiss",
+    "both",
+    "mesh_and_fiss",
+    "characterize",
+    "characterize_and_mesh",
+}
 SUPPORTED_MESH_MODES = {"python", "reference"}
 SUPPORTED_FISS_MODELS = {
     "POISEU_BLASIUS",
@@ -76,6 +88,10 @@ class HeadlessSetup:
     csv_zmax: Path
     params: baseline.CastemMainParams
     fiss: baseline.FissSetup
+    characterization_enabled: bool
+    characterization_output: Path
+    characterization: CharacterizationConfig
+    synthetic: SyntheticConfig | None
 
 
 def _path(base: Path, value: str) -> Path:
@@ -102,6 +118,33 @@ def _optional_bounding_box(section, key: str = "bounding_box") -> tuple[float, .
             "surface bounding_box must contain Xmin, Xmax, Ymin, Ymax, Zmin, Zmax"
         )
     return tuple(baseline.parse_float(part) for part in parts)
+
+
+def _vector(section, key: str, fallback: str) -> tuple[float, float, float]:
+    parts = [
+        part
+        for part in re.split(r"[,\s]+", section.get(key, fallback=fallback).strip())
+        if part
+    ]
+    if len(parts) != 3:
+        raise ValueError(f"{key} must contain three comma- or space-separated components.")
+    return tuple(baseline.parse_float(part) for part in parts)
+
+
+def _formats(section) -> tuple[str, ...]:
+    return tuple(
+        value.strip().lower()
+        for value in section.get("publication_formats", "png").split(",")
+        if value.strip()
+    )
+
+
+def _operation_uses_mesh(operation: str) -> bool:
+    return operation in {"mesh", "both", "mesh_and_fiss", "characterize_and_mesh"}
+
+
+def _operation_uses_fiss(operation: str) -> bool:
+    return operation in {"fiss", "both", "mesh_and_fiss"}
 
 
 def _build_fiss(section) -> baseline.FissSetup:
@@ -193,6 +236,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     holes_section = parser["holes"]
     base = config_path.parent
     workdir = _path(base, run.get("working_directory"))
+    operation = run.get("operation", "mesh").strip().lower()
 
     surface_section = parser["surface"] if parser.has_section("surface") else None
     surface_mode = (
@@ -314,9 +358,116 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     )
     params.hole_shapes = [hole for _index, hole in holes]
 
+    characterization_section = (
+        parser["characterization"] if parser.has_section("characterization") else None
+    )
+    characterization_requested = operation in {"characterize", "characterize_and_mesh"}
+    characterization_enabled = (
+        characterization_section.getboolean("enabled", fallback=False)
+        if characterization_section is not None
+        else False
+    ) or characterization_requested
+    if characterization_section is None:
+        characterization = CharacterizationConfig()
+        characterization_output = workdir / "characterization"
+    else:
+        characterization = CharacterizationConfig(
+            aperture_method=characterization_section.get(
+                "aperture_method", "local_normal"
+            ),
+            flow_direction=characterization_section.get("flow_direction", "Y"),
+            custom_flow_vector=_vector(
+                characterization_section,
+                "custom_flow_vector",
+                "1, 1, 0",
+            ),
+            tortuosity_direction=characterization_section.get(
+                "tortuosity_direction", "flow"
+            ),
+            custom_tortuosity_vector=_vector(
+                characterization_section,
+                "custom_tortuosity_vector",
+                "1, 1, 0",
+            ),
+            aperture_cutoff=baseline.parse_float(
+                characterization_section.get("aperture_cutoff", "1e-12")
+            ),
+            allow_negative_aperture=characterization_section.getboolean(
+                "allow_negative_aperture", fallback=False
+            ),
+            interpolate_missing=characterization_section.getboolean(
+                "interpolate_missing", fallback=False
+            ),
+            length_unit=characterization_section.get("length_unit", "m"),
+            normal_smoothing_sigma=baseline.parse_float(
+                characterization_section.get("normal_smoothing_sigma", "0")
+            ),
+            hurst_min_lag=characterization_section.getint(
+                "hurst_min_lag", fallback=1
+            ),
+            hurst_max_scale_fraction=baseline.parse_float(
+                characterization_section.get("hurst_max_scale_fraction", "0.25")
+            ),
+            hurst_bootstrap_samples=characterization_section.getint(
+                "hurst_bootstrap_samples", fallback=100
+            ),
+            random_seed=characterization_section.getint(
+                "random_seed", fallback=20260723
+            ),
+            publication_formats=_formats(characterization_section),
+            figure_dpi=characterization_section.getint("figure_dpi", fallback=220),
+            generate_figures=characterization_section.getboolean(
+                "generate_figures", fallback=True
+            ),
+        )
+        characterization_output = _path(
+            base,
+            characterization_section.get(
+                "output_directory",
+                str(workdir / "characterization"),
+            ),
+        )
+    characterization.validated()
+
+    synthetic: SyntheticConfig | None = None
+    if parser.has_section("synthetic") and parser["synthetic"].getboolean(
+        "enabled", fallback=False
+    ):
+        section = parser["synthetic"]
+        synthetic = SyntheticConfig(
+            points_x=section.getint("points_x"),
+            points_y=section.getint("points_y"),
+            size_x=_number(section, "size_x"),
+            size_y=_number(section, "size_y"),
+            mean_aperture=_number(section, "mean_aperture"),
+            aperture_std=_number(section, "aperture_standard_deviation"),
+            mid_surface_rms=_number(section, "mid_surface_rms"),
+            hurst_x=_number(section, "hurst_x"),
+            hurst_y=_number(section, "hurst_y"),
+            correlation_length_x=_optional_number(section, "correlation_length_x"),
+            correlation_length_y=_optional_number(section, "correlation_length_y"),
+            minimum_aperture=baseline.parse_float(
+                section.get("minimum_aperture", "0")
+            ),
+            maximum_aperture=_optional_number(section, "maximum_aperture"),
+            contact_fraction=baseline.parse_float(
+                section.get("contact_fraction", "0")
+            ),
+            positive_aperture=section.getboolean(
+                "positive_aperture", fallback=True
+            ),
+            mean_plane_slopes=(
+                baseline.parse_float(section.get("mean_plane_slope_x", "0")),
+                baseline.parse_float(section.get("mean_plane_slope_y", "0")),
+            ),
+            random_seed=section.getint("random_seed", fallback=20260723),
+            realizations=section.getint("realizations", fallback=1),
+        )
+        synthetic.validated()
+
     return HeadlessSetup(
         config_path=config_path,
-        operation=run.get("operation", "mesh").strip().lower(),
+        operation=operation,
         castem_version=run.get("castem_version", "25").strip(),
         workdir=workdir,
         archive_existing=run.getboolean("archive_existing_outputs", fallback=True),
@@ -332,6 +483,10 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         csv_zmax=csv_zmax,
         params=params,
         fiss=_build_fiss(parser["fiss"]),
+        characterization_enabled=characterization_enabled,
+        characterization_output=characterization_output,
+        characterization=characterization,
+        synthetic=synthetic,
     )
 
 
@@ -359,13 +514,16 @@ def validate_setup(
     surface_grid: SurfaceGrid | None = None,
 ) -> tuple[int, ...]:
     if setup.operation not in SUPPORTED_OPERATIONS:
-        raise ValueError("operation must be mesh, fiss, both, or mesh_and_fiss.")
+        raise ValueError(
+            "operation must be mesh, fiss, both, mesh_and_fiss, characterize, "
+            "or characterize_and_mesh."
+        )
     if setup.mesh_mode not in SUPPORTED_MESH_MODES:
         raise ValueError("mesh mode must be python or reference.")
     surface_grid = surface_grid or build_surface_grid(setup.surface_source)
-    if setup.operation in {"mesh", "both", "mesh_and_fiss"} and not setup.mesh_template.is_file():
+    if _operation_uses_mesh(setup.operation) and not setup.mesh_template.is_file():
         raise FileNotFoundError(f"Mesh DGIBI template does not exist: {setup.mesh_template}")
-    if setup.operation in {"fiss", "both", "mesh_and_fiss"} and not setup.fiss_template.is_file():
+    if _operation_uses_fiss(setup.operation) and not setup.fiss_template.is_file():
         raise FileNotFoundError(f"FISS DGIBI template does not exist: {setup.fiss_template}")
 
     p = setup.params
@@ -389,13 +547,17 @@ def validate_setup(
         raise ValueError("Rectangle, triangle, and regular-polygon holes require mesh mode = python.")
     if (
         p.holes_enabled
-        and setup.operation in {"fiss", "both", "mesh_and_fiss"}
+        and _operation_uses_fiss(setup.operation)
         and any(hole.shape != "circle" for hole in geometries)
     ):
         raise ValueError("The preserved FISS workflow currently supports circular holes only.")
 
     points_per_hole: tuple[int, ...] = ()
-    if p.holes_enabled and setup.mesh_mode == "python":
+    if (
+        p.holes_enabled
+        and setup.mesh_mode == "python"
+        and _operation_uses_mesh(setup.operation)
+    ):
         rings = detect_hole_rings(
             surface_grid.x,
             surface_grid.y,
@@ -408,7 +570,12 @@ def validate_setup(
             raise RuntimeError("Hole-wall and square-interface edge counts are not conformal.")
         points_per_hole = tuple(len(ring.xy) for ring in rings)
     _validate_fiss(setup.fiss)
-    if check_castem:
+    setup.characterization.validated()
+    if setup.operation == "characterize" and not setup.characterization_enabled:
+        raise ValueError("Characterize operation requires characterization to be enabled.")
+    if check_castem and (
+        _operation_uses_mesh(setup.operation) or _operation_uses_fiss(setup.operation)
+    ):
         baseline.resolve_castem_exe(setup.castem_version)
     return points_per_hole
 
@@ -668,6 +835,8 @@ def main(argv: list[str] | None = None) -> int:
             "mesh_mode": setup.mesh_mode,
             "surface_mode": setup.surface_source.normalized_mode,
             "workdir": str(setup.workdir),
+            "characterization_enabled": setup.characterization_enabled,
+            "characterization_output": str(setup.characterization_output),
             "hole_shapes": [
                 hole.shape for hole in getattr(setup.params, "hole_shapes", ())
             ],
@@ -729,14 +898,53 @@ def main(argv: list[str] | None = None) -> int:
                 setup.csv_zmax.name,
             ]
         if args.validate_only:
+            summary["characterization_configuration"] = {
+                "aperture_method": setup.characterization.aperture_method,
+                "flow_direction": setup.characterization.flow_direction,
+                "length_unit": setup.characterization.length_unit,
+                "synthetic_generation": setup.synthetic is not None,
+            }
             summary["valid"] = True
             print(json.dumps(summary, indent=2))
             return 0
 
-        executable = baseline.resolve_castem_exe(setup.castem_version)
-        if setup.operation in {"mesh", "both", "mesh_and_fiss"}:
+        if setup.characterization_enabled:
+            characterization = characterize_surface(
+                surface_grid,
+                setup.characterization,
+                output_directory=setup.characterization_output,
+                synthetic_config=setup.synthetic,
+                progress=lambda fraction, message: print(
+                    f"[characterization {fraction:5.1%}] {message}"
+                ),
+            )
+            aperture_summary = characterization.summary["aperture"]["statistics"]
+            hydraulic_summary = characterization.summary["hydraulic"]
+            summary["characterization"] = {
+                "success": True,
+                "output_directory": str(setup.characterization_output),
+                "arithmetic_mean_aperture": aperture_summary["arithmetic_mean"],
+                "cubic_mean_aperture": aperture_summary["global_cubic_mean"],
+                "equivalent_hydraulic_aperture": hydraulic_summary[
+                    "global_equivalent_hydraulic_aperture"
+                ],
+                "warnings": characterization.warnings,
+                "exported_files": {
+                    key: str(path)
+                    for key, path in characterization.exported_files.items()
+                },
+            }
+
+        executable = None
+        if _operation_uses_mesh(setup.operation) or _operation_uses_fiss(
+            setup.operation
+        ):
+            executable = baseline.resolve_castem_exe(setup.castem_version)
+        if _operation_uses_mesh(setup.operation):
+            assert executable is not None
             summary["mesh"] = run_mesh(setup, executable, surface_grid)
-        if setup.operation in {"fiss", "both", "mesh_and_fiss"}:
+        if _operation_uses_fiss(setup.operation):
+            assert executable is not None
             mesh_result = summary.get("mesh")
             if isinstance(mesh_result, dict) and not mesh_result.get("success"):
                 raise RuntimeError("Mesh run failed; FISS was not started.")
@@ -748,7 +956,7 @@ def main(argv: list[str] | None = None) -> int:
         success = all(
             not isinstance(value, dict) or value.get("success", True)
             for key, value in summary.items()
-            if key in {"mesh", "fiss"}
+            if key in {"characterization", "mesh", "fiss"}
         )
         return 0 if success else 1
     except Exception as exc:
