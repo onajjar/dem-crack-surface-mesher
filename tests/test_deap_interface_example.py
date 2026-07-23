@@ -1,6 +1,7 @@
 from pathlib import Path
+from unittest.mock import patch
 
-from castem_pipeline_gui_scientific import ScientificApp
+from castem_pipeline_gui_scientific import ARTICLE_URL, ScientificApp
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -88,3 +89,10 @@ def test_deap_toolbar_example_loads_bundled_raw_hdf5_case() -> None:
     assert app.holes_enabled_var.get() is False
     assert app.notebook.selected is app.input_tab
     assert validated == ["mesh"]
+
+
+def test_article_footer_opens_publisher_doi() -> None:
+    with patch("castem_pipeline_gui_scientific.webbrowser.open_new_tab") as open_tab:
+        ScientificApp._open_article()
+
+    open_tab.assert_called_once_with(ARTICLE_URL)

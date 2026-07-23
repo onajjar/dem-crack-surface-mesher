@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tkinter as tk
+import webbrowser
 from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,6 +42,7 @@ DOCUMENTED_INPUT = ROOT / "examples" / "input"
 DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
 DEAP_EXAMPLE_CONFIG = ROOT / "examples" / "deap" / "1_simple" / "run.ini"
 COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
+ARTICLE_URL = "https://doi.org/10.1016/j.nucengdes.2025.114718"
 SHAPE_GALLERY = (
     HoleGeometry("circle", -0.25, 0.25, radius=0.045),
     HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
@@ -118,6 +120,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         style.configure("Scientific.TLabel", background=c["surface"], foreground=c["ink"], font=("Segoe UI", 10))
         style.configure("Card.TLabel", background=c["card"], foreground=c["ink"], font=("Segoe UI", 10))
         style.configure("Muted.TLabel", background=c["surface"], foreground=c["muted"], font=("Segoe UI", 9))
+        style.configure("Citation.TLabel", background=c["surface"], foreground=c["muted"], font=("Segoe UI", 8))
+        style.configure("CitationLink.TLabel", background=c["surface"], foreground=c["blue"], font=("Segoe UI", 8, "underline"))
         style.configure("CardMuted.TLabel", background=c["card"], foreground=c["muted"], font=("Segoe UI", 9))
         style.configure("Hero.TLabel", background=c["navy"], foreground="#ffffff", font=("Segoe UI Semibold", 21))
         style.configure("HeroSub.TLabel", background=c["navy"], foreground="#d7e7f7", font=("Segoe UI", 10))
@@ -202,7 +206,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Label(toolbar, textvariable=self.context_var, style="Muted.TLabel").pack(side="right")
 
         self.notebook = ttk.Notebook(shell, style="Scientific.TNotebook")
-        self.notebook.pack(fill="both", expand=True, padx=20, pady=(10, 14))
+        self.notebook.pack(fill="both", expand=True, padx=20, pady=(10, 5))
         self.input_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
         self.mesh_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
         self.run_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
@@ -216,9 +220,35 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._build_mesh_tab()
         self._build_run_tab()
         self._build_fiss_tab()
+
+        citation = ttk.Frame(shell, style="Scientific.TFrame")
+        citation.pack(fill="x", padx=20, pady=(0, 10))
+        ttk.Label(
+            citation,
+            text=(
+                "Scientific reference: Najjar et al. (2026), "
+                "Nuclear Engineering and Design 448, 114718 —"
+            ),
+            style="Citation.TLabel",
+        ).pack(side="left")
+        article_link = ttk.Label(
+            citation,
+            text="doi:10.1016/j.nucengdes.2025.114718",
+            style="CitationLink.TLabel",
+            cursor="hand2",
+        )
+        article_link.pack(side="left", padx=(4, 0))
+        article_link.bind("<Button-1>", self._open_article)
+
         self._update_method_summary()
         self._install_change_tracking()
         self._suspend_dirty = False
+
+    @staticmethod
+    def _open_article(_event=None) -> None:
+        """Open the crack-reconstruction article in the default browser."""
+
+        webbrowser.open_new_tab(ARTICLE_URL)
 
     def _card(self, parent, title: str, *, padding: int = 14) -> ttk.LabelFrame:
         return ttk.LabelFrame(parent, text=title, style="Section.TLabelframe", padding=padding)

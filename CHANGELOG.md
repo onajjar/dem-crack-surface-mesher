@@ -21,6 +21,9 @@
   crack-reconstruction methodology.
 - Added a one-click Scientific Workbench DEAP fitting example backed by the
   bundled `1_simple` raw-HDF5 application and its validated fit configuration.
+- Added a compact, clickable publisher DOI citation below the Scientific
+  Workbench so the methodological reference remains visible without competing
+  with the meshing controls.
 
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 
