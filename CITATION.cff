@@ -1,0 +1,52 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software or its crack-reconstruction workflow in research,
+  please cite the preferred article below.
+title: "DEM/CFD Crack Geometry to Mesh Converter"
+type: software
+authors:
+  - family-names: Najjar
+    given-names: Omar
+  - family-names: Heitz
+    given-names: Thomas
+  - family-names: Oliver-Leblond
+    given-names: Cécile
+  - family-names: Tailhan
+    given-names: Jean-Louis
+  - family-names: Rastiello
+    given-names: Giuseppe
+  - family-names: Ragueneau
+    given-names: Frédéric
+repository-code: "https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter"
+url: "https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter"
+keywords:
+  - crack reconstruction
+  - beam-particle model
+  - discrete element method
+  - computational fluid dynamics
+  - Cast3M
+  - Gmsh
+preferred-citation:
+  type: article
+  title: >-
+    Three-dimensional crack reconstruction from Beam–Particle Model for
+    CFD-based leakage assessment
+  authors:
+    - family-names: Najjar
+      given-names: Omar
+    - family-names: Heitz
+      given-names: Thomas
+    - family-names: Oliver-Leblond
+      given-names: Cécile
+    - family-names: Tailhan
+      given-names: Jean-Louis
+    - family-names: Rastiello
+      given-names: Giuseppe
+    - family-names: Ragueneau
+      given-names: Frédéric
+  journal: "Nuclear Engineering and Design"
+  volume: 448
+  start: 114718
+  year: 2026
+  doi: "10.1016/j.nucengdes.2025.114718"
+  url: "https://www.sciencedirect.com/science/article/pii/S0029549325008957"

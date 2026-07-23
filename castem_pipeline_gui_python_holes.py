@@ -13,6 +13,11 @@ from pathlib import Path
 
 import castem_pipeline_gui_t13 as baseline
 from python_hole_interpolation import build_python_holes_dgibi
+from stl_export import (
+    active_native_stl_sort_lines,
+    comment_native_stl_export,
+    export_boundary_bdfs_to_stl,
+)
 
 MESH_OUTPUT_PATTERNS = (
     "castem_mesh_*.bdf",
@@ -84,6 +89,21 @@ def missing_mesh_outputs(workdir: Path, params: baseline.CastemMainParams) -> tu
     )
 
 
+def patch_mesh_program(template: str, params: baseline.CastemMainParams) -> str:
+    """Patch a mesh program and disable Cast3M's fragile native STL writer."""
+
+    program = baseline.patch_dgibi_main_program(template, params)
+    if params.opti_stl:
+        program = comment_native_stl_export(program)
+        active = active_native_stl_sort_lines(program)
+        if active:
+            raise RuntimeError(
+                "Generated DGIBI still contains active native STL statements: "
+                + ", ".join(active)
+            )
+    return program
+
+
 class PythonHoleInterpolationApp(baseline.App):
     """The baseline UI with an optimized, hole-only main run implementation."""
 
@@ -104,18 +124,9 @@ class PythonHoleInterpolationApp(baseline.App):
                 raise ValueError("re_fact_hole must be a finite value > 0")
 
     def _run(self) -> None:
-        # Preserve the exact baseline implementation for no-hole runs.
         try:
             preview = self._read_params()
             self._validate_params(preview)
-        except Exception as exc:
-            baseline.messagebox.showerror("Error", str(exc))
-            return
-        if not preview.holes_enabled or not preview.holes:
-            super()._run()
-            return
-
-        try:
             dgibi = Path(self.dgibi_var.get().strip())
             if not dgibi.exists():
                 raise FileNotFoundError("DGIBI template not found.")
@@ -133,38 +144,56 @@ class PythonHoleInterpolationApp(baseline.App):
             params = preview
             archive_existing_mesh_outputs(workdir, self._log)
             template_text = dgibi.read_text(encoding="utf-8", errors="ignore")
-            patched, hole_meshes = build_python_holes_dgibi(
-                template_text,
-                params,
-                csv_x,
-                csv_y,
-                csv_zmin,
-                csv_zmax,
-                baseline.patch_dgibi_main_program,
-                hole_mesh_directory=workdir,
+            mode = getattr(self, "solver_mode_var", None)
+            uses_python_holes = bool(
+                params.holes_enabled
+                and params.holes
+                and (mode is None or mode.get() == "python")
             )
-            if hole_meshes is None:
-                raise RuntimeError("Python hole interpolation requires at least one hole.")
+            if uses_python_holes:
+                patched, hole_meshes = build_python_holes_dgibi(
+                    template_text,
+                    params,
+                    csv_x,
+                    csv_y,
+                    csv_zmin,
+                    csv_zmax,
+                    patch_mesh_program,
+                    hole_mesh_directory=workdir,
+                )
+                if hole_meshes is None:
+                    raise RuntimeError("Python hole interpolation requires at least one hole.")
+                mode_suffix = "_python_holes"
+            else:
+                patched = patch_mesh_program(template_text, params)
+                hole_meshes = None
+                mode_suffix = "_reference"
         except Exception as exc:
             baseline.messagebox.showerror("Error", str(exc))
             return
 
-        self._log("\n===== PYTHON-HOLE RUN START =====\n")
+        self._log("\n===== MESH RUN START =====\n")
         self._log(f"Workdir: {workdir}\n")
-        self._log(
-            "Python hole boundary points per hole: "
-            + ", ".join(str(count) for count in hole_meshes.points_per_hole)
-            + "\n"
-        )
-        self._log(
-            f"Bulk hole-fill files: {hole_meshes.min_path.name}, "
-            f"{hole_meshes.max_path.name}, {hole_meshes.mean_path.name}\n"
-        )
-        self._log(
-            "Radial layer fractions (outer to hole): "
-            + ", ".join(f"{value:.5f}" for value in hole_meshes.radial_fractions)
-            + "\n"
-        )
+        if hole_meshes is not None:
+            self._log(
+                "Python hole boundary points per hole: "
+                + ", ".join(str(count) for count in hole_meshes.points_per_hole)
+                + "\n"
+            )
+            self._log(
+                f"Bulk hole-fill files: {hole_meshes.min_path.name}, "
+                f"{hole_meshes.max_path.name}, {hole_meshes.mean_path.name}\n"
+            )
+            self._log(
+                "Radial layer fractions (outer to hole): "
+                + ", ".join(f"{value:.5f}" for value in hole_meshes.radial_fractions)
+                + "\n"
+            )
+        if params.opti_stl:
+            self._log(
+                "Native Cast3M STL block is commented out; boundary BDF files "
+                "will be converted to high-precision ASCII STL by Python.\n"
+            )
 
         names = self._expected_csv_names(params)
         baseline.safe_copy(csv_x, workdir / names["xrange"])
@@ -173,26 +202,33 @@ class PythonHoleInterpolationApp(baseline.App):
         baseline.safe_copy(csv_zmin, workdir / names["zfit_zmin"])
 
         out_dgibi = workdir / (
-            f"{dgibi.stem}_python_holes_ti{params.re_ti}_crpa{params.re_crpa}_"
+            f"{dgibi.stem}{mode_suffix}_ti{params.re_ti}_crpa{params.re_crpa}_"
             f"smfa{params.re_smfa_int}_numsp{params.re_numspa}_opmin{params.re_opmin_int}.dgibi"
         )
         out_dgibi.write_text(patched, encoding="utf-8")
-        self._log(f"Generated optimized DGIBI: {out_dgibi.name}\n")
+        self._log(f"Generated DGIBI: {out_dgibi.name}\n")
 
         cmd = ["cmd.exe", "/c", str(castem_exe), str(out_dgibi)]
 
         def after_castem(return_code: int) -> None:
             if return_code != 0:
                 baseline.messagebox.showerror("CASTEM error", f"CASTEM failed, return code {return_code}")
-                self._log("===== PYTHON-HOLE RUN END (FAILED) =====\n")
+                self._log("===== MESH RUN END (FAILED) =====\n")
                 return
 
             missing = missing_mesh_outputs(workdir, params)
             if missing:
                 message = "Cast3M returned 0 but did not create fresh expected outputs: " + ", ".join(missing)
                 baseline.messagebox.showerror("Incomplete Cast3M output", message)
-                self._log(message + "\n===== PYTHON-HOLE RUN END (FAILED) =====\n")
+                self._log(message + "\n===== MESH RUN END (FAILED) =====\n")
                 return
+
+            if params.opti_stl:
+                export_boundary_bdfs_to_stl(
+                    workdir,
+                    hole_count=len(params.holes) if params.holes_enabled else 0,
+                    log=self._log,
+                )
 
             if self.do_merge_var.get():
                 combined = baseline.merge_bdfs(workdir, self._log)
@@ -206,9 +242,12 @@ class PythonHoleInterpolationApp(baseline.App):
                     combined.replace(named)
                     self._log(f"Final combined: {named.name}\n")
 
-            self._log("===== PYTHON-HOLE RUN END =====\n")
+            self._log("===== MESH RUN END =====\n")
 
-        self._log("Running CASTEM without INT_COMP/DISPLACE...\n")
+        if hole_meshes is not None:
+            self._log("Running CASTEM without INT_COMP/DISPLACE...\n")
+        else:
+            self._log("Running reference Cast3M mesh path...\n")
         return self._stream_process_to_log(cmd, workdir, on_done=after_castem)
 
 

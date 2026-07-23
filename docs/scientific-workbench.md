@@ -8,8 +8,16 @@ The animated walkthrough in the main README and both workbench screenshots can b
 
 ## Workflow
 
-1. Open the workbench and select **Load documented example**, **Fractal example**, or **Planar example**; alternatively select the DGIBI template, a dedicated working directory, and define the source manually.
-2. Choose **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**, or **Constant Z planes**. The visible fields change to only those used by that source. DEAP mode reads the raw HDF5 files from the working directory; CSV mode bypasses fitting.
+1. Open the workbench and select **Load documented example**, **DEAP fitting
+   example**, **Fractal example**, or **Planar example**; alternatively select
+   the DGIBI template, a dedicated working directory, and define the source
+   manually. The DEAP action loads the bundled `1_simple` raw-HDF5 case and
+   its validated fit parameters.
+2. Choose **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**,
+   or **Constant Z planes**. The five dataset naming fields are editable only
+   for DEAP fitting. CSV mode derives and cross-checks them from the four
+   filenames and displays them read-only; generated modes keep the established
+   disabled defaults.
 3. Use **Validate inputs** to check matrices or generated parameters, wall ordering, and hole topology.
 4. Use **Preview surface & holes** to inspect the XY topology together with the real lower and upper three-dimensional walls before a run.
 5. In **Mesh & holes**, choose one mode:
@@ -22,6 +30,13 @@ The animated walkthrough in the main README and both workbench screenshots can b
 The no-hole path remains the preserved baseline regardless of the selected hole mode. The previous `castem_pipeline_gui_python_holes.py` entry point is retained only as a compatibility wrapper and redirects to this workbench.
 
 Changing a tracked path or parameter marks the validation state as stale. Mesh and FISS launches are mutually exclusive, and both buttons remain disabled until the active process finishes. Before a mesh run, prior fixed-name solver artifacts in the selected directory are moved to `_previous_mesh_runs`; after return code `0`, the workbench checks the expected volume and surface files before declaring the run verified.
+
+When **Export STL surfaces** is selected, the generated DGIBI source comments
+out the native Cast3M STL block. After Cast3M has successfully written the
+boundary BDF files, Python exports the lower, upper, mean, side, and hole
+surfaces as high-precision ASCII STL. It reports and omits only exactly
+zero-area BDF triangles, avoiding Cast3M error 808 and binary-STL precision
+loss.
 
 ## Generated surfaces
 

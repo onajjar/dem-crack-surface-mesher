@@ -6,6 +6,22 @@ A Windows desktop pipeline that loads CSVs, fits raw DEAP discrete-simulation re
 
 > **Baseline status:** `v0.1.0-baseline` preserves the historical T13 program. `castem_pipeline_gui_t13.py` and every file in `source_codes/` remain byte-for-byte protected; current development is isolated in the scientific launcher and its supporting modules.
 
+## Citation
+
+If this software or its crack-reconstruction workflow contributes to research,
+analysis, or a publication, please cite the scientific article that introduces
+the methodology:
+
+> O. Najjar, T. Heitz, C. Oliver-Leblond, J.-L. Tailhan, G. Rastiello, and
+> F. Ragueneau, “Three-dimensional crack reconstruction from Beam–Particle
+> Model for CFD-based leakage assessment,” *Nuclear Engineering and Design*,
+> vol. 448, article 114718, 2026.
+> [https://doi.org/10.1016/j.nucengdes.2025.114718](https://doi.org/10.1016/j.nucengdes.2025.114718)
+
+GitHub-compatible citation metadata are provided in
+[`CITATION.cff`](CITATION.cff), and a ready-to-use BibTeX entry is available in
+[`CITATION.bib`](CITATION.bib).
+
 ![Scientific workbench showing dynamic circle, rectangle, triangle, and regular-polygon controls](docs/assets/scientific-workbench.png)
 
 ## What it does
@@ -213,7 +229,13 @@ python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.i
 python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode csv --validate-only
 ```
 
-The committed configuration lists every surface, path, naming, mesh, hole, export, merge, Gmsh, and FISS option. Paths are resolved relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set `open_gmsh = true` only when a Gmsh window is wanted. See the [headless runner guide](docs/headless-runner.md).
+The committed configuration lists every surface, path, mesh, hole, export,
+merge, Gmsh, and FISS option. The five `[naming]` values are manual inputs only
+for DEAP fitting; CSV mode derives them from all four canonical filenames, and
+generated surface modes retain the established defaults. Paths are resolved
+relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set
+`open_gmsh = true` only when a Gmsh window is wanted. See the
+[headless runner guide](docs/headless-runner.md).
 
 ## Requirements
 
@@ -273,10 +295,14 @@ The immutable `castem_pipeline_gui_t13.py` remains available when an exact histo
 
 Then:
 
-1. Choose **Load documented example**, or select `source_codes\castem_tool.dgibi` as the mesh template.
+1. Choose **Load documented example** or **DEAP fitting example**, or select
+   `source_codes\castem_tool.dgibi` as the mesh template. The DEAP action loads
+   the bundled `1_simple` raw-HDF5 fitting case.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
 3. Select **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**, or **Constant Z planes**. For DEAP fitting, put `deap_post.h5`, `deap_output.h5`, and normally `input.boundary` in the working directory; for CSV mode, select the four existing matrices.
-4. Keep the example naming parameters at `re_ti=60`, `re_crpa=1`, `re_smfa=0.05`, `re_numspa=50`, and `re_opmin=1e-6`.
+4. For DEAP fitting, enter `re_ti`, `re_crpa`, `re_smfa`, `re_numspa`, and
+   `re_opmin`. In CSV mode these read-only values are decoded from the four
+   filenames and cross-checked automatically.
 5. Review mesh density, holes, inflation, export, merge, and Gmsh options. For holes, choose the reference mode or **Bulk Python hole mesh — fast + inflated**.
 6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
@@ -452,7 +478,18 @@ Install a Python distribution that includes Tcl/Tk. Tkinter is normally included
 
 **Cast3M cannot find a CSV**
 
-Confirm all four naming parameters match the example and use exactly scaled `re_smfa`/`re_opmin` values. Inspect the copied filenames in the working directory.
+Confirm that all four CSV files use the canonical
+`_tiN_crpaN_smfaN_numspN_opminN.csv` suffix and contain identical metadata.
+The workbench derives the values from those names; they are not entered
+separately in CSV mode. Existing legacy names ending at `_numspN.csv` remain
+supported and use the unchanged `opmin = 1e-6` default.
+
+**Cast3M reports STL error 808 / coincident nodes**
+
+Use the Scientific Workbench or headless runner with `export_stl = true`. The
+generated DGIBI comments out Cast3M's native `SORT 'STL'` block, then Python
+converts the completed boundary BDF files to high-precision ASCII STL and
+omits only triangles that are already exactly zero-area in the BDF.
 
 **DEAP fitting cannot find its inputs**
 

@@ -19,6 +19,7 @@ from castem_pipeline_gui_python_holes import (
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
+from dataset_naming import DatasetNaming, parse_csv_set_metadata
 from python_hole_interpolation import (
     HoleGeometry,
     build_python_holes_dgibi,
@@ -26,6 +27,12 @@ from python_hole_interpolation import (
     generated_program_uses_python_holes,
     normalize_hole_geometry,
     parse_hole_spec,
+)
+from stl_export import (
+    active_native_stl_sort_lines,
+    comment_native_stl_export,
+    export_boundary_bdfs_to_stl,
+    export_report,
 )
 from surface_generation import (
     SUPPORTED_SURFACE_MODES,
@@ -174,14 +181,14 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     parser = ConfigParser(interpolation=None, inline_comment_prefixes=("#", ";"))
     with config_path.open("r", encoding="utf-8-sig") as stream:
         parser.read_file(stream)
-    required = {"run", "files", "naming", "mesh", "holes", "fiss"}
+    required = {"run", "files", "mesh", "holes", "fiss"}
     missing = sorted(required.difference(parser.sections()))
     if missing:
         raise ValueError("Missing configuration section(s): " + ", ".join(missing))
 
     run = parser["run"]
     files = parser["files"]
-    naming = parser["naming"]
+    naming = parser["naming"] if parser.has_section("naming") else None
     mesh = parser["mesh"]
     holes_section = parser["holes"]
     base = config_path.parent
@@ -209,6 +216,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         csv_y = _path(base, files.get("y_csv"))
         csv_zmin = _path(base, files.get("zmin_csv"))
         csv_zmax = _path(base, files.get("zmax_csv"))
+        dataset_naming = parse_csv_set_metadata((csv_x, csv_y, csv_zmin, csv_zmax))
         surface_source = SurfaceSource(
             mode="csv",
             csv_x=csv_x,
@@ -219,6 +227,15 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     elif surface_mode == "deap":
         if surface_section is None:
             raise ValueError("DEAP fitting requires a [surface] section.")
+        if naming is None:
+            raise ValueError("DEAP fitting requires the five values in a [naming] section.")
+        dataset_naming = DatasetNaming(
+            ti=naming.getint("ti"),
+            crpa=naming.getint("crpa"),
+            smfa=_number(naming, "smfa"),
+            numspa=naming.getint("numspa"),
+            opmin=_number(naming, "opmin"),
+        )
         generated_directory = workdir / "_generated_surface_inputs"
         csv_x = generated_directory / "xrange_generated.csv"
         csv_y = generated_directory / "yrange_generated.csv"
@@ -227,11 +244,11 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         surface_source = SurfaceSource(
             mode="deap",
             deap_results_dir=workdir,
-            deap_time_step=naming.getint("ti"),
-            deap_component=naming.getint("crpa"),
-            deap_span=_number(naming, "smfa"),
-            deap_grid_resolution=naming.getint("numspa"),
-            deap_opening_threshold=_number(naming, "opmin"),
+            deap_time_step=dataset_naming.ti,
+            deap_component=dataset_naming.crpa,
+            deap_span=dataset_naming.smfa,
+            deap_grid_resolution=dataset_naming.numspa,
+            deap_opening_threshold=dataset_naming.opmin,
             deap_orientation=surface_section.get("orientation", "ZX").strip().upper(),
             deap_magnification=baseline.parse_float(
                 surface_section.get("magnification", "1.0")
@@ -241,6 +258,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     else:
         if surface_section is None:
             raise ValueError("Generated surface modes require a [surface] section.")
+        dataset_naming = DatasetNaming(60, 1, 0.05, 50, 1e-6)
         generated_directory = workdir / "_generated_surface_inputs"
         csv_x = generated_directory / "xrange_generated.csv"
         csv_y = generated_directory / "yrange_generated.csv"
@@ -273,11 +291,11 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     holes.sort(key=lambda item: item[0])
 
     params = baseline.CastemMainParams(
-        re_ti=naming.getint("ti"),
-        re_crpa=naming.getint("crpa"),
-        re_smfa=_number(naming, "smfa"),
-        re_numspa=naming.getint("numspa"),
-        re_opmin=_number(naming, "opmin"),
+        re_ti=dataset_naming.ti,
+        re_crpa=dataset_naming.crpa,
+        re_smfa=dataset_naming.smfa,
+        re_numspa=dataset_naming.numspa,
+        re_opmin=dataset_naming.opmin,
         nelem_x=mesh.getint("elements_x"),
         nelem_y=mesh.getint("elements_y"),
         nelem_z=mesh.getint("elements_z"),
@@ -469,6 +487,19 @@ def _combined_name(p: baseline.CastemMainParams) -> str:
     )
 
 
+def _patch_mesh_program(template: str, params: baseline.CastemMainParams) -> str:
+    program = baseline.patch_dgibi_main_program(template, params)
+    if params.opti_stl:
+        program = comment_native_stl_export(program)
+        active = active_native_stl_sort_lines(program)
+        if active:
+            raise RuntimeError(
+                "Generated DGIBI still contains active native STL statements: "
+                + ", ".join(active)
+            )
+    return program
+
+
 def run_mesh(
     setup: HeadlessSetup,
     executable: Path,
@@ -494,14 +525,14 @@ def run_mesh(
             setup.csv_y,
             setup.csv_zmin,
             setup.csv_zmax,
-            baseline.patch_dgibi_main_program,
+            _patch_mesh_program,
             hole_mesh_directory=workdir,
         )
         if hole_meshes is None or not generated_program_uses_python_holes(program):
             raise RuntimeError("The conformal Python-hole DGIBI was not generated correctly.")
         mode_suffix = "_python_holes"
     else:
-        program = baseline.patch_dgibi_main_program(template, setup.params)
+        program = _patch_mesh_program(template, setup.params)
         mode_suffix = "_reference"
 
     p = setup.params
@@ -514,7 +545,14 @@ def run_mesh(
     missing = missing_mesh_outputs(workdir, p) if return_code == 0 else ()
 
     final_bdf: Path | None = None
+    stl_exports = ()
     if return_code == 0 and not missing:
+        if p.opti_stl:
+            stl_exports = export_boundary_bdfs_to_stl(
+                workdir,
+                hole_count=len(p.holes) if p.holes_enabled else 0,
+                log=lambda message: print(message, end=""),
+            )
         if setup.merge_bdfs:
             combined = baseline.merge_bdfs(workdir, lambda message: print(message, end=""))
             if combined is not None:
@@ -543,6 +581,8 @@ def run_mesh(
         "interface_counts_match": True if hole_meshes is not None else None,
         "missing_outputs": list(missing),
         "final_bdf": final_bdf.name if final_bdf else None,
+        "stl_export": export_report(stl_exports) if p.opti_stl else None,
+        "native_cast3m_stl_export": "commented_out" if p.opti_stl else "not_requested",
         "success": return_code == 0 and not missing and final_bdf is not None,
     }
 
@@ -641,6 +681,19 @@ def main(argv: list[str] | None = None) -> int:
             float(surface_grid.y.max() - surface_grid.y.min()),
         ]
         source = setup.surface_source
+        summary["dataset_naming"] = {
+            "source": {
+                "csv": "csv_filenames",
+                "deap": "deap_inputs",
+                "fractal": "generated_surface_defaults",
+                "constant": "generated_surface_defaults",
+            }[source.normalized_mode],
+            "ti": setup.params.re_ti,
+            "crpa": setup.params.re_crpa,
+            "smfa": setup.params.re_smfa,
+            "numspa": setup.params.re_numspa,
+            "opmin": setup.params.re_opmin,
+        }
         if source.normalized_mode == "fractal":
             summary["hurst_exponent"] = round(
                 source.resolved_hurst_exponent, 12

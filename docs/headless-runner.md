@@ -47,8 +47,14 @@ numspa = 50
 opmin = 1e-6
 ```
 
-For DEAP mode the five `[naming]` values are also the fitter's time step,
-MATLAB-style component number, span, grid resolution, and opening threshold.
+The five `[naming]` values are required manual inputs only in DEAP mode: they
+are the fitter's time step, MATLAB-style component number, span, grid
+resolution, and opening threshold. CSV mode ignores entered `[naming]` values
+and derives all five from the canonical suffix shared by its four filenames.
+It rejects a noncanonical filename or inconsistent suffixes. Fractal and
+constant modes retain the established `60/1/0.05/50/1e-6` metadata defaults.
+Legacy CSV names ending at `_numspN.csv` remain accepted with the established
+`opmin = 1e-6` default.
 Each fit writes `_generated_surface_inputs/deap-fit-report.json`; the final
 headless report embeds the same metadata. Complete DEAP/CSV dual-mode examples
 are in [`examples/deap`](../examples/deap/README.md).
@@ -108,6 +114,14 @@ The legacy three-number circle shorthand remains valid. Non-circular shapes requ
 ## Output safety
 
 With `archive_existing_outputs = true`, fixed-name prior mesh outputs are moved into a timestamped `_previous_mesh_runs` directory before a new mesh run. With it set to `false`, the runner refuses to start if such outputs exist. It never recursively cleans the configured directory.
+
+With `export_stl = true`, the generated Cast3M source contains the native
+`SORT 'STL'` block as comments, so Cast3M cannot abort on coincident vertices.
+After all boundary BDF files are verified, Python writes the requested lower,
+upper, mean, side, and hole surfaces as ASCII STL with 17-significant-digit
+coordinates. Exactly zero-area BDF triangles are reported and omitted. This
+also avoids the additional coordinate collapse that binary STL's 32-bit
+vertices can introduce for micron-scale openings.
 
 `open_gmsh = true` opens the merged BDF, or the volume BDF when merging is disabled, after a successful mesh run. It never enables Cast3M's internal visualization: generated DGIBI files always contain `opti_visu=0`. Keep it `false` for fully unattended execution.
 

@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tkinter as tk
+from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -20,10 +21,10 @@ from tkinter import messagebox, ttk
 import castem_pipeline_gui_t13 as baseline
 from castem_pipeline_gui_python_holes import (
     PythonHoleInterpolationApp,
-    archive_existing_mesh_outputs,
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
+from dataset_naming import parse_csv_set_metadata
 from python_hole_interpolation import (
     HoleGeometry,
     detect_hole_rings,
@@ -38,6 +39,7 @@ DEFAULT_MESH_TEMPLATE = ROOT / "source_codes" / "castem_tool.dgibi"
 DEFAULT_FISS_TEMPLATE = ROOT / "source_codes" / "fuite_fissure.dgibi"
 DOCUMENTED_INPUT = ROOT / "examples" / "input"
 DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
+DEAP_EXAMPLE_CONFIG = ROOT / "examples" / "deap" / "1_simple" / "run.ini"
 COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
 SHAPE_GALLERY = (
     HoleGeometry("circle", -0.25, 0.25, radius=0.045),
@@ -187,6 +189,12 @@ class ScientificApp(PythonHoleInterpolationApp):
         toolbar = ttk.Frame(shell, style="Scientific.TFrame", padding=(20, 12, 20, 0))
         toolbar.pack(fill="x")
         ttk.Button(toolbar, text="Load documented example", style="Accent.TButton", command=self._load_documented_example).pack(side="left")
+        ttk.Button(
+            toolbar,
+            text="DEAP fitting example",
+            style="Quiet.TButton",
+            command=self._load_deap_example,
+        ).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Load all shape examples", style="Quiet.TButton", command=self._load_shape_gallery).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Fractal example", style="Quiet.TButton", command=self._load_fractal_example).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Planar example", style="Quiet.TButton", command=self._load_constant_example).pack(side="left", padx=(8, 0))
@@ -240,7 +248,12 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._path_row(setup, 0, "Cast3M DGIBI template", self.dgibi_var, self._browse_dgibi)
         self._path_row(setup, 1, "Working directory", self.workdir_var, self._browse_workdir)
         self._field(setup, 2, 0, "Cast3M launcher version", self.castem_version_var, width=11)
-        metadata = ttk.LabelFrame(setup, text="Dataset naming metadata", style="Section.TLabelframe", padding=10)
+        metadata = ttk.LabelFrame(
+            setup,
+            text="Dataset naming metadata — editable for DEAP fitting; derived for CSV",
+            style="Section.TLabelframe",
+            padding=10,
+        )
         metadata.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         for column in (1, 3, 5):
             metadata.columnconfigure(column, weight=1)
@@ -429,8 +442,10 @@ class ScientificApp(PythonHoleInterpolationApp):
                 frame.grid()
             else:
                 frame.grid_remove()
-        metadata_state = "normal" if selected in {"csv", "deap"} else "disabled"
-        if selected not in {"csv", "deap"}:
+        metadata_state = "normal" if selected == "deap" else "disabled"
+        if selected == "csv":
+            self._sync_csv_metadata(require_complete=False)
+        elif selected != "deap":
             for variable, default in zip(
                 self._csv_metadata_variables, self._csv_metadata_defaults
             ):
@@ -438,6 +453,49 @@ class ScientificApp(PythonHoleInterpolationApp):
         for entry in self._csv_metadata_entries:
             entry.configure(state=metadata_state)
         self._update_fractal_relation()
+
+    def _csv_surface_paths(self) -> tuple[Path, Path, Path, Path]:
+        return (
+            Path(self.csv_x_var.get().strip()).expanduser(),
+            Path(self.csv_y_var.get().strip()).expanduser(),
+            Path(self.csv_zmin_var.get().strip()).expanduser(),
+            Path(self.csv_zmax_var.get().strip()).expanduser(),
+        )
+
+    def _sync_csv_metadata(self, *, require_complete: bool) -> None:
+        if self._surface_mode_key(self.surface_mode_var.get()) != "csv":
+            return
+        raw_paths = (
+            self.csv_x_var.get().strip(),
+            self.csv_y_var.get().strip(),
+            self.csv_zmin_var.get().strip(),
+            self.csv_zmax_var.get().strip(),
+        )
+        if not all(raw_paths):
+            if require_complete:
+                raise ValueError(
+                    "Select all four CSV files before deriving dataset metadata."
+                )
+            return
+        metadata = parse_csv_set_metadata(raw_paths)
+        suspended = self._suspend_dirty
+        self._suspend_dirty = True
+        try:
+            for variable, value in zip(
+                self._csv_metadata_variables, metadata.ui_values, strict=True
+            ):
+                variable.set(value)
+        finally:
+            self._suspend_dirty = suspended
+
+    def _on_csv_path_change(self, *_args) -> None:
+        if self._suspend_dirty:
+            return
+        try:
+            self._sync_csv_metadata(require_complete=False)
+        except ValueError:
+            # Validation presents the precise filename or consistency error.
+            pass
 
     def _on_surface_mode_change(self, _event=None) -> None:
         self._refresh_surface_mode()
@@ -468,6 +526,7 @@ class ScientificApp(PythonHoleInterpolationApp):
     def _surface_source_from_ui(self) -> SurfaceSource:
         mode = self._surface_mode_key(self.surface_mode_var.get())
         if mode == "csv":
+            self._sync_csv_metadata(require_complete=True)
             return SurfaceSource(
                 mode="csv",
                 csv_x=Path(self.csv_x_var.get().strip()).expanduser(),
@@ -600,7 +659,11 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Checkbutton(exports, text="Merge BDF boundary and volume cards", variable=self.do_merge_var).grid(row=0, column=0, sticky="w", pady=3)
         ttk.Checkbutton(exports, text="Open completed mesh in Gmsh", variable=self.opti_visu_var).grid(row=1, column=0, sticky="w", pady=3)
         ttk.Checkbutton(exports, text="Export MED volume mesh", variable=self.opti_med_var).grid(row=2, column=0, sticky="w", pady=3)
-        ttk.Checkbutton(exports, text="Export STL surfaces", variable=self.opti_stl_var).grid(row=3, column=0, sticky="w", pady=3)
+        ttk.Checkbutton(
+            exports,
+            text="Export STL surfaces (safe Python BDF conversion)",
+            variable=self.opti_stl_var,
+        ).grid(row=3, column=0, sticky="w", pady=3)
         ttk.Separator(exports, orient="horizontal").grid(row=4, column=0, sticky="ew", pady=10)
         ttk.Radiobutton(exports, text="Original T13 workflow — reference", value="baseline", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=5, column=0, sticky="w", pady=3)
         ttk.Radiobutton(exports, text="Bulk Python hole mesh — fast + inflated", value="python", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=6, column=0, sticky="w", pady=3)
@@ -902,6 +965,13 @@ class ScientificApp(PythonHoleInterpolationApp):
         )
         for variable in variables:
             variable.trace_add("write", self._mark_dirty)
+        for variable in (
+            self.csv_x_var,
+            self.csv_y_var,
+            self.csv_zmin_var,
+            self.csv_zmax_var,
+        ):
+            variable.trace_add("write", self._on_csv_path_change)
         self.fractal_value_var.trace_add("write", self._update_fractal_relation)
 
     def _mark_dirty(self, *_args) -> None:
@@ -1208,6 +1278,94 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._toggle_holes()
             self._update_method_summary()
             self.notebook.select(self.mesh_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_deap_example(self) -> None:
+        """Load the bundled raw-HDF5 simple case into the DEAP fitting mode."""
+
+        try:
+            parser = ConfigParser(
+                interpolation=None,
+                inline_comment_prefixes=("#", ";"),
+            )
+            with DEAP_EXAMPLE_CONFIG.open("r", encoding="utf-8-sig") as stream:
+                parser.read_file(stream)
+            run = parser["run"]
+            files = parser["files"]
+            surface = parser["surface"]
+            naming = parser["naming"]
+            mesh = parser["mesh"]
+            holes = parser["holes"]
+            base = DEAP_EXAMPLE_CONFIG.parent
+
+            def example_path(value: str) -> str:
+                candidate = Path(value.strip()).expanduser()
+                return str(
+                    (candidate if candidate.is_absolute() else base / candidate).resolve()
+                )
+
+            workdir = Path(example_path(run.get("working_directory")))
+            for required in (
+                workdir / "deap_post.h5",
+                workdir / "deap_output.h5",
+            ):
+                if not required.is_file():
+                    raise FileNotFoundError(f"Bundled DEAP example input is missing: {required}")
+        except Exception as exc:
+            messagebox.showerror("DEAP fitting example", str(exc))
+            return
+
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("Fit DEAP results (Python)")
+            self.dgibi_var.set(example_path(files.get("mesh_template")))
+            self.fiss_dgibi_var.set(example_path(files.get("fiss_template")))
+            self.workdir_var.set(str(workdir))
+            self.castem_version_var.set(run.get("castem_version", "25"))
+            self.csv_x_var.set(example_path(files.get("x_csv")))
+            self.csv_y_var.set(example_path(files.get("y_csv")))
+            self.csv_zmin_var.set(example_path(files.get("zmin_csv")))
+            self.csv_zmax_var.set(example_path(files.get("zmax_csv")))
+            self.deap_orientation_var.set(surface.get("orientation", "ZX").upper())
+            self.deap_magnification_var.set(surface.get("magnification", "1.0"))
+            self.deap_bounding_box_var.set(surface.get("bounding_box", ""))
+
+            naming_variables = {
+                "ti": self.re_ti_var,
+                "crpa": self.re_crpa_var,
+                "smfa": self.re_smfa_var,
+                "numspa": self.re_numspa_var,
+                "opmin": self.re_opmin_var,
+            }
+            for key, variable in naming_variables.items():
+                variable.set(naming.get(key))
+
+            mesh_variables = {
+                "elements_x": self.nelem_x_var,
+                "elements_y": self.nelem_y_var,
+                "elements_z": self.nelem_z_var,
+                "geometric_tolerance": self.re_tol_var,
+                "z_inflation_factor": self.re_fact_z_var,
+                "hole_radial_cells": self.num_el_fill_var,
+                "hole_outer_inner_ratio": self.re_fact_hole_var,
+            }
+            for key, variable in mesh_variables.items():
+                variable.set(mesh.get(key))
+
+            self.opti_med_var.set(mesh.getboolean("export_med"))
+            self.opti_stl_var.set(mesh.getboolean("export_stl"))
+            self.opti_visu_var.set(mesh.getboolean("open_gmsh"))
+            self.do_merge_var.set(mesh.getboolean("merge_bdfs"))
+            self.solver_mode_var.set(mesh.get("mode", "python"))
+            while self.hole_shape_rows:
+                self._remove_hole_row()
+            self.holes_enabled_var.set(holes.getboolean("enabled"))
+            self._refresh_surface_mode()
+            self._toggle_holes()
+            self._update_method_summary()
+            self.notebook.select(self.input_tab)
         finally:
             self._suspend_dirty = False
         self._validate_inputs(operation="mesh")
@@ -1554,12 +1712,7 @@ class ScientificApp(PythonHoleInterpolationApp):
 
     def _run(self) -> None:
         self._materialize_surface_inputs()
-        if self.solver_mode_var.get() == "baseline":
-            workdir = baseline.ensure_dir(self.workdir_var.get().strip())
-            archive_existing_mesh_outputs(workdir, self._log)
-            return baseline.App._run(self)
-        else:
-            return super()._run()
+        return super()._run()
 
     def _run_fiss(self) -> None:
         self._materialize_surface_inputs()

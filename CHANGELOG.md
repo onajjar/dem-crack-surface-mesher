@@ -10,6 +10,17 @@
 - Replaced the MATLAB runtime dependency for DEAP crack fitting with a Python
   quadratic LOESS implementation, explicit DEAP-fit/CSV-bypass controls, four
   application datasets, fit reports, and archived MATLAB provenance sources.
+- Made boundary-BDF-to-high-precision-ASCII-STL conversion the default whenever
+  STL export is selected, with Cast3M's native STL block commented in generated
+  DGIBI and exactly degenerate BDF triangles reported and omitted.
+- Limited manual dataset naming inputs to DEAP fitting; CSV mode now derives
+  and cross-checks them from filenames, while generated modes retain their
+  established disabled defaults.
+- Added publisher-verified article citation guidance, GitHub-native
+  `CITATION.cff` metadata, and a reusable BibTeX record for the scientific
+  crack-reconstruction methodology.
+- Added a one-click Scientific Workbench DEAP fitting example backed by the
+  bundled `1_simple` raw-HDF5 application and its validated fit configuration.
 
 All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 

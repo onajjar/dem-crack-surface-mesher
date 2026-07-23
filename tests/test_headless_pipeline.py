@@ -18,6 +18,7 @@ def test_scientific_launcher_dispatches_headless_validation(capsys) -> None:
     assert result == 0
     output = capsys.readouterr()
     assert '"valid": true' in output.out
+    assert '"source": "csv_filenames"' in output.out
     assert output.err == ""
 
 
