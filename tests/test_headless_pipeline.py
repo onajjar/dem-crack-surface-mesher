@@ -1,6 +1,7 @@
 from dataclasses import replace
 from pathlib import Path
 from tkinter import ttk
+from types import SimpleNamespace
 
 import pytest
 
@@ -92,3 +93,18 @@ def test_embedded_characterization_uses_automatic_analysis_defaults() -> None:
     assert config.aperture_method == "local_normal"
     assert config.flow_direction == "Y"
     assert config.hurst_bootstrap_samples == 100
+
+
+def test_embedded_characterization_resolves_output_from_current_workdir() -> None:
+    selected_workdir = ROOT / "_runtime" / "tests" / "dynamic-workdir"
+    display = SimpleNamespace(value=None)
+    display.set = lambda value: setattr(display, "value", value)
+    panel = SimpleNamespace(
+        output_directory_provider=lambda: selected_workdir / "characterization",
+        output_directory=display,
+    )
+
+    output = CharacterizationPanel._resolved_output_directory(panel)
+
+    assert output == (selected_workdir / "characterization").resolve()
+    assert display.value == str(output)

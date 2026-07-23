@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import warnings
 from dataclasses import replace
 from pathlib import Path
 
@@ -282,12 +283,14 @@ def test_required_exports_and_synthetic_validation_use_mesh_csv_contract() -> No
         random_seed=88,
     )
     try:
-        result = characterize_surface(
-            _grid(points_x=17, points_y=15),
-            _config(publication_formats=("png",)),
-            output_directory=output_directory,
-            synthetic_config=settings,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            result = characterize_surface(
+                _grid(points_x=17, points_y=15),
+                _config(publication_formats=("png",)),
+                output_directory=output_directory,
+                synthetic_config=settings,
+            )
         required = {
             "characterization_summary.json",
             "characterization_summary.csv",

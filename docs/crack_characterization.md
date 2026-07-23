@@ -191,6 +191,10 @@ Every characterization run writes:
 - `synthetic_surface_validation.csv`
 - `characterization_report.md`
 
+In the Workbench, these artifacts are always placed below
+`<selected working directory>/characterization`. Synthetic ensembles remain
+below that folder under `synthetic/`.
+
 The embedded Workbench generates PNG figures for the wall geometry,
 aperture/PDF/CDF/resistance maps, flow-path equivalents, tortuosity
 distribution, Hurst diagnostics, slope field, and 2D autocorrelation.

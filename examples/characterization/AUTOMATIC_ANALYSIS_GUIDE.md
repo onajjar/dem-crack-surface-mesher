@@ -11,6 +11,10 @@ The program uses the same `SurfaceGrid` already prepared for meshing. It does
 not ask which aperture, direction, tortuosity, or Hurst method to calculate
 because it calculates every supported, meaningful X/Y result.
 
+All results are stored automatically in
+`<selected working directory>/characterization`; there is no separate output
+directory to enter in the Characterization tab.
+
 The only editable scientific parameters in the Characterization tab belong to
 the optional generation of a **new synthetic crack**.
 

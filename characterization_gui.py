@@ -57,7 +57,7 @@ class CharacterizationPanel(ttk.Frame):
         parent: tk.Misc,
         *,
         surface_source: Callable[[], SurfaceSource],
-        default_output: Path,
+        output_directory_provider: Callable[[], Path],
         on_complete: Callable[[AnalysisResult], None] | None = None,
         continue_to_mesh: Callable[[], None] | None = None,
     ) -> None:
@@ -75,19 +75,21 @@ class CharacterizationPanel(ttk.Frame):
             },
         )
         self.surface_source = surface_source
+        self.output_directory_provider = output_directory_provider
         self.on_complete = on_complete
         self.continue_to_mesh = continue_to_mesh
         self.worker: threading.Thread | None = None
         self.cancel_event = threading.Event()
         self.messages: queue.Queue[tuple[str, Any]] = queue.Queue()
         self.last_result: AnalysisResult | None = None
-        self._build_variables(default_output)
+        self._build_variables()
         self._build_interface()
+        self.refresh_output_directory()
         self.after(100, self._poll_worker)
 
-    def _build_variables(self, default_output: Path) -> None:
+    def _build_variables(self) -> None:
         self.seed = tk.StringVar(value="20260723")
-        self.output_directory = tk.StringVar(value=str(default_output))
+        self.output_directory = tk.StringVar()
         self.synthetic_enabled = tk.BooleanVar(value=False)
         self.synthetic_points_x = tk.StringVar(value="64")
         self.synthetic_points_y = tk.StringVar(value="64")
@@ -332,27 +334,23 @@ class CharacterizationPanel(ttk.Frame):
 
         output_frame = ttk.Frame(results, style="Card.TFrame")
         output_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
-        output_frame.columnconfigure(0, weight=1)
+        output_frame.columnconfigure(1, weight=1)
+        ttk.Label(
+            output_frame,
+            text="Results folder",
+            style="Card.TLabel",
+        ).grid(row=0, column=0, sticky="w", padx=(0, 9))
         ttk.Entry(
             output_frame,
             textvariable=self.output_directory,
             style="Scientific.TEntry",
-        ).grid(
-            row=0, column=0, sticky="ew"
-        )
-        ttk.Button(
-            output_frame,
-            text="Browse…",
-            style="Quiet.TButton",
-            command=self._browse_output,
-        ).grid(
-            row=0, column=1, padx=(7, 0)
-        )
+            state="readonly",
+        ).grid(row=0, column=1, sticky="ew")
         ttk.Label(
             results,
             text=(
-                "PNG figures and all JSON/CSV/Markdown results are exported "
-                "automatically."
+                "PNG figures and all JSON/CSV/Markdown results are stored "
+                "automatically inside the selected working directory."
             ),
             style="CardMuted.TLabel",
         ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
@@ -579,13 +577,24 @@ class CharacterizationPanel(ttk.Frame):
             if isinstance(variable, (tk.StringVar, tk.BooleanVar)):
                 variable.set(value)
 
-    def _browse_output(self) -> None:
-        selected = filedialog.askdirectory(
-            parent=self,
-            title="Characterization output directory",
-        )
-        if selected:
-            self.output_directory.set(selected)
+    def refresh_output_directory(self, *_args) -> None:
+        """Display the output derived from the current Workbench run folder."""
+
+        try:
+            output = self.output_directory_provider().expanduser().resolve()
+        except (OSError, RuntimeError, ValueError):
+            self.output_directory.set(
+                "Select a working directory in 1 Geometry & inputs"
+            )
+        else:
+            self.output_directory.set(str(output))
+
+    def _resolved_output_directory(self) -> Path:
+        """Resolve output at run time so a stale GUI value can never be used."""
+
+        output = self.output_directory_provider().expanduser().resolve()
+        self.output_directory.set(str(output))
+        return output
 
     def _save_settings(self) -> None:
         selected = filedialog.asksaveasfilename(
@@ -624,7 +633,7 @@ class CharacterizationPanel(ttk.Frame):
         try:
             config = self._config()
             synthetic = self._synthetic_config()
-            output = Path(self.output_directory.get()).expanduser().resolve()
+            output = self._resolved_output_directory()
             source = self.surface_source()
         except Exception as exc:
             messagebox.showerror("Characterization settings", str(exc), parent=self)

@@ -821,14 +821,15 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.characterization_panel = CharacterizationPanel(
             self.characterization_tab,
             surface_source=self._surface_source_from_ui,
-            default_output=(
-                Path(self.workdir_var.get().strip()).expanduser()
-                / "characterization"
-            ),
+            output_directory_provider=self._characterization_output_directory,
             on_complete=self._on_characterization_complete,
             continue_to_mesh=self._continue_mesh_after_characterization,
         )
         self.characterization_panel.pack(fill="both", expand=True)
+        self.workdir_var.trace_add(
+            "write",
+            self.characterization_panel.refresh_output_directory,
+        )
 
     def _build_run_tab(self) -> None:
         tab = self.run_tab
@@ -1717,16 +1718,19 @@ class ScientificApp(PythonHoleInterpolationApp):
         """Select the embedded characterization workspace."""
 
         try:
-            workdir = Path(self.workdir_var.get().strip()).expanduser().resolve()
+            self._characterization_output_directory()
             self._surface_source_from_ui()
         except Exception as exc:
             messagebox.showerror("Advanced characterization", str(exc))
             return False
-        self.characterization_panel.output_directory.set(
-            str(workdir / "characterization")
-        )
+        self.characterization_panel.refresh_output_directory()
         self.notebook.select(self.characterization_tab)
         return True
+
+    def _characterization_output_directory(self) -> Path:
+        """Keep characterization artifacts inside the selected run directory."""
+
+        return self._preflight_workdir() / "characterization"
 
     def _on_characterization_complete(self, result) -> None:
         apertures = result.summary["apertures"]

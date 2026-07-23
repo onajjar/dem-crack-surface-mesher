@@ -47,6 +47,13 @@ validation, progress, cancellation, characterize-only, and
 characterize-then-mesh operation. Work runs in a background Python thread and
 passes progress through a queue, keeping Tk responsive.
 
+All characterization tables, reports, figures, and optional synthetic
+realizations are written automatically to
+`<selected working directory>/characterization`. The results path is read-only
+in the Characterization tab and updates whenever the working directory changes,
+so characterization artifacts cannot accidentally be written to the repository
+root or another stale location.
+
 The automatic policy evaluates global-Z and local-normal opening, X/Y
 path-equivalent aperture, X/Y lower/upper/mid geometrical tortuosity, and X/Y
 structure-function plus profile-PSD Hurst fits. Z is not requested for this
@@ -65,6 +72,8 @@ maps every calculation, output, example, and synthetic-only input.
 ![Automatic parameter-free characterization](assets/advanced-crack-characterization.png)
 
 ![Synthetic-only controls and documented preset](assets/advanced-crack-characterization-synthetic.png)
+
+![Read-only results folder inside the selected working directory](assets/advanced-crack-characterization-results.png)
 
 When **Export STL surfaces** is selected, the generated DGIBI source comments
 out the native Cast3M STL block. After Cast3M has successfully written the

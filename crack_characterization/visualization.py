@@ -21,6 +21,56 @@ def _bounded_histogram_bins(values: np.ndarray) -> int:
     return int(np.clip(np.sqrt(max(finite_count, 1)), 12, 80))
 
 
+def _plot_probability_density(
+    axis: plt.Axes,
+    values: np.ndarray,
+    *,
+    label: str,
+    alpha: float,
+) -> None:
+    """Plot a finite density without dividing by zero-width histogram bins."""
+
+    finite = np.asarray(values, dtype=float)
+    finite = finite[np.isfinite(finite)]
+    if finite.size == 0:
+        return
+    lower = float(np.min(finite))
+    upper = float(np.max(finite))
+    scale = max(abs(lower), abs(upper), np.finfo(float).tiny)
+    constant_tolerance = 32.0 * np.finfo(float).eps * scale
+    if upper - lower <= constant_tolerance:
+        axis.axvline(
+            float(np.mean(finite)),
+            linewidth=2.0,
+            alpha=max(alpha, 0.75),
+            label=f"{label} (single value)",
+        )
+        return
+    counts, edges = np.histogram(
+        finite,
+        bins=_bounded_histogram_bins(finite),
+        density=False,
+    )
+    widths = np.diff(edges)
+    total = int(np.sum(counts))
+    if total == 0 or np.any(widths <= 0) or not np.all(np.isfinite(widths)):
+        axis.axvline(
+            float(np.mean(finite)),
+            linewidth=2.0,
+            alpha=max(alpha, 0.75),
+            label=f"{label} (numerically degenerate)",
+        )
+        return
+    density = counts / (total * widths)
+    axis.stairs(
+        density,
+        edges,
+        fill=True,
+        alpha=alpha,
+        label=label,
+    )
+
+
 def _save(
     figure: plt.Figure,
     stem: str,
@@ -124,13 +174,11 @@ def _aperture_figure(
         "Local normal": result.arrays["aperture_local_normal"],
     }
     for label, field in aperture_fields.items():
-        values = field[np.isfinite(field)]
-        axes[0, 1].hist(
-            values,
-            bins=_bounded_histogram_bins(values),
-            density=True,
-            alpha=0.48,
+        _plot_probability_density(
+            axes[0, 1],
+            field,
             label=label,
+            alpha=0.48,
         )
     axes[0, 1].set_xlabel(f"Aperture [{config.length_unit}]")
     axes[0, 1].set_ylabel("Probability density")

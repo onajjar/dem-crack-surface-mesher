@@ -34,9 +34,15 @@
   tortuosity, both X/Y Hurst estimators, and all other supported descriptors
   are calculated in one run. Editable scientific controls are now limited to
   optional synthetic-surface generation.
+- Bound the read-only characterization results path dynamically to
+  `<working directory>/characterization`, including direct tab access and
+  working-directory changes, so a launch-time path cannot write results into
+  the repository root.
 - Added three documented synthetic presets, an all-options ensemble example,
   and bounded plotting bins that prevent pathological memory use for nearly
-  discrete bottleneck distributions.
+  discrete bottleneck distributions. Constant and numerically degenerate
+  aperture distributions are rendered as single-value markers, avoiding
+  NumPy divide-by-zero warnings from zero-width density bins.
 - Added a dedicated non-blocking Workbench tab, characterize-only and
   characterize-then-mesh headless operations, five validated examples,
   independent MATLAB analytical reference data, and a documented legacy

@@ -223,6 +223,8 @@ synthetic settings, cancel expensive work, generate synthetic cracks, and
 export reports without adding MATLAB as a runtime dependency. Measured-crack
 analysis requires no parameter entry: both aperture definitions, X/Y hydraulic
 paths, X/Y tortuosities, and both X/Y Hurst methods run automatically.
+All characterization artifacts are written to
+`<selected working directory>\characterization`.
 
 ```powershell
 python.exe .\castem_pipeline_gui_scientific.py

@@ -13,6 +13,9 @@ OUTPUT_AUTOMATIC = (
 OUTPUT_SYNTHETIC = (
     ROOT / "docs" / "assets" / "advanced-crack-characterization-synthetic.png"
 )
+OUTPUT_RESULTS = (
+    ROOT / "docs" / "assets" / "advanced-crack-characterization-results.png"
+)
 sys.dont_write_bytecode = True
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 sys.path.insert(0, str(ROOT))
@@ -56,6 +59,9 @@ def main() -> int:
         app.characterization_panel._apply_synthetic_preset("rough")
         app.update()
         grab(OUTPUT_SYNTHETIC)
+        app.characterization_panel.notebook.select(2)
+        app.update()
+        grab(OUTPUT_RESULTS)
         app.destroy()
 
     app.after(2200, capture)
