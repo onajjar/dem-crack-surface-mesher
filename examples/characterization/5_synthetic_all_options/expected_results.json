@@ -9,6 +9,14 @@
   "local_normal_equivalent_y": 5.6629843128074e-05,
   "mid_surface_tortuosity_x": 1.0000500338887244,
   "mid_surface_tortuosity_y": 1.0000129197991674,
+  "wavelet_levels_by_field": {
+    "lower_wall": 3,
+    "upper_wall": 3,
+    "mid_surface": 3,
+    "aperture_global_z": 3,
+    "aperture_local_normal": 3
+  },
+  "wavelet_maximum_reconstruction_error": 9.540979117872439e-18,
   "warnings": [
     "lower X power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",
     "lower Y power_spectral_density: Estimated H is outside the physical self-affine range [0, 1].",

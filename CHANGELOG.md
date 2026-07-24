@@ -38,6 +38,15 @@
   `<working directory>/characterization`, including direct tab access and
   working-directory changes, so a launch-time path cannot write results into
   the repository root.
+- Added a versioned physical-equations report covering every implemented
+  characteristic, estimator, unit, assumption, reliability rule, synthetic
+  equation, and output mapping. Each characterization run copies the report to
+  its working-directory results as `characterization_equations.md`.
+- Added automatic reconstruction-preserving 2D wavelet decomposition for both
+  crack walls, the mid-surface, and both aperture definitions. Full-resolution
+  coarse and dyadic horizontal/vertical/diagonal detail surfaces, wavelength
+  metadata, figures, and reconstruction errors are isolated under
+  `wavelet_decomposition/`.
 - Added three documented synthetic presets, an all-options ensemble example,
   and bounded plotting bins that prevent pathological memory use for nearly
   discrete bottleneck distributions. Constant and numerically degenerate

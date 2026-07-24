@@ -28,7 +28,9 @@ automatic. Synthetic cases contain generation targets. Generated CSV surfaces,
 tables, reports, and PNG figures are written below each case in
 `generated_output/`; that directory is intentionally ignored by Git. The
 committed `expected_results.json` and `reference_summary.png` are compact
-reviewed references produced by the same script.
+reviewed references produced by the same script. Every primary case also
+exports the five-field additive decomposition under
+`generated_output/wavelet_decomposition/`.
 
 The planar analytical acceptance values are:
 
@@ -36,7 +38,9 @@ The planar analytical acceptance values are:
 - aperture standard deviation = 0;
 - arithmetic, cubic-mean, and path-equivalent aperture = `2e-4 m`;
 - flat-surface roughness = 0; and
-- Hurst exponent not estimable, with an explicit warning.
+- Hurst exponent not estimable, with an explicit warning; and
+- the wavelet coarse-plus-detail sum reconstructs every input field to
+  floating-point precision.
 
 No example labels a geometrical quantity as hydraulic tortuosity. Equivalent
 hydraulic aperture remains a cubic-law proxy requiring comparison with CFD.

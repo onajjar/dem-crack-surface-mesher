@@ -14,7 +14,9 @@ from crack_characterization import (
     characterize_surface,
     generate_synthetic_surface,
 )
+from crack_characterization.validation import prepare_surface
 from crack_characterization.visualization import _bounded_histogram_bins
+from crack_characterization.wavelet import decompose_wavelet_field
 from surface_generation import SurfaceGrid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -166,6 +168,47 @@ def test_strong_bottleneck_reduces_equivalent_aperture() -> None:
     assert _bounded_histogram_bins(nearly_discrete) == 80
 
 
+def test_wavelet_components_additively_reconstruct_input_surface() -> None:
+    x_axis = np.linspace(0.0, 1.2, 25)
+    y_axis = np.linspace(0.0, 0.8, 21)
+    x, y = np.meshgrid(x_axis, y_axis)
+    mid = 4.0e-5 * np.sin(2.0 * np.pi * x / 1.2)
+    mid += 1.5e-5 * np.cos(6.0 * np.pi * y / 0.8)
+    surface = prepare_surface(
+        _grid(
+            points_x=x_axis.size,
+            points_y=y_axis.size,
+            x_axis=x_axis,
+            y_axis=y_axis,
+            mid=mid,
+        ),
+        _config(),
+    )
+
+    result, rows, wavelet_warnings = decompose_wavelet_field(
+        surface,
+        "mid_surface",
+        surface.mid,
+    )
+    additive = np.array(result.approximation, copy=True)
+    for detail in result.details.values():
+        additive += detail
+
+    assert wavelet_warnings == []
+    assert len(result.details) >= 2
+    assert {row["orientation"] for row in rows}.issuperset(
+        {"coarse", "combined", "horizontal", "vertical", "diagonal"}
+    )
+    assert np.allclose(additive, surface.mid, rtol=0.0, atol=1.0e-18)
+    assert result.metadata["reconstruction_maximum_absolute_error"] < 1.0e-18
+    for level, combined in result.details.items():
+        directional = sum(
+            result.directional_details[(level, orientation)]
+            for orientation in ("horizontal", "vertical", "diagonal")
+        )
+        assert np.allclose(directional, combined, rtol=0.0, atol=1.0e-18)
+
+
 def test_zero_aperture_barrier_marks_every_flow_path_closed() -> None:
     base = _grid(points_x=21, points_y=13)
     aperture = np.full(base.shape, 2.0e-4)
@@ -299,15 +342,45 @@ def test_required_exports_and_synthetic_validation_use_mesh_csv_contract() -> No
             "flow_path_equivalent_aperture.csv",
             "hurst_analysis.csv",
             "roughness_statistics.csv",
+            "wavelet_decomposition.csv",
             "surface_orientation_statistics.csv",
             "synthetic_surface_validation.csv",
             "characterization_report.md",
+            "characterization_equations.md",
         }
 
         assert required.issubset(
             {path.name for path in output_directory.iterdir()}
         )
         assert result.tables["synthetic_surface_validation"]
+        equations = output_directory / "characterization_equations.md"
+        assert equations.read_bytes() == (
+            ROOT / "docs" / "CHARACTERIZATION_PHYSICAL_EQUATIONS.md"
+        ).read_bytes()
+        wavelet_root = output_directory / "wavelet_decomposition"
+        assert (wavelet_root / "README.md").is_file()
+        assert "approximation_level_J.csv" in (
+            wavelet_root / "README.md"
+        ).read_text(encoding="utf-8")
+        assert {
+            "lower_wall",
+            "upper_wall",
+            "mid_surface",
+            "aperture_global_z",
+            "aperture_local_normal",
+        }.issubset({path.name for path in wavelet_root.iterdir() if path.is_dir()})
+        mid_wavelet = wavelet_root / "mid_surface"
+        reconstructed = np.loadtxt(
+            mid_wavelet / "wavelet_target_surface.csv",
+            delimiter=",",
+        )
+        additive = np.loadtxt(
+            next(mid_wavelet.glob("approximation_level_*.csv")),
+            delimiter=",",
+        )
+        for detail_path in mid_wavelet.glob("detail_level_*_combined.csv"):
+            additive += np.loadtxt(detail_path, delimiter=",")
+        assert np.allclose(additive, reconstructed, rtol=0.0, atol=1.0e-16)
         synthetic_csv = output_directory / "synthetic" / "surface_csv"
         assert {
             "xrange_generated.csv",
@@ -315,6 +388,9 @@ def test_required_exports_and_synthetic_validation_use_mesh_csv_contract() -> No
             "zfit_zmin_generated.csv",
             "zfit_zmax_generated.csv",
         } == {path.name for path in synthetic_csv.iterdir()}
+        verification = output_directory / "synthetic" / "verification"
+        assert (verification / "wavelet_decomposition.csv").is_file()
+        assert not (verification / "wavelet_decomposition").exists()
     finally:
         shutil.rmtree(output_directory, ignore_errors=True)
 

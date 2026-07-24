@@ -9,6 +9,14 @@
   "local_normal_equivalent_y": 0.0002000000000000001,
   "mid_surface_tortuosity_x": 1.0,
   "mid_surface_tortuosity_y": 1.0,
+  "wavelet_levels_by_field": {
+    "lower_wall": 3,
+    "upper_wall": 3,
+    "mid_surface": 3,
+    "aperture_global_z": 3,
+    "aperture_local_normal": 3
+  },
+  "wavelet_maximum_reconstruction_error": 8.131516293641283e-20,
   "warnings": [
     "lower X structure_function: The surface is flat or the usable scaling range has fewer than four points.",
     "lower X power_spectral_density: The surface is flat or the usable scaling range has fewer than four points.",

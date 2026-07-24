@@ -211,6 +211,7 @@ class CharacterizationPanel(ttk.Frame):
             "✓ X and Y Hurst estimates: structure function and profile PSD",
             "✓ Roughness, slopes, orientation, area, volume, contact, and connectivity",
             "✓ Autocorrelation, bottlenecks, gradients, and conductance proxies",
+            "✓ Additive 2D wavelet surfaces by scale and orientation",
         )
         for row, text in enumerate(automatic_items):
             ttk.Label(
@@ -229,6 +230,7 @@ class CharacterizationPanel(ttk.Frame):
             ("Invalid values", "Reported explicitly; negative openings are rejected."),
             ("Hurst range", "Resolution-aware automatic range, ≤ 25% of profile."),
             ("Uncertainty", "100 deterministic bootstrap resamples and fit warnings."),
+            ("Wavelets", "Automatic db2 decomposition, ≤ 5 levels, verified sum."),
         )
         for row, (name, value) in enumerate(policy_items):
             ttk.Label(
@@ -695,6 +697,11 @@ class CharacterizationPanel(ttk.Frame):
             "local_normal"
         ]
         tortuosity = result.summary["tortuosity"]["directions"]
+        wavelet_fields = result.summary["wavelet_decomposition"]["field_results"]
+        wavelet_error = max(
+            field["reconstruction_maximum_absolute_error"]
+            for field in wavelet_fields.values()
+        )
         text = (
             "Automatic comprehensive analysis complete\n\n"
             "Mean aperture — global Z / local normal: "
@@ -707,8 +714,11 @@ class CharacterizationPanel(ttk.Frame):
             f"{tortuosity['X']['mid']['mean']:.8g} / "
             f"{tortuosity['Y']['mid']['mean']:.8g}\n"
             "Hurst fits: X and Y × structure function and profile PSD\n"
+            f"Wavelet fields: 5; maximum reconstruction error: {wavelet_error:.3e}\n"
             f"Warnings: {len(result.warnings)}\n\n"
-            f"Report: {result.exported_files.get('characterization_report')}"
+            f"Report: {result.exported_files.get('characterization_report')}\n"
+            "Wavelet folder: "
+            f"{result.exported_files.get('wavelet_decomposition_directory')}"
         )
         self.result_text.configure(state="normal")
         self.result_text.delete("1.0", "end")

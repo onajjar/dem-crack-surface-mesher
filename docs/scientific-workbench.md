@@ -42,7 +42,9 @@ does not reload or reinterpret a parallel copy of the crack. Its tabs separate
 automatic analysis, optional statistically representative surface synthesis,
 and exports. Ordinary characterization has no scientific input fields: both
 apertures, both X/Y directions, both Hurst methods, and all other supported
-metrics are always evaluated. It supports synthetic-settings save/load, input
+metrics are always evaluated. The same run creates additive multiscale wavelet
+surfaces for both walls, the mid-surface, and both aperture definitions. It
+supports synthetic-settings save/load, input
 validation, progress, cancellation, characterize-only, and
 characterize-then-mesh operation. Work runs in a background Python thread and
 passes progress through a queue, keeping Tk responsive.
@@ -59,6 +61,11 @@ path-equivalent aperture, X/Y lower/upper/mid geometrical tortuosity, and X/Y
 structure-function plus profile-PSD Hurst fits. Z is not requested for this
 height-field surface representation. Editable parameters appear only under
 **Synthetic surface**, which includes three documented presets.
+
+Wavelet results are automatic and require no inputs. They are stored below
+`characterization/wavelet_decomposition`, with one subfolder per field and
+full-resolution coarse/detail surfaces whose verified sum reconstructs the
+input field.
 
 Reports distinguish arithmetic aperture, global cubic mean, projected-area
 cubic mean, path-equivalent hydraulic aperture, geometrical tortuosity, and

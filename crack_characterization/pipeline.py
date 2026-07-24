@@ -36,6 +36,7 @@ from .statistics import aperture_statistics, statistics_table
 from .synthetic_surface import generate_synthetic_surface
 from .validation import prepare_surface
 from .visualization import export_figures
+from .wavelet import export_wavelet_decomposition, wavelet_decomposition
 
 SOFTWARE_VERSION = "0.1.0"
 
@@ -278,7 +279,25 @@ def characterize_surface(
         profiles_by_direction["X"],
         config,
     )
-    _notify(progress, 0.70, "Calculating geometry, orientation, and connectivity", cancelled)
+    _notify(
+        progress,
+        0.64,
+        "Decomposing crack surfaces into additive wavelet scales",
+        cancelled,
+    )
+    wavelet_summary, wavelet_rows, wavelet_results, wavelet_warnings = (
+        wavelet_decomposition(
+            surface,
+            {
+                "lower_wall": surface.lower,
+                "upper_wall": surface.upper,
+                "mid_surface": surface.mid,
+                "aperture_global_z": apertures["global_z"],
+                "aperture_local_normal": apertures["local_normal"],
+            },
+        )
+    )
+    _notify(progress, 0.72, "Calculating geometry, orientation, and connectivity", cancelled)
     geometry = surface_geometry_metrics(surface, normals, aperture)
     valid_open = np.isfinite(aperture) & (aperture > config.aperture_cutoff)
     connectivity = open_region_statistics(valid_open, surface)
@@ -315,7 +334,7 @@ def characterize_surface(
             float(surface.y[np.unravel_index(np.nanargmin(aperture), aperture.shape)]),
         ],
     }
-    warnings = [*surface.warnings, *roughness_warnings]
+    warnings = [*surface.warnings, *roughness_warnings, *wavelet_warnings]
     for method, directions in hydraulic_directions.items():
         for direction, direction_summary in directions.items():
             closed_paths = direction_summary["closed_or_disconnected_paths"]
@@ -363,6 +382,7 @@ def characterize_surface(
         "hydraulic_by_aperture_and_direction": hydraulic_directions,
         "tortuosity": tortuosity,
         "roughness": roughness,
+        "wavelet_decomposition": wavelet_summary,
         "geometry": geometry,
         "connectivity": connectivity,
         "additional_metrics": additional,
@@ -394,6 +414,7 @@ def characterize_surface(
         "flow_path_equivalent_aperture": flow_rows,
         "hurst_analysis": hurst_rows,
         "roughness_statistics": _roughness_table(roughness, config.length_unit),
+        "wavelet_decomposition": wavelet_rows,
         "surface_orientation_statistics": _orientation_table(
             geometry,
             config.length_unit,
@@ -493,6 +514,16 @@ def characterize_surface(
         result.summary["synthetic_surface"] = synthetic_summary
     _notify(progress, 0.86, "Writing characterization exports", cancelled)
     if output_directory is not None:
+        if not _nested:
+            result.exported_files.update(
+                export_wavelet_decomposition(
+                    surface,
+                    wavelet_results,
+                    output_directory,
+                    generate_figures=config.generate_figures,
+                    figure_dpi=config.figure_dpi,
+                )
+            )
         if config.generate_figures:
             _notify(progress, 0.88, "Rendering publication-quality figures", cancelled)
             result.exported_files.update(

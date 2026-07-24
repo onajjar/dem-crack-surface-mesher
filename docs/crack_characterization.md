@@ -5,6 +5,9 @@
 Characterization consumes the same validated `SurfaceGrid` that is subsequently
 written to the four Cast3M CSV matrices. A grid contains global `x` and `y`
 coordinates and point-aligned lower (`zmin`) and upper (`zmax`) wall heights.
+The complete equation-by-equation definition, units, discrete estimators, and
+output map are provided in the
+[physical equations report](CHARACTERIZATION_PHYSICAL_EQUATIONS.md).
 The mid-surface is
 
 \[
@@ -176,6 +179,29 @@ region extents, aperture-gradient statistics, minimum-aperture coordinates,
 the integral of \(b^3\), and conductance normalized by smooth parallel plates
 at the arithmetic mean opening.
 
+## Additive wavelet-scale representation
+
+The lower wall, upper wall, mid-surface, global-Z aperture, and local-normal
+aperture are decomposed automatically with a two-dimensional `db2` discrete
+wavelet transform. The folder `wavelet_decomposition/` contains a coarse
+full-resolution surface and full-resolution horizontal, vertical, diagonal,
+and combined detail surfaces at every supported dyadic level, up to five
+levels.
+
+For every field \(Z\), the exported components satisfy
+
+\[
+Z=A_J+\sum_{j=1}^{J}D_j
+\]
+
+to recorded floating-point reconstruction tolerance. `metadata.json`,
+`reconstruction_error.csv`, and `wavelet_decomposition.csv` record the wavelet,
+boundary policy, approximate physical wavelength bands, component amplitudes,
+and reconstruction errors. Complete equations and limitations are given in
+[Section 21 of the physical equations report](CHARACTERIZATION_PHYSICAL_EQUATIONS.md#21-additive-two-dimensional-wavelet-decomposition).
+Nested synthetic-validation realizations retain the scalar wavelet table and
+summary but do not duplicate the full-resolution component file tree.
+
 ## Outputs
 
 Every characterization run writes:
@@ -187,9 +213,12 @@ Every characterization run writes:
 - `flow_path_equivalent_aperture.csv`
 - `hurst_analysis.csv`
 - `roughness_statistics.csv`
+- `wavelet_decomposition.csv`
 - `surface_orientation_statistics.csv`
 - `synthetic_surface_validation.csv`
 - `characterization_report.md`
+- `characterization_equations.md`
+- `wavelet_decomposition/`
 
 In the Workbench, these artifacts are always placed below
 `<selected working directory>/characterization`. Synthetic ensembles remain
@@ -197,7 +226,8 @@ below that folder under `synthetic/`.
 
 The embedded Workbench generates PNG figures for the wall geometry,
 aperture/PDF/CDF/resistance maps, flow-path equivalents, tortuosity
-distribution, Hurst diagnostics, slope field, and 2D autocorrelation.
+distribution, Hurst diagnostics, slope field, 2D autocorrelation, and additive
+wavelet components.
 
 The headless compatibility API still accepts explicit configuration values for
 older INI files, but the interactive Characterization tab does not expose or
@@ -213,3 +243,6 @@ require them.
   unresolved sub-grid roughness.
 - Directional H estimates on BPM surfaces can be unreliable; warnings and plots
   must be reviewed rather than using H alone.
+- Wavelet detail surfaces are signed scale components, not separate physical
+  crack openings. Physical wavelength labels are approximate on nonuniform
+  grids, and full-resolution component exports require additional storage.

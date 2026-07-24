@@ -14,6 +14,9 @@ because it calculates every supported, meaningful X/Y result.
 All results are stored automatically in
 `<selected working directory>/characterization`; there is no separate output
 directory to enter in the Characterization tab.
+The exported `characterization_equations.md` contains every physical equation,
+discrete estimator, unit, assumption, and output mapping. Its repository source
+is [`docs/CHARACTERIZATION_PHYSICAL_EQUATIONS.md`](../../docs/CHARACTERIZATION_PHYSICAL_EQUATIONS.md).
 
 The only editable scientific parameters in the Characterization tab belong to
 the optional generation of a **new synthetic crack**.
@@ -90,6 +93,24 @@ orientation, local-normal dispersion, connectivity, disconnected-region
 sizes, aperture gradients, bottleneck coordinates, autocorrelation,
 correlation lengths, anisotropy ratio, and normalized `b³` conductance.
 
+### 6. Additive wavelet surfaces
+
+The program decomposes the lower wall, upper wall, mid-surface, global-Z
+aperture, and local-normal aperture automatically. For each field it exports a
+coarse surface and dyadic detail surfaces by scale and orientation under
+`wavelet_decomposition/`. Adding the coarse surface and all combined detail
+levels reconstructs the wavelet target surface. The maximum, RMS, and relative
+reconstruction errors are verified and exported.
+The folder's `README.md` gives the exact additive file recipe, while each
+field's `metadata.json` maps its levels to approximate physical wavelengths.
+
+No wavelet inputs are requested. The policy uses `db2`, symmetric boundaries,
+the maximum supported depth capped at five levels, and approximate wavelength
+bands derived from the physical X/Y spacing.
+For synthetic ensembles, full component surfaces are exported for the primary
+surface once; nested validation realizations retain scalar wavelet metrics
+without duplicating the large component tree.
+
 ## Fixed automatic policy
 
 The interface no longer asks for numerical-analysis tuning. The documented
@@ -100,8 +121,9 @@ policy is:
 - local normals use unsmoothed physical-axis finite differences;
 - aperture at or below `1e-12 m` is hydraulically closed;
 - negative wall separation is rejected and invalid samples are reported;
-- Hurst scales start at one sample and stop at 25% of the profile length; and
-- 100 deterministic profile-bootstrap resamples quantify H uncertainty.
+- Hurst scales start at one sample and stop at 25% of the profile length;
+- 100 deterministic profile-bootstrap resamples quantify H uncertainty; and
+- five input fields receive an automatic additive 2D wavelet decomposition.
 
 The JSON report stores these values for reproducibility.
 

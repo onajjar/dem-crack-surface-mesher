@@ -40,6 +40,7 @@ mesh viewing.
 | `statistics.py` | descriptive, robust, spatial, and area-weighted statistics |
 | `flow_metrics.py` | global-vector projection, profiles, series/parallel cubic law, tortuosity |
 | `roughness.py` | roughness, slopes, correlation, structure-function and PSD Hurst fits |
+| `wavelet.py` | additive 2D wavelet scales, orientation components, reconstruction verification, and exports |
 | `synthetic_surface.py` | seeded anisotropic spectral synthesis |
 | `visualization.py` | physical-unit publication figures |
 | `export.py` | required JSON/CSV files and Markdown report |
@@ -109,8 +110,9 @@ Complete formulas, weighting rules, units, and caveats are in
 
 The embedded tab no longer asks for aperture, flow, tortuosity, or Hurst
 parameters. Both aperture definitions, X/Y hydraulic paths, X/Y tortuosities,
-and both X/Y Hurst estimators always run. Only optional synthetic generation
-has editable scientific parameters.
+both X/Y Hurst estimators, and five-field additive wavelet decompositions
+always run. Only optional synthetic generation has editable scientific
+parameters.
 
 ## Validation
 
@@ -146,7 +148,7 @@ Final verification on Windows/Python 3.13:
 
 ```text
 Ruff:  passed
-Pytest: 73 passed
+Pytest: 74 passed
 Protected baseline: 6/6 hashes match
 Five characterization examples: passed
 Single-launcher headless characterize-only run: passed
@@ -196,7 +198,9 @@ The machine-readable output contract includes
 `flow_path_equivalent_aperture.csv`, `hurst_analysis.csv`,
 `roughness_statistics.csv`, `surface_orientation_statistics.csv`, and
 `synthetic_surface_validation.csv`, plus a Markdown report and publication
-figures. Synthetic ensembles use
+figures. The complete physical definitions and numerical estimators are
+versioned in `docs/CHARACTERIZATION_PHYSICAL_EQUATIONS.md` and copied into
+every run as `characterization_equations.md`. Synthetic ensembles use
 `synthetic/realization_001/`, `realization_002/`, and so on.
 
 ## Backward compatibility

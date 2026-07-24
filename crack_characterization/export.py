@@ -12,6 +12,12 @@ import numpy as np
 
 from .model import AnalysisResult, CharacterizationConfig
 
+EQUATIONS_REPORT = (
+    Path(__file__).resolve().parents[1]
+    / "docs"
+    / "CHARACTERIZATION_PHYSICAL_EQUATIONS.md"
+)
+
 
 def _json_value(value: Any) -> Any:
     if isinstance(value, np.ndarray):
@@ -63,6 +69,11 @@ def _markdown_report(
     global_aperture = summary["apertures"]["global_z"]["statistics"]
     hydraulic = summary["hydraulic_by_aperture_and_direction"]["local_normal"]
     tortuosity = summary["tortuosity"]["directions"]
+    wavelet_fields = summary["wavelet_decomposition"]["field_results"]
+    maximum_wavelet_error = max(
+        field["reconstruction_maximum_absolute_error"]
+        for field in wavelet_fields.values()
+    )
     lines = [
         "# Advanced crack characterization report",
         "",
@@ -115,6 +126,11 @@ def _markdown_report(
             f"| Mean mid-surface tortuosity Y | "
             f"{tortuosity['Y']['mid']['mean']:.8g} | Purely geometrical |"
         ),
+        (
+            f"| Maximum wavelet reconstruction error | "
+            f"{maximum_wavelet_error:.8g} {config.length_unit} | "
+            "Across all five additive field decompositions |"
+        ),
         "",
         "## Definitions and assumptions",
         "",
@@ -125,6 +141,7 @@ def _markdown_report(
         "- Geometrical tortuosity is profile arc length divided by projected length. It is not called hydraulic tortuosity.",
         "- Local-normal aperture projects paired global-Z wall separation onto normals estimated from the mid-surface.",
         "- X/Y Hurst fits run both methods and report scale, sample count, R², bootstrap interval, and reliability warnings.",
+        "- Each wall, mid-surface, and aperture field is decomposed into a coarse wavelet surface plus additive dyadic detail surfaces.",
         "",
         "## Warnings and exclusions",
         "",
@@ -164,6 +181,7 @@ def export_results(
         "flow_path_equivalent_aperture": "flow_path_equivalent_aperture.csv",
         "hurst_analysis": "hurst_analysis.csv",
         "roughness_statistics": "roughness_statistics.csv",
+        "wavelet_decomposition": "wavelet_decomposition.csv",
         "surface_orientation_statistics": "surface_orientation_statistics.csv",
         "synthetic_surface_validation": "synthetic_surface_validation.csv",
     }
@@ -185,6 +203,13 @@ def export_results(
         path = output_directory / filename
         _write_rows(path, result.tables.get(key, []))
         exported[key] = path
+    equations_path = output_directory / "characterization_equations.md"
+    if not EQUATIONS_REPORT.is_file():
+        raise FileNotFoundError(
+            f"Characterization equations report is missing: {EQUATIONS_REPORT}"
+        )
+    equations_path.write_bytes(EQUATIONS_REPORT.read_bytes())
+    exported["characterization_equations"] = equations_path
     report_path = output_directory / "characterization_report.md"
     all_exported = {**result.exported_files, **exported}
     report_path.write_text(

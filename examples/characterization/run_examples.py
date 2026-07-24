@@ -106,6 +106,7 @@ def _reference_payload(result) -> dict[str, object]:
     apertures = result.summary["apertures"]
     hydraulic = result.summary["hydraulic_by_aperture_and_direction"]
     tortuosity = result.summary["tortuosity"]["directions"]
+    wavelet = result.summary["wavelet_decomposition"]["field_results"]
     return {
         "global_z_arithmetic_mean": apertures["global_z"]["statistics"][
             "arithmetic_mean"
@@ -133,6 +134,13 @@ def _reference_payload(result) -> dict[str, object]:
         ],
         "mid_surface_tortuosity_x": tortuosity["X"]["mid"]["mean"],
         "mid_surface_tortuosity_y": tortuosity["Y"]["mid"]["mean"],
+        "wavelet_levels_by_field": {
+            field: values["levels"] for field, values in wavelet.items()
+        },
+        "wavelet_maximum_reconstruction_error": max(
+            values["reconstruction_maximum_absolute_error"]
+            for values in wavelet.values()
+        ),
         "warnings": result.warnings,
     }
 
