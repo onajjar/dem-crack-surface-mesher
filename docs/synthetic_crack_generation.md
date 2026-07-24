@@ -18,9 +18,9 @@ aperture standard deviation is applied.
 
 The synthetic mid-surface can include a mean plane:
 
-\[
+$$
 z_m=z_r+a_xx+a_yy.
-\]
+$$
 
 The aperture is shifted to the requested mean, clipped to optional minimum and
 maximum values, and can set the lowest ranked samples to zero to target a
@@ -29,11 +29,11 @@ negative values are clipped to zero.
 
 The four mesh-compatible grids are reconstructed as
 
-\[
+$$
 z_{\min}=z_m-\frac{b}{2},
 \qquad
 z_{\max}=z_m+\frac{b}{2}.
-\]
+$$
 
 This reconstruction is symmetric in global Z to preserve the existing
 rectilinear Cast3M CSV contract. The achieved local-normal aperture is measured

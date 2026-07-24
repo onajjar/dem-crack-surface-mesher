@@ -209,6 +209,17 @@ def test_wavelet_components_additively_reconstruct_input_surface() -> None:
         assert np.allclose(directional, combined, rtol=0.0, atol=1.0e-18)
 
 
+def test_equations_report_uses_github_math_delimiters() -> None:
+    report = (
+        ROOT / "docs" / "CHARACTERIZATION_PHYSICAL_EQUATIONS.md"
+    ).read_text(encoding="utf-8")
+    for legacy_delimiter in (r"\[", r"\]", r"\(", r"\)"):
+        assert legacy_delimiter not in report
+    display_delimiters = report.count("\n$$\n")
+    assert display_delimiters >= 2
+    assert display_delimiters % 2 == 0
+
+
 def test_zero_aperture_barrier_marks_every_flow_path_closed() -> None:
     base = _grid(points_x=21, points_y=13)
     aperture = np.full(base.shape, 2.0e-4)

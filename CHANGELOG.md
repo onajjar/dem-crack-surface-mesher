@@ -42,6 +42,9 @@
   characteristic, estimator, unit, assumption, reliability rule, synthetic
   equation, and output mapping. Each characterization run copies the report to
   its working-directory results as `characterization_equations.md`.
+- Converted all scientific Markdown equations to GitHub-compatible `$...$` and
+  `$$...$$` delimiters so inline and displayed mathematics render instead of
+  appearing as literal LaTeX text.
 - Added automatic reconstruction-preserving 2D wavelet decomposition for both
   crack walls, the mid-surface, and both aperture definitions. Full-resolution
   coarse and dyadic horizontal/vertical/diagonal detail surfaces, wavelength

@@ -148,7 +148,7 @@ Final verification on Windows/Python 3.13:
 
 ```text
 Ruff:  passed
-Pytest: 74 passed
+Pytest: 75 passed
 Protected baseline: 6/6 hashes match
 Five characterization examples: passed
 Single-launcher headless characterize-only run: passed
