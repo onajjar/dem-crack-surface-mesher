@@ -1,0 +1,772 @@
+* Chamber-enabled derivative of the protected castem_tool.dgibi baseline.
+OPTION DIME 3 ELEM CUB8;
+OPTI TRAC 'OPEN' ;
+
+********** Reading CSV files of crack surface ******
+
+DEBP CSV_LIRE re_ti*'ENTIER' re_crpa*'ENTIER' re_smfa*'FLOTTANT' re_numspa*'ENTIER' re_opmin*'FLOTTANT' ;
+    re_opmin = ENTI (re_opmin*1.0e6) ;
+    re_smfa = ENTI (re_smfa*100) ;
+    st_nom_x = (CHAI 'xrange_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    st_nom_y = (CHAI 'yrange_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    st_nom_zmax = (CHAI 'zfit_zmax_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    st_nom_zmin = (CHAI 'zfit_zmin_ti're_ti'_crpa're_crpa'_smfa're_smfa'_numsp're_numspa'_opmin're_opmin'.csv') ;
+    co_po_x = LIRE 'CSV' (CHAI st_nom_x) 'SEPA' ',' ;
+    co_po_y = LIRE 'CSV' (CHAI st_nom_y) 'SEPA' ',' ;
+    co_po_zmax = LIRE 'CSV' (CHAI st_nom_zmax) 'SEPA' ',' ;
+    co_po_zmin = LIRE 'CSV' (CHAI st_nom_zmin) 'SEPA' ',' ;
+    co_po_zmean = TABLE ;
+    co_po_cr_open = TABLE ;
+    M = DIME co_po_zmax ;
+    REPETER bouj (M) ;
+        j = &bouj ;
+        co_po_zmean . j = 0.5 * ( (co_po_zmax . j) + (co_po_zmin . j) ) ;
+        co_po_cr_open . j = (co_po_zmax . j) - (co_po_zmin . j) ;
+    FIN bouj ;
+FINP co_po_x co_po_y co_po_zmax co_po_zmin co_po_zmean co_po_cr_open;
+
+
+
+* ********** Define intersection functions (used only when there are holes in the crack) ******
+
+* ********** Find intersection point ******
+DEBP INTER_SEC pi*'POINT' xc*'FLOTTANT' yc*'FLOTTANT' rc*'FLOTTANT' ;
+    x1 = COOR pi 1 ;
+    y1 = COOR pi 2 ;
+    z1 = COOR pi 3 ;
+* ! === Vector from circle center to the given point ===
+    dx = x1 - xc ;
+    dy = y1 - yc ;
+* ! === Distance from center to the point ===
+    d = ((dx**2.) + (dy**2.))**0.5 ;
+* ! === Handle degenerate case (point at center) ===
+    SI (EGA d 0.) ;
+        xint1 = xc ;
+        yint1 = yc + rc ;
+        xint2 = xc ;
+        yint2 = yc - rc ;
+    FINSI ;
+* ! === Normalized direction vector ===
+    ux = dx / d ;
+    uy = dy / d ;
+* ! === Two intersection points ===
+    xint1 = xc + (rc * ux) ;
+    yint1 = yc + (rc * uy) ;
+* ! === Define points in 3D ===
+    pp1 = POIN xint1 yint1 0.0 ;
+    pc  = POIN xc yc 0.0 ;
+FINP pp1 pc;
+
+****Displace a geometry   ******
+DEBP DISPLACE mail*'MAILLAGE' cp_disp*'CHPOINT' ;
+    n_elem = NBEL mail ;
+    REPETER boup n_elem ;
+        ne = &boup ;
+        el_ori = ELEM mail ne ;
+        nb_p = NBNO el_ori ;
+        REPETER boui nb_p ;
+            i = &boui ;
+            p_ori = mail POIN i ne ;
+            z_p = COOR p_ori 3 ;
+            z_new_p = EXTR cp_disp 'SCAL' p_ori ;
+            z_to_add = z_new_p - z_p ;
+            DEPL p_ori 'PLUS' (0.0 0.0 z_to_add) ;
+        FIN boui ;
+    FIN boup ;
+FINP ;
+
+
+****Angle ******
+DEBP ANG_PO pi*'POINT' xc*'FLOTTANT' yc*'FLOTTANT' ;
+    x1 = COOR pi 1 ;
+    y1 = COOR pi 2 ;
+    dx = x1 - xc ;
+    dy = y1 - yc ;
+
+* angle in [-pi,pi]
+    ang = ATG dy dx ;
+FINP ang ;
+
+
+
+DEBP CR_SURF co_po_x*'TABLE' co_po_y*'TABLE' co_po_z*'TABLE' nelem_x*'ENTIER' nelem_y*'ENTIER' re_tol*'FLOTTANT' re_cr*'LISTREEL' re_cx*'LISTREEL' re_cy*'LISTREEL' ;
+
+***** Make a loop on points to creat the rest of sub-surfaces added to the main crack surface *****
+    N = DIME (co_po_x . 1) ;
+    M = DIME co_po_x ;
+
+    tab_hole = TABLE ;
+    tab_hole . 'X' = TABLE ;
+    tab_hole . 'Y' = TABLE ;
+    tab_hole . 'Z' = TABLE ;
+    tab_hole . 'PT' = TABLE ;
+
+****** Check if there is any hole in the domain *****
+    num_holes = DIME re_cr ;
+
+**** Initialize the tables for holes (if any) *****
+    SI (NON (EGA num_holes 0)) ;
+        REPETER bouh (num_holes) ;
+            hi = &bouh ;
+            re_xhi = EXTR re_cx hi ;
+            re_yhi = EXTR re_cy hi ;
+            tab_hole . 'X' . hi = PROG ;
+            tab_hole . 'Y' . hi = PROG ;
+            tab_hole . 'Z' . hi = PROG ;
+* tab_hole . 'PT' . hi = POIN -10000.0 -10000.0 -10000.0 ;
+            tab_hole . 'PT' . hi = VIDE 'MAILLAGE' ;
+        FIN bouh ;
+    FINSI ;
+
+***** track if we already created the first surface *****
+    first_done = 0 ;
+
+***** Loop on all quadrilateral elements to create sub-surfaces *****
+    f_marge = 1.05 ;
+    REPETER bouj (M-1) ;
+        REPETER boui (N-1) ;
+            j = &bouj ;
+            i = &boui ;
+
+            co_x0 = EXTR (co_po_x . j) i ;
+            co_y0 = EXTR (co_po_y . j) i ;
+            co_z0 = EXTR (co_po_z . j) i ;
+
+            co_x1 = EXTR (co_po_x . (j+1)) i ;
+            co_y1 = EXTR (co_po_y . (j+1)) i ;
+            co_z1 = EXTR (co_po_z . (j+1)) i ;
+
+            co_x2 = EXTR (co_po_x . (j+1)) (i+1) ;
+            co_y2 = EXTR (co_po_y . (j+1)) (i+1) ;
+            co_z2 = EXTR (co_po_z . (j+1)) (i+1) ;
+
+            co_x3 = EXTR (co_po_x . j) (i+1) ;
+            co_y3 = EXTR (co_po_y . j) (i+1) ;
+            co_z3 = EXTR (co_po_z . j) (i+1) ;
+
+***** Compute per-quad lines (used if not in any hole) *****
+            P1_ij = co_x0 co_y0 co_z0 ;
+            P2_ij = co_x1 co_y1 co_z1 ;
+            P3_ij = co_x2 co_y2 co_z2 ;
+            P4_ij = co_x3 co_y3 co_z3 ;
+            L1_ij = P1_ij DROI nelem_x P2_ij ;
+            L3_ij = P3_ij DROI nelem_x P4_ij ;
+
+***** check ALL holes first, and remember if ANY hole is hit *****
+            is_ins_any = FAUX ;
+
+            SI (NON (EGA num_holes 0)) ;
+                REPETER bouh (num_holes) ;
+                    hi = &bouh ;
+                    re_rhi = EXTR re_cr hi ;
+                    re_xhi = EXTR re_cx hi ;
+                    re_yhi = EXTR re_cy hi ;
+
+                    cond0 = (co_x0 > (re_xhi - (f_marge*re_rhi))) ET (co_x0 < (re_xhi + (f_marge*re_rhi))) ET
+                            (co_y0 > (re_yhi - (f_marge*re_rhi))) ET (co_y0 < (re_yhi + (f_marge*re_rhi))) ;
+
+                    cond1 = (co_x1 > (re_xhi - (f_marge*re_rhi))) ET (co_x1 < (re_xhi + (f_marge*re_rhi))) ET
+                            (co_y1 > (re_yhi - (f_marge*re_rhi))) ET (co_y1 < (re_yhi + (f_marge*re_rhi))) ;
+
+                    cond2 = (co_x2 > (re_xhi - (f_marge*re_rhi))) ET (co_x2 < (re_xhi + (f_marge*re_rhi))) ET
+                            (co_y2 > (re_yhi - (f_marge*re_rhi))) ET (co_y2 < (re_yhi + (f_marge*re_rhi))) ;
+
+                    cond3 = (co_x3 > (re_xhi - (f_marge*re_rhi))) ET (co_x3 < (re_xhi + (f_marge*re_rhi))) ET
+                            (co_y3 > (re_yhi - (f_marge*re_rhi))) ET (co_y3 < (re_yhi + (f_marge*re_rhi))) ;
+
+                    is_ins_h = cond0 OU cond1 OU cond2 OU cond3 ;
+
+                    SI (is_ins_h) ;
+***** Keep “outside” points for this hole (per-hole bookkeeping) *****
+                        SI (NON cond0) ;
+                            tab_hole . 'X' . hi = tab_hole . 'X' . hi  ET (PROG co_x0) ;
+                            tab_hole . 'Y' . hi = tab_hole . 'Y' . hi  ET (PROG co_y0) ;
+                            tab_hole . 'Z' . hi = tab_hole . 'Z' . hi  ET (PROG co_z0) ;
+                            tab_hole . 'PT' . hi = tab_hole . 'PT' . hi  ET (POIN co_x0 co_y0 co_z0) ;
+                        FINSI ;
+                        SI (NON cond1) ;
+                            tab_hole . 'X' . hi = tab_hole . 'X' . hi  ET (PROG co_x1) ;
+                            tab_hole . 'Y' . hi = tab_hole . 'Y' . hi  ET (PROG co_y1) ;
+                            tab_hole . 'Z' . hi = tab_hole . 'Z' . hi  ET (PROG co_z1) ;
+                            tab_hole . 'PT' . hi = tab_hole . 'PT' . hi  ET (POIN co_x1 co_y1 co_z1) ;
+                        FINSI ;
+                        SI (NON cond2) ;
+                            tab_hole . 'X' . hi = tab_hole . 'X' . hi  ET (PROG co_x2) ;
+                            tab_hole . 'Y' . hi = tab_hole . 'Y' . hi  ET (PROG co_y2) ;
+                            tab_hole . 'Z' . hi = tab_hole . 'Z' . hi  ET (PROG co_z2) ;
+                            tab_hole . 'PT' . hi = tab_hole . 'PT' . hi  ET (POIN co_x2 co_y2 co_z2) ;
+                        FINSI ;
+                        SI (NON cond3) ;
+                            tab_hole . 'X' . hi = tab_hole . 'X' . hi  ET (PROG co_x3) ;
+                            tab_hole . 'Y' . hi = tab_hole . 'Y' . hi  ET (PROG co_y3) ;
+                            tab_hole . 'Z' . hi = tab_hole . 'Z' . hi  ET (PROG co_z3) ;
+                            tab_hole . 'PT' . hi = tab_hole . 'PT' . hi  ET (POIN co_x3 co_y3 co_z3) ;
+                        FINSI ;
+
+                        is_ins_any = VRAI ;
+                    FINSI ;
+
+                FIN bouh ;
+            FINSI ;
+
+***** if ANY hole was hit, skip creating this sub-surface *****
+            SI (is_ins_any) ;
+                ITERER boui ;
+            FINSI ;
+
+***** Create (merge) the sub-surface only if no hole hit *****
+            SI (EGA first_done 0) ;
+                SURF1 = L1_ij REGL nelem_y (INVE L3_ij) ;
+                first_done = 1 ;
+            SINON ;
+                SURF_ij = L1_ij REGL nelem_y (INVE L3_ij) ;
+                SURF1 = SURF1 ET SURF_ij ;
+            FINSI ;
+
+        FIN boui ;
+    FIN bouj ;
+
+    SI (NON (EGA num_holes 0)) ;
+        REPETER bouh (num_holes) ;
+            hi = &bouh ;
+            po_rec_hi = tab_hole . 'PT' . hi ;
+* po_rec_hi = (COOR po_rec_hi 1) POIN 'EGSUPE' -1000. ;
+            ELIM po_rec_hi re_tol;
+            tab_hole . 'PT' . hi = po_rec_hi ;
+        FIN bouh ;
+    FINSI ;
+
+    SURF1 = ELIM SURF1 re_tol ;
+
+
+FINP SURF1 tab_hole ;
+
+
+DEBP CIRC_INT SURF1*'MAILLAGE' tab_hole*'TABLE' re_tol*'FLOTTANT' re_cr*'LISTREEL' re_cx*'LISTREEL' re_cy*'LISTREEL' ;
+
+    num_holes = DIME re_cr ;
+    SI (NON (EGA num_holes 0)) ;
+        tab_hole . 'ANGLE' = TABLE ;
+        REPETER bouh (num_holes) ;
+            hi = &bouh ;
+            po_rec_hi = tab_hole . 'PT' . hi ;
+            xc = EXTR re_cx hi ;
+            yc = EXTR re_cy hi ;
+            rc = EXTR re_cr hi ;
+            ELIM (po_rec_hi ET SURF1) re_tol ;
+            po_rec_hi = UNIQ po_rec_hi ;
+* Create a filtered list of points ordered counter-clockwise around center
+            nb_points = NBNO po_rec_hi;
+* Calculate angles for each point relative to center
+            tab_hole . 'ANGLE' . hi = TABLE ;
+            REPETER boup nb_points ;
+                i  = &boup ;
+                po_pi = POIN po_rec_hi i ;
+                ang = ANG_PO po_pi xc yc ;
+                tab_hole . 'ANGLE' . hi . i = ang ;
+            FIN boup ;
+
+* ----- build a NEW ordered list of points
+* po_rec_hi_sorted = -1000000.0 -1000000.0 -1000000.0 ;
+            po_rec_hi_sorted = VIDE 'MAILLAGE' ;
+            REPETER ki nb_points ;
+
+* find index with minimum angle still available
+                k = &ki ;
+                ang_min = 1.0e30 ;
+                ind_min = 0 ;
+
+                REPETER ii nb_points ;
+                    i = &ii ;
+                    a = tab_hole . 'ANGLE' . hi . i ;
+                    SI (a < ang_min) ;
+                        ang_min = a ;
+                        ind_min = i ;
+                    FINSI ;
+                FIN ii ;
+
+* append corresponding point to new ordered table
+                po_min = POIN po_rec_hi ind_min ;
+                po_rec_hi_sorted = po_rec_hi_sorted ET po_min ;
+
+* mark this angle as used (so it will not be picked again)
+                tab_hole . 'ANGLE' . hi . ind_min = 1.e30 ;
+            FIN ki ;
+* po_rec_hi_sorted = (COOR po_rec_hi_sorted 1) POIN 'EGSUPE' -1000. ;
+
+            nb_rec_points = NBNO po_rec_hi_sorted ;
+* Now find intersection points between hole circle and polygon edges
+            REPETER boup (nb_rec_points) ;
+                p_index = &boup ;
+                point_i = POIN po_rec_hi_sorted p_index ;
+                SI (EGA p_index nb_rec_points) ;
+                    point_i_1 = POIN po_rec_hi_sorted 1 ;
+                SINON ;
+                    point_i_1 = POIN po_rec_hi_sorted (p_index + 1) ;
+                FINSI ;
+                pp1 pc = INTER_SEC point_i xc yc rc ;
+                pp2 pc = INTER_SEC point_i_1 xc yc rc ;
+                SI ((EGA p_index 1) ET (EGA hi 1)) ;
+                    ce_rec = DROI 1 point_i point_i_1 ;
+                    ce_pint = CERC 1 'CENTR' pp1 pc pp2 ;
+                SINON ;
+                    ce_rec = ce_rec ET (DROI 1 point_i point_i_1) ;
+                    ce_pint = ce_pint ET (CERC 1 'CENTR' pp1 pc pp2) ;
+                FINSI ;
+
+            FIN boup ;
+            ELIM (ce_rec ET SURF1) re_tol ;
+            ELIM ce_pint re_tol ;
+        FIN bouh ;
+    FINSI ;
+
+FINP ce_rec ce_pint ;
+
+DEBP OPEN_CHAMP mail*'MAILLAGE' co_po_x*'TABLE' co_po_y*'TABLE' co_po_z*'TABLE' tab_champ*'TABLE' ;
+    po_mail = (mail COOR 1) POIN 'EGSUPE' -5000000. ;
+* p_champ = -10000000. -10000000. -1000000. ;
+    p_champ = VIDE 'MAILLAGE' ;
+    prog_champ = PROG  ;
+
+    N = DIME (co_po_x . 1) ;
+    M = DIME co_po_x ;
+
+    REPETER bouj (M-1) ;
+        REPETER boui (N-1) ;
+            j = &bouj ;
+            i = &boui ;
+            co_x0 = EXTR (co_po_x . j) i ;
+            co_y0 = EXTR (co_po_y . j) i ;
+            co_z0 = EXTR (co_po_zmin . j) i ;
+            co_open = EXTR (co_po_cr_open . j) i ;
+            p_pro = mail POIN 'PROC' (co_x0 co_y0 co_z0) ;
+            p_champ = p_champ ET p_pro ;
+            prog_champ = prog_champ ET co_open ;
+        FIN boui ;
+    FIN bouj ;
+* p_champ = (COOR p_champ 1) POIN 'EGSUPE' -10000. ;
+* prog_champ = ENLE prog_champ 1 ;
+    cp_po_mail = MANU 'CHPO' p_champ 'SCAL' prog_champ ;
+    cp_open = REDU cp_po_mail mail ;
+FINP cp_open ;
+
+************************** Main Program *******************************
+***** Parameters for reading MATLAB CSV files *****
+re_ti = 60 ;
+re_crpa = 1 ;
+re_smfa = 0.05 ;
+re_numspa = 50 ;
+re_opmin = 1.e-6 ;
+***** Parameters mesh refinments *****
+nelem_x = 2;
+nelem_y = 2;
+nelem_z = 30;
+re_tol = 1.e-10 ;
+***** Parameters for Inflation meshing along z direction *****
+re_fact_z = 1.025 ;
+***** Parameters for inlet and outlet chambers *****
+* Heights are the added dimensions: one half is extruded above the crack and
+* one half below it. Height element counts must therefore be positive and even.
+height_inlet = 0.20 ;
+height_outlet = height_inlet ;
+length_inlet = 0.20 ;
+length_outlet = 0.20 ;
+nelem_height_inlet = 10 ;
+nelem_height_outlet = 10 ;
+nelem_length_inlet = 10 ;
+nelem_length_outlet = 10 ;
+re_fact_height_inlet = 5.0 ;
+re_fact_height_outlet = 5.0 ;
+re_fact_length_inlet = 5.0 ;
+re_fact_length_outlet = 5.0 ;
+***** Parameters for hole filling (if any)*****
+num_el_fill = 15 ;
+re_fact_hole = 5.0 ;
+** visualization options **
+opti_visu = 0 ;
+*Extract MED or STL files options*
+opti_med = 0 ;
+opti_stl = 0 ;
+
+***** Dfine the center and the radius of the holes (if any) *****
+re_cx = PROG -0.20 0.20 ;
+re_cy = PROG 0.20 -0.20 ;
+re_cr = PROG 0.07 0.07  ;
+
+
+******** Step1: Read DEAP crack surface coordinates ***************
+co_po_x co_po_y co_po_zmax co_po_zmin co_po_zmean co_po_cr_open = CSV_LIRE re_ti re_crpa re_smfa re_numspa re_opmin ;
+* Determine the mesh size for hole filling (if any) *
+dx = (EXTR (co_po_x . 2) 1) - (EXTR (co_po_x . 1) 1) ;
+dy = (EXTR (co_po_y . 1) 2) - (EXTR (co_po_y . 1) 1) ;
+delta_x = dx / nelem_x ;
+delta_y = dy / nelem_y ;
+delta_fil = MAXI (PROG delta_x delta_y) ;
+re_dens_hole = delta_fil ;
+******** Step2: Create the upper, lower and mean surfaces ***************
+
+surf_zmin tab_hole_min = CR_SURF co_po_x co_po_y co_po_zmin nelem_x nelem_y re_tol re_cr re_cx re_cy ;
+surf_zmax tab_hole_max = CR_SURF co_po_x co_po_y co_po_zmax nelem_x nelem_y re_tol re_cr re_cx re_cy ;
+surf_zmean tab_hole_mean = CR_SURF co_po_x co_po_y co_po_zmean nelem_x nelem_y re_tol re_cr re_cx re_cy ;
+
+* Correct the z coordinates for the filling elements based on the original point clouds
+surf_zmin_comp tab_hole_comp = CR_SURF co_po_x co_po_y co_po_zmin nelem_x nelem_y re_tol (PROG) (PROG) (PROG) ;
+surf_zmax_comp tab_hole_comp = CR_SURF co_po_x co_po_y co_po_zmax nelem_x nelem_y re_tol (PROG) (PROG) (PROG) ;
+surf_zmean_comp tab_hole_comp = CR_SURF co_po_x co_po_y co_po_zmean nelem_x nelem_y re_tol (PROG) (PROG) (PROG) ;
+
+* Fill holes if any
+SI (NON (EGA (DIME re_cr) 0)) ;
+    ce_rec_min ce_pint_min = CIRC_INT surf_zmin tab_hole_min re_tol re_cr re_cx re_cy ;
+    ce_rec_max ce_pint_max = CIRC_INT surf_zmax tab_hole_max re_tol re_cr re_cx re_cy ;
+    ce_rec_mean ce_pint_mean = CIRC_INT surf_zmean tab_hole_mean re_tol re_cr re_cx re_cy ;
+
+    fil_hi_min = ce_rec_min REGL (-1*num_el_fill) 'DINI' (re_fact_hole*re_dens_hole) 'DFIN' re_dens_hole ce_pint_min ;
+    fil_hi_max = ce_rec_max REGL (-1*num_el_fill) 'DINI' (re_fact_hole*re_dens_hole) 'DFIN' re_dens_hole ce_pint_max ;
+    fil_hi_mean = ce_rec_mean REGL (-1*num_el_fill) 'DINI' (re_fact_hole*re_dens_hole) 'DFIN' re_dens_hole ce_pint_mean ;
+* OPTI DONN 5 ;
+* Remove duplicated nodes
+    surf_zmin = surf_zmin ET fil_hi_min ;
+    surf_zmax = surf_zmax ET fil_hi_max ;
+    surf_zmean = surf_zmean ET fil_hi_mean ;
+    ELIM surf_zmin re_tol ;
+    ELIM surf_zmax re_tol ;
+    ELIM surf_zmean re_tol ;
+
+    z_coord_zmin = COOR surf_zmin_comp 3 ;
+    z_coord_zmax = COOR surf_zmax_comp 3 ;
+    z_coord_zmean = COOR surf_zmean_comp 3 ;
+* cp_open = OPEN_CHAMP surf_zmin_comp co_po_x co_po_y co_po_zmin co_po_cr_open ;
+
+    OPTI DIME 2 ;
+    coord_new_zmin = INT_COMP surf_zmin_comp z_coord_zmin surf_zmin ;
+    coord_new_zmax = INT_COMP surf_zmax_comp z_coord_zmax surf_zmax ;
+    coord_new_zmean = INT_COMP surf_zmean_comp z_coord_zmean surf_zmean ;
+* cr_open_mean = INT_COMP surf_zmin_comp cp_open surf_zmean ;
+* cr_open_mean = cr_open_mean / 2.0 ;
+* cr_open_max = INT_COMP surf_zmin_comp cp_open surf_zmax ;
+    OPTI DIME 3 ;
+    DISPLACE surf_zmin coord_new_zmin ;
+    DISPLACE surf_zmax coord_new_zmax;
+    DISPLACE surf_zmean coord_new_zmean;
+FINSI ;
+
+* Remove duplicated nodes
+ELIM surf_zmin re_tol ;
+ELIM surf_zmax re_tol ;
+ELIM surf_zmean re_tol ;
+
+* Correct the surfaces orientation
+surf_zmin = ORIE surf_zmin 'POINT' (0.0 0.0 10000.0) ;
+surf_zmax = ORIE surf_zmax 'POINT' (0.0 0.0 10000.0) ;
+surf_zmean = ORIE surf_zmean 'POINT' (0.0 0.0 10000.0) ;
+
+
+******** Step3: Create the volume between surfaces ***************
+* Determine the mesh size for boundary layer modeling (if needed) *
+cp_open = OPEN_CHAMP surf_zmin_comp co_po_x co_po_y co_po_zmin co_po_cr_open ;
+re_dens_z = MAXI cp_open ;
+
+vo_cr1 = surf_zmin VOLU (-1*nelem_z) 'DINI' re_dens_z 'DFIN' (re_fact_z*re_dens_z) surf_zmean ;
+vo_cr2 = surf_zmean VOLU (-1*nelem_z) 'DINI' (re_fact_z*re_dens_z) 'DFIN' re_dens_z surf_zmax ;
+vo_cr = vo_cr1 ET vo_cr2 ;
+* vo_cr = surf_zmin VOLU (nelem_z) 'DINI' re_dens_z 'DFIN' (re_fact_z*re_dens_z) surf_zmax ;
+vo_cr = ELIM vo_cr re_tol ;
+
+******** Step4: Extract side surfaces ***************
+
+xmin = MINI (vo_cr COOR 1) ;
+ymin = MINI (vo_cr COOR 2) ;
+xmax = MAXI (vo_cr COOR 1) ;
+ymax = MAXI (vo_cr COOR 2) ;
+
+fac3 = FACE vo_cr 3 ;
+
+po_walxmin = (fac3 COOR 1) POIN 'COMPRIS' (xmin - 1.e-6) (xmin + 1.e-6) ;
+surf_xmin = fac3 ELEM 'APPUYE' 'STRICTEMENT' po_walxmin ;
+
+po_walxmax = (fac3 COOR 1) POIN 'COMPRIS' (xmax - 1.e-6) (xmax + 1.e-6) ;
+surf_xmax = fac3 ELEM 'APPUYE' 'STRICTEMENT' po_walxmax ;
+
+po_walymin = (fac3 COOR 2) POIN 'COMPRIS' (ymin - 1.e-6) (ymin + 1.e-6) ;
+surf_ymin = fac3 ELEM 'APPUYE' 'STRICTEMENT' po_walymin ;
+
+po_walymax = (fac3 COOR 2) POIN 'COMPRIS' (ymax - 1.e-6) (ymax + 1.e-6) ;
+surf_ymax = fac3 ELEM 'APPUYE' 'STRICTEMENT' po_walymax ;
+
+surf_trou = fac3 DIFF (surf_xmin ET surf_xmax ET surf_ymin ET surf_ymax) ;
+
+** Circle hole extraction
+tab_hh = TABLE ;
+coorx_trou = COOR surf_trou 1 ;
+coory_trou = COOR surf_trou 2 ;
+SI (NON (EGA (DIME re_cr) 0)) ;
+    REPETER bouh (DIME re_cr) ;
+        hi = &bouh ;
+        re_xhi = EXTR re_cx hi ;
+        re_yhi = EXTR re_cy hi ;
+        re_rhi = EXTR re_cr hi ;
+        po_hole = (surf_trou COOR 1) POIN 'COMPRIS' (re_xhi - re_rhi - re_tol) (re_xhi + re_rhi + re_tol) ;
+        po_hole = (po_hole COOR 2) POIN 'COMPRIS' (re_yhi - re_rhi - re_tol) (re_yhi + re_rhi + re_tol) ;
+        surf_hole = surf_trou ELEM 'APPUYE' 'STRICTEMENT' po_hole ;
+        tab_hh . hi = surf_hole ;
+        surf_trou = surf_trou DIFF surf_hole ;
+    FIN bouh ;
+FINSI ;
+
+******** Step5: Create the inlet and outlet chambers ***************
+* The crack flow direction is global Y: inlet at ymin and outlet at ymax.
+* Negative layer counts activate DINI/DFIN grading. The smallest cells are at
+* the crack/chamber interfaces; cells grow towards the remote box boundaries.
+
+nelem_half_height_inlet = ENTI (nelem_height_inlet / 2.0) ;
+nelem_half_height_outlet = ENTI (nelem_height_outlet / 2.0) ;
+
+re_dens_length_inlet = length_inlet / nelem_length_inlet ;
+re_dens_length_outlet = length_outlet / nelem_length_outlet ;
+re_dens_height_inlet = (0.5 * height_inlet) / nelem_half_height_inlet ;
+re_dens_height_outlet = (0.5 * height_outlet) / nelem_half_height_outlet ;
+
+* Recover both halves of each complete crack end face before their volume
+* union. FACE 3 above is retained unchanged for the legacy wall/hole exports.
+surf_cr1_all = ENVE vo_cr1 ;
+surf_cr2_all = ENVE vo_cr2 ;
+po_cr1_inlet = (surf_cr1_all COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+po_cr2_inlet = (surf_cr2_all COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+po_cr1_outlet = (surf_cr1_all COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+po_cr2_outlet = (surf_cr2_all COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+surf_cr_inlet = ELIM (
+    (surf_cr1_all ELEM 'APPUYE' 'STRICTEMENT' po_cr1_inlet) ET
+    (surf_cr2_all ELEM 'APPUYE' 'STRICTEMENT' po_cr2_inlet)
+    ) re_tol ;
+surf_cr_outlet = ELIM (
+    (surf_cr1_all ELEM 'APPUYE' 'STRICTEMENT' po_cr1_outlet) ET
+    (surf_cr2_all ELEM 'APPUYE' 'STRICTEMENT' po_cr2_outlet)
+    ) re_tol ;
+surf_cr_inlet = ORIE surf_cr_inlet 'POINT' (0.0 -10000.0 0.0) ;
+surf_cr_outlet = ORIE surf_cr_outlet 'POINT' (0.0 10000.0 0.0) ;
+
+* First extrude the complete crack inlet and outlet faces in global Y.
+vo_ch_in_base = surf_cr_inlet VOLU (-1*nelem_length_inlet)
+    'DINI' re_dens_length_inlet
+    'DFIN' (re_fact_length_inlet*re_dens_length_inlet)
+    'TRAN' (0.0 (-1.0*length_inlet) 0.0) ;
+
+vo_ch_out_base = surf_cr_outlet VOLU (-1*nelem_length_outlet)
+    'DINI' re_dens_length_outlet
+    'DFIN' (re_fact_length_outlet*re_dens_length_outlet)
+    'TRAN' (0.0 length_outlet 0.0) ;
+
+* Build references for the upper/lower lateral faces of both base extrusions,
+* then extract those faces from FACE 3 as requested.
+cont_zmax = CONT surf_zmax ;
+cont_zmin = CONT surf_zmin ;
+
+po_li_in_up = (cont_zmax COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+po_li_in_low = (cont_zmin COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+li_in_up = cont_zmax ELEM 'APPUYE' 'STRICTEMENT' po_li_in_up ;
+li_in_low = cont_zmin ELEM 'APPUYE' 'STRICTEMENT' po_li_in_low ;
+
+po_li_out_up = (cont_zmax COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+po_li_out_low = (cont_zmin COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+li_out_up = cont_zmax ELEM 'APPUYE' 'STRICTEMENT' po_li_out_up ;
+li_out_low = cont_zmin ELEM 'APPUYE' 'STRICTEMENT' po_li_out_low ;
+
+surf_ch_in_up_ref = li_in_up TRAN (-1*nelem_length_inlet)
+    'DINI' re_dens_length_inlet
+    'DFIN' (re_fact_length_inlet*re_dens_length_inlet)
+    (0.0 (-1.0*length_inlet) 0.0) ;
+surf_ch_in_low_ref = li_in_low TRAN (-1*nelem_length_inlet)
+    'DINI' re_dens_length_inlet
+    'DFIN' (re_fact_length_inlet*re_dens_length_inlet)
+    (0.0 (-1.0*length_inlet) 0.0) ;
+
+surf_ch_out_up_ref = li_out_up TRAN (-1*nelem_length_outlet)
+    'DINI' re_dens_length_outlet
+    'DFIN' (re_fact_length_outlet*re_dens_length_outlet)
+    (0.0 length_outlet 0.0) ;
+surf_ch_out_low_ref = li_out_low TRAN (-1*nelem_length_outlet)
+    'DINI' re_dens_length_outlet
+    'DFIN' (re_fact_length_outlet*re_dens_length_outlet)
+    (0.0 length_outlet 0.0) ;
+
+fac_ch_in_base = ENVE vo_ch_in_base ;
+fac_ch_out_base = ENVE vo_ch_out_base ;
+ELIM (fac_ch_in_base ET surf_ch_in_up_ref ET surf_ch_in_low_ref) re_tol ;
+ELIM (fac_ch_out_base ET surf_ch_out_up_ref ET surf_ch_out_low_ref) re_tol ;
+
+surf_ch_in_up = fac_ch_in_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_in_up_ref ;
+surf_ch_in_low = fac_ch_in_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_in_low_ref ;
+surf_ch_out_up = fac_ch_out_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_out_up_ref ;
+surf_ch_out_low = fac_ch_out_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_out_low_ref ;
+surf_ch_in_up = ORIE surf_ch_in_up 'POINT' (0.0 0.0 10000.0) ;
+surf_ch_in_low = ORIE surf_ch_in_low 'POINT' (0.0 0.0 -10000.0) ;
+surf_ch_out_up = ORIE surf_ch_out_up 'POINT' (0.0 0.0 10000.0) ;
+surf_ch_out_low = ORIE surf_ch_out_low 'POINT' (0.0 0.0 -10000.0) ;
+
+* Extrude the extracted upper and lower surfaces by half the chamber height.
+vo_ch_in_up = surf_ch_in_up VOLU (-1*nelem_half_height_inlet)
+    'DINI' re_dens_height_inlet
+    'DFIN' (re_fact_height_inlet*re_dens_height_inlet)
+    'TRAN' (0.0 0.0 (0.5*height_inlet)) ;
+vo_ch_in_low = surf_ch_in_low VOLU (-1*nelem_half_height_inlet)
+    'DINI' re_dens_height_inlet
+    'DFIN' (re_fact_height_inlet*re_dens_height_inlet)
+    'TRAN' (0.0 0.0 (-0.5*height_inlet)) ;
+
+vo_ch_out_up = surf_ch_out_up VOLU (-1*nelem_half_height_outlet)
+    'DINI' re_dens_height_outlet
+    'DFIN' (re_fact_height_outlet*re_dens_height_outlet)
+    'TRAN' (0.0 0.0 (0.5*height_outlet)) ;
+vo_ch_out_low = surf_ch_out_low VOLU (-1*nelem_half_height_outlet)
+    'DINI' re_dens_height_outlet
+    'DFIN' (re_fact_height_outlet*re_dens_height_outlet)
+    'TRAN' (0.0 0.0 (-0.5*height_outlet)) ;
+
+vo_ch_in = ELIM (vo_ch_in_base ET vo_ch_in_up ET vo_ch_in_low) re_tol ;
+vo_ch_out = ELIM (vo_ch_out_base ET vo_ch_out_up ET vo_ch_out_low) re_tol ;
+vo_all = ELIM (vo_cr ET vo_ch_in ET vo_ch_out) re_tol ;
+
+* Extract complete chamber envelopes and each recognizable boundary.
+surf_ch_in_all = ENVE vo_ch_in ;
+surf_ch_out_all = ENVE vo_ch_out ;
+surf_all = ENVE vo_all ;
+
+po_ch_in_interface = (surf_ch_in_all COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+surf_ch_in_interface = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_interface ;
+po_ch_in_outer = (surf_ch_in_all COOR 2) POIN 'COMPRIS'
+    (ymin-length_inlet-re_tol) (ymin-length_inlet+re_tol) ;
+surf_ch_in_outer = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_outer ;
+po_ch_in_xmin = (surf_ch_in_all COOR 1) POIN 'COMPRIS' (xmin-re_tol) (xmin+re_tol) ;
+surf_ch_in_xmin = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_xmin ;
+po_ch_in_xmax = (surf_ch_in_all COOR 1) POIN 'COMPRIS' (xmax-re_tol) (xmax+re_tol) ;
+surf_ch_in_xmax = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_xmax ;
+surf_ch_in_top = FACE vo_ch_in_up 2 ;
+surf_ch_in_bottom = FACE vo_ch_in_low 2 ;
+
+po_ch_out_interface = (surf_ch_out_all COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+surf_ch_out_interface = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_interface ;
+po_ch_out_outer = (surf_ch_out_all COOR 2) POIN 'COMPRIS'
+    (ymax+length_outlet-re_tol) (ymax+length_outlet+re_tol) ;
+surf_ch_out_outer = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_outer ;
+po_ch_out_xmin = (surf_ch_out_all COOR 1) POIN 'COMPRIS' (xmin-re_tol) (xmin+re_tol) ;
+surf_ch_out_xmin = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_xmin ;
+po_ch_out_xmax = (surf_ch_out_all COOR 1) POIN 'COMPRIS' (xmax-re_tol) (xmax+re_tol) ;
+surf_ch_out_xmax = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_xmax ;
+surf_ch_out_top = FACE vo_ch_out_up 2 ;
+surf_ch_out_bottom = FACE vo_ch_out_low 2 ;
+
+******** Step6: Export the results ***************
+OPTI SORT 'castem_mesh_v.bdf' ;
+SORT 'NAS' vo_all ;
+OPTI SORT 'castem_mesh_surf_all.bdf' ;
+SORT 'NAS' surf_all ;
+OPTI SORT 'castem_mesh_surf_min.bdf' ;
+SORT 'NAS' surf_zmin ;
+OPTI SORT 'castem_mesh_surf_max.bdf' ;
+SORT 'NAS' surf_zmax ;
+OPTI SORT 'castem_mesh_surf_mean.bdf' ;
+SORT 'NAS' surf_zmean ;
+OPTI SORT 'castem_mesh_surf_xmin.bdf' ;
+SORT 'NAS' surf_xmin ;
+OPTI SORT 'castem_mesh_surf_xmax.bdf' ;
+SORT 'NAS' surf_xmax ;
+OPTI SORT 'castem_mesh_surf_ymin.bdf' ;
+SORT 'NAS' surf_ymin ;
+OPTI SORT 'castem_mesh_surf_ymax.bdf' ;
+SORT 'NAS' surf_ymax ;
+
+* Separate chamber volumes and all six named chamber boundaries.
+OPTI SORT 'castem_mesh_v_inlet.bdf' ;
+SORT 'NAS' vo_ch_in ;
+OPTI SORT 'castem_mesh_surf_inlet_all.bdf' ;
+SORT 'NAS' surf_ch_in_all ;
+OPTI SORT 'castem_mesh_surf_inlet_interface.bdf' ;
+SORT 'NAS' surf_ch_in_interface ;
+OPTI SORT 'castem_mesh_surf_inlet_outer.bdf' ;
+SORT 'NAS' surf_ch_in_outer ;
+OPTI SORT 'castem_mesh_surf_inlet_top.bdf' ;
+SORT 'NAS' surf_ch_in_top ;
+OPTI SORT 'castem_mesh_surf_inlet_bottom.bdf' ;
+SORT 'NAS' surf_ch_in_bottom ;
+OPTI SORT 'castem_mesh_surf_inlet_xmin.bdf' ;
+SORT 'NAS' surf_ch_in_xmin ;
+OPTI SORT 'castem_mesh_surf_inlet_xmax.bdf' ;
+SORT 'NAS' surf_ch_in_xmax ;
+
+OPTI SORT 'castem_mesh_v_outlet.bdf' ;
+SORT 'NAS' vo_ch_out ;
+OPTI SORT 'castem_mesh_surf_outlet_all.bdf' ;
+SORT 'NAS' surf_ch_out_all ;
+OPTI SORT 'castem_mesh_surf_outlet_interface.bdf' ;
+SORT 'NAS' surf_ch_out_interface ;
+OPTI SORT 'castem_mesh_surf_outlet_outer.bdf' ;
+SORT 'NAS' surf_ch_out_outer ;
+OPTI SORT 'castem_mesh_surf_outlet_top.bdf' ;
+SORT 'NAS' surf_ch_out_top ;
+OPTI SORT 'castem_mesh_surf_outlet_bottom.bdf' ;
+SORT 'NAS' surf_ch_out_bottom ;
+OPTI SORT 'castem_mesh_surf_outlet_xmin.bdf' ;
+SORT 'NAS' surf_ch_out_xmin ;
+OPTI SORT 'castem_mesh_surf_outlet_xmax.bdf' ;
+SORT 'NAS' surf_ch_out_xmax ;
+
+SI (NON (EGA (DIME re_cr) 0)) ;
+    REPETER bouh (DIME re_cr) ;
+        hi = &bouh ;
+        surf_trou_hi = tab_hh . hi ;
+        OPTI SORT (CHAI 'castem_mesh_surf_trou_'hi'.bdf') ;
+        SORT 'NAS' surf_trou_hi ;
+    FIN bouh ;
+FINSI ;
+
+**Visualization of the crack and chamber volume**
+SI (NON (EGA opti_visu 0)) ;
+    TRAC 'FACE' (COUL 'ROUG' vo_all) 'TITR' 'Crack with inlet and outlet chambers' ;
+FINSI ;
+
+*export STL or MED files (if needed)*
+
+
+SI (NON (EGA opti_med 0)) ;
+    OPTI SORT 'castem_mesh_v.med' ;
+    SORT 'MED' vo_all ;
+FINSI ;
+
+SI (NON (EGA opti_stl 0)) ;
+    surf_zmin_stl = CHAN 'TRI3'  surf_zmin ;
+    surf_zmean_stl = CHAN 'TRI3'  surf_zmean ;
+    surf_zmax_stl = CHAN 'TRI3'  surf_zmax ;
+    surf_xmin_stl = CHAN 'TRI3'  surf_xmin ;
+    surf_xmax_stl = CHAN 'TRI3'  surf_xmax ;
+    surf_ymin_stl = CHAN 'TRI3'  surf_ymin ;
+    surf_ymax_stl = CHAN 'TRI3'  surf_ymax ;
+    OPTI SORT 'castem_mesh_surf_zmin.stl' ;
+    SORT 'STL' surf_zmin_stl ;
+    OPTI SORT 'castem_mesh_surf_zmean.stl' ;
+    SORT 'STL' surf_zmean_stl ;
+    OPTI SORT 'castem_mesh_surf_max.stl' ;
+    SORT 'STL' surf_zmax_stl ;
+    OPTI SORT 'castem_mesh_surf_xmin.stl' ;
+    SORT 'STL' surf_xmin_stl ;
+    OPTI SORT 'castem_mesh_surf_xmax.stl' ;
+    SORT 'STL' surf_xmax_stl ;
+    OPTI SORT 'castem_mesh_surf_ymin.stl' ;
+    SORT 'STL' surf_ymin_stl ;
+    OPTI SORT 'castem_mesh_surf_ymax.stl' ;
+    SORT 'STL' surf_ymax_stl ;
+
+    SI (NON (EGA (DIME re_cr) 0)) ;
+        REPETER bouh (DIME re_cr) ;
+            hi = &bouh ;
+            surf_trou_hi = tab_hh . hi ;
+            surf_trou_hi = CHAN 'TRI3'  surf_trou_hi ;
+            OPTI SORT (CHAI 'castem_mesh_surf_trou_'hi'.stl') ;
+            SORT 'STL' surf_trou_hi ;
+        FIN bouh ;
+    FINSI ;
+
+FINSI ;
+
+
+
+FIN ;
