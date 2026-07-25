@@ -1,9 +1,9 @@
 # Inlet and outlet chamber example
 
 This example uses the real `ti60` CSV crack surface and the two circular holes
-already provided in `examples/input`. It demonstrates the chamber-enabled
-Cast3M source without changing the graphical interface or the protected
-baseline source. The hole fills are generated directly on the three rough
+already provided in `examples/input`. It demonstrates the chamber option now
+embedded in the single Scientific Workbench and headless runner while leaving
+the protected baseline source unchanged. The hole fills are generated directly on the three rough
 surfaces by Python and imported as NASTRAN meshes. The runnable DGIBI contains
 no `DISPLACE`, `DEPL`, `INT_COMP` or Cast3M hole-fill `REGL` operation.
 
@@ -46,7 +46,19 @@ extrusions. Dimensions use the same unit as the input CSV coordinates.
 
 ## Reproduce the example
 
-Run these commands from the repository root in PowerShell:
+The preferred single-launcher headless reproduction is:
+
+```powershell
+python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\chambers\run.ini --validate-only
+python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\chambers\run.ini
+```
+
+For the interactive path, run
+`python.exe .\castem_pipeline_gui_scientific.py`, click **Chamber example**,
+review the embedded chamber controls, and run the converter.
+
+The following direct Cast3M commands reproduce the preserved reviewed artifact
+without exercising the interface integration:
 
 ```powershell
 $repo = (Get-Location).Path
@@ -71,9 +83,18 @@ python.exe scripts\render_mesh.py `
 The run writes the combined volume, complete exterior and separate inlet and
 outlet volumes. Each chamber also has independent `all`, `interface`, `outer`,
 `top`, `bottom`, `xmin` and `xmax` surface BDF files.
+With STL export enabled, Python converts those named chamber boundaries through
+the same high-precision BDF-to-STL path used for the crack and hole surfaces.
 
 The reviewed numerical checks are recorded in
 [`validation-summary.json`](validation-summary.json). The three compact
 Python-generated hole-fill BDF inputs are included so the Cast3M example is
 standalone. The complete generated volume and boundary BDF outputs are
 intentionally excluded from Git because they occupy several gigabytes.
+
+The integrated `run.ini` execution also returned Cast3M error level `0`, found
+no missing expected outputs, wrote the 198,524,672-byte merged BDF, and safely
+converted 24 crack/hole/chamber STL files containing 392,920 triangles. No
+exactly degenerate triangle had to be omitted. Its 177,009,121-byte volume BDF
+has the same SHA-256 as the mesh used for the documented topology, partition,
+and Jacobian checks.

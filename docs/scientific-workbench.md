@@ -1,6 +1,9 @@
 # Scientific Workbench
 
-`castem_pipeline_gui_scientific.py` is the single launcher for the enhanced workflow. It adds a clearer scientific interface and the accelerated bulk-hole implementation without editing the immutable T13 GUI or its Cast3M templates.
+`castem_pipeline_gui_scientific.py` is the single launcher for the enhanced
+workflow. It adds a clearer scientific interface, accelerated bulk-hole
+implementation, and optional inlet/outlet chambers without editing the
+immutable T13 GUI or protected Cast3M templates.
 
 Run it without arguments for the interactive workbench, or pass `--headless CONFIG` to execute the same scientific pipeline from an INI file without creating a Tk window.
 
@@ -8,8 +11,9 @@ The animated walkthrough in the main README and both workbench screenshots can b
 
 ## Workflow
 
-1. Open the workbench and select **Load documented example**, **DEAP fitting
-   example**, **Fractal example**, or **Planar example**; alternatively select
+1. Open the workbench and select **Load documented example**, **Chamber
+   example**, **DEAP fitting example**, **Fractal example**, or **Planar
+   example**; alternatively select
    the DGIBI template, a dedicated working directory, and define the source
    manually. The DEAP action loads the bundled `1_simple` raw-HDF5 case and
    its validated fit parameters.
@@ -27,9 +31,12 @@ The animated walkthrough in the main README and both workbench screenshots can b
 6. In **Mesh & holes**, choose one mode:
    - **Original T13 hole workflow — reference** preserves the original Cast3M construction, interpolation, and displacement behavior.
    - **Bulk Python hole mesh — fast + inflated** vectorizes the common interpolation path, writes complete lower/upper/mean `CQUAD4` fill meshes, and lets Cast3M read them with `LIRE 'NAS'`.
-6. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
-7. In **Run & results**, validate again and launch Cast3M. The live solver log and run state are streamed without blocking the interface.
-8. Use **Open generated mesh in Gmsh** to open the exact combined BDF for the current naming parameters, the newest combined BDF, or the volume BDF without rerunning Cast3M.
+7. Optionally enable the inlet/outlet chambers in the same tab. Set one shared
+   height, separate lengths, separate height/length cell counts, and separate
+   grading ratios for each end.
+8. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
+9. In **Run & results**, validate again and launch Cast3M. The live solver log and run state are streamed without blocking the interface.
+10. Use **Open generated mesh in Gmsh** to open the exact combined BDF for the current naming parameters, the newest combined BDF, or the volume BDF without rerunning Cast3M.
 
 The no-hole path remains the preserved baseline regardless of the selected hole mode. The previous `castem_pipeline_gui_python_holes.py` entry point is retained only as a compatibility wrapper and redirects to this workbench.
 
@@ -88,6 +95,33 @@ boundary BDF files, Python exports the lower, upper, mean, side, and hole
 surfaces as high-precision ASCII STL. It reports and omits only exactly
 zero-area BDF triangles, avoiding Cast3M error 808 and binary-STL precision
 loss.
+
+Chamber mode extends the same conversion to every named inlet and outlet
+boundary.
+
+## Chamber controls
+
+The chamber checkbox and all eleven values are embedded in **Mesh & holes**;
+no second window or second Python launcher is used. Disabled chamber fields are
+retained but inactive, and the normal template remains selected. Enabling the
+option automatically uses `source_codes/castem_tool_chambers.dgibi` and
+requires bulk Python mode.
+
+`Hch` is the common inlet/outlet height. `Lin` and `Lout` are the lengths in
+the negative and positive global-Y directions. `Nhin`/`Nhout` are total
+height counts and must be even; `Nlin`/`Nlout` are length counts.
+`Rhin`/`Rhout` and `Rlin`/`Rlout` are end-specific grading ratios. Ratios of
+one are uniform; larger ratios keep the smallest cells next to the crack and
+grow them toward the remote boundaries.
+
+The **Chamber example** button fills the previously validated values
+(`Hch=Lin=Lout=0.20`, ten cells and ratio five in each chamber direction,
+`2 x 2 x 30` crack refinement, and 15 hole radial cells). It uses the same
+documented CSV quartet and two circular holes. See the
+[headless counterpart](../examples/chambers/run.ini) and
+[validation evidence](../examples/chambers/README.md).
+
+![Embedded inlet and outlet chamber controls](assets/scientific-workbench-chambers.png)
 
 ## Generated surfaces
 

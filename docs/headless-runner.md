@@ -127,6 +127,45 @@ hole4 = regular_polygon, cx, cy, sides, circumradius, rotation_degrees
 
 The legacy three-number circle shorthand remains valid. Non-circular shapes require `mode = python`; the preserved reference and FISS paths remain circle-only. See the [runnable all-shapes example](../examples/shaped-holes/all-shapes.ini).
 
+## Inlet and outlet chambers
+
+The optional `[chambers]` section creates attached boxes at the crack's global
+`Ymin` and `Ymax` faces. Enabling it automatically selects the validated
+additive chamber DGIBI, so the ordinary `[files] mesh_template` remains the
+unchanged fallback when chambers are disabled.
+
+```ini
+[chambers]
+enabled = true
+height = 0.20
+inlet_length = 0.20
+outlet_length = 0.20
+inlet_height_elements = 10
+outlet_height_elements = 10
+inlet_length_elements = 10
+outlet_length_elements = 10
+inlet_height_ratio = 5
+outlet_height_ratio = 5
+inlet_length_ratio = 5
+outlet_length_ratio = 5
+```
+
+`height` is shared by both chambers and split equally above and below the
+crack. Each height-element count is therefore a total, positive, even number.
+Length counts are positive integers. Every ratio must be at least one, placing
+the smallest cells at the crack/chamber junction and increasing their size
+toward the remote chamber wall. Chamber mode requires `mesh mode = python`.
+
+The complete runnable example is
+[`examples/chambers/run.ini`](../examples/chambers/run.ini):
+
+```powershell
+python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\chambers\run.ini --validate-only
+python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\chambers\run.ini
+```
+
+The headless report records all chamber dimensions, counts, and ratios.
+
 ## Output safety
 
 With `archive_existing_outputs = true`, fixed-name prior mesh outputs are moved into a timestamped `_previous_mesh_runs` directory before a new mesh run. With it set to `false`, the runner refuses to start if such outputs exist. It never recursively cleans the configured directory.
@@ -138,6 +177,8 @@ upper, mean, side, and hole surfaces as ASCII STL with 17-significant-digit
 coordinates. Exactly zero-area BDF triangles are reported and omitted. This
 also avoids the additional coordinate collapse that binary STL's 32-bit
 vertices can introduce for micron-scale openings.
+When chambers are enabled, the same safe converter also exports the complete
+chamber exterior and every named inlet/outlet boundary BDF.
 
 `open_gmsh = true` opens the merged BDF, or the volume BDF when merging is disabled, after a successful mesh run. It never enables Cast3M's internal visualization: generated DGIBI files always contain `opti_visu=0`. Keep it `false` for fully unattended execution.
 

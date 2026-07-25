@@ -25,6 +25,11 @@ from castem_pipeline_gui_python_holes import (
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
+from chamber_geometry import (
+    DEFAULT_CHAMBER_TEMPLATE,
+    ChamberParameters,
+    chambers_from_params,
+)
 from characterization_gui import CharacterizationPanel
 from dataset_naming import parse_csv_set_metadata
 from python_hole_interpolation import (
@@ -178,6 +183,18 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.constant_zmin_var = tk.StringVar(value="0.0")
         self.constant_zmax_var = tk.StringVar(value="2e-4")
         self.characterization_enabled_var = tk.BooleanVar(value=False)
+        self.chambers_enabled_var = tk.BooleanVar(value=False)
+        self.chamber_height_var = tk.StringVar(value="0.20")
+        self.chamber_inlet_length_var = tk.StringVar(value="0.20")
+        self.chamber_outlet_length_var = tk.StringVar(value="0.20")
+        self.chamber_inlet_height_elements_var = tk.StringVar(value="10")
+        self.chamber_outlet_height_elements_var = tk.StringVar(value="10")
+        self.chamber_inlet_length_elements_var = tk.StringVar(value="10")
+        self.chamber_outlet_length_elements_var = tk.StringVar(value="10")
+        self.chamber_inlet_height_ratio_var = tk.StringVar(value="5.0")
+        self.chamber_outlet_height_ratio_var = tk.StringVar(value="5.0")
+        self.chamber_inlet_length_ratio_var = tk.StringVar(value="5.0")
+        self.chamber_outlet_length_ratio_var = tk.StringVar(value="5.0")
 
         shell = ttk.Frame(parent, style="Scientific.TFrame")
         shell.pack(fill="both", expand=True)
@@ -197,6 +214,12 @@ class ScientificApp(PythonHoleInterpolationApp):
         toolbar = ttk.Frame(shell, style="Scientific.TFrame", padding=(20, 12, 20, 0))
         toolbar.pack(fill="x")
         ttk.Button(toolbar, text="Load documented example", style="Accent.TButton", command=self._load_documented_example).pack(side="left")
+        ttk.Button(
+            toolbar,
+            text="Chamber example",
+            style="Quiet.TButton",
+            command=self._load_chamber_example,
+        ).pack(side="left", padx=(8, 0))
         ttk.Button(
             toolbar,
             text="DEAP fitting example",
@@ -683,7 +706,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         tab = self.mesh_tab
         tab.columnconfigure(0, weight=1)
         tab.columnconfigure(1, weight=1)
-        tab.rowconfigure(1, weight=1)
+        tab.rowconfigure(2, weight=1)
 
         mesh = self._card(tab, "Volume discretization")
         mesh.grid(row=0, column=0, sticky="ew", padx=(0, 9), pady=(0, 10))
@@ -709,8 +732,112 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Radiobutton(exports, text="Original T13 workflow — reference", value="baseline", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=5, column=0, sticky="w", pady=3)
         ttk.Radiobutton(exports, text="Bulk Python hole mesh — fast + inflated", value="python", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=6, column=0, sticky="w", pady=3)
 
+        chambers = self._card(tab, "Optional inlet and outlet chambers")
+        chambers.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        for column in (1, 3, 5):
+            chambers.columnconfigure(column, weight=1)
+        ttk.Checkbutton(
+            chambers,
+            text="Enable chambers at Ymin and Ymax",
+            variable=self.chambers_enabled_var,
+            command=self._on_chambers_toggle,
+            style="Card.TCheckbutton",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
+        ttk.Label(
+            chambers,
+            text=(
+                "The shared height is split equally above and below the crack. "
+                "Ratios >= 1 grade smaller cells toward the crack."
+            ),
+            style="CardMuted.TLabel",
+        ).grid(row=0, column=2, columnspan=4, sticky="e", pady=(0, 6))
+        self.chamber_entries = (
+            self._field(
+                chambers,
+                1,
+                0,
+                "Shared height (Hch)",
+                self.chamber_height_var,
+            ),
+            self._field(
+                chambers,
+                1,
+                2,
+                "Inlet length (Lin)",
+                self.chamber_inlet_length_var,
+            ),
+            self._field(
+                chambers,
+                1,
+                4,
+                "Outlet length (Lout)",
+                self.chamber_outlet_length_var,
+            ),
+            self._field(
+                chambers,
+                2,
+                0,
+                "Inlet height cells (Nhin)",
+                self.chamber_inlet_height_elements_var,
+            ),
+            self._field(
+                chambers,
+                2,
+                2,
+                "Outlet height cells (Nhout)",
+                self.chamber_outlet_height_elements_var,
+            ),
+            self._field(
+                chambers,
+                2,
+                4,
+                "Inlet length cells (Nlin)",
+                self.chamber_inlet_length_elements_var,
+            ),
+            self._field(
+                chambers,
+                3,
+                0,
+                "Outlet length cells (Nlout)",
+                self.chamber_outlet_length_elements_var,
+            ),
+            self._field(
+                chambers,
+                3,
+                2,
+                "Inlet height ratio (Rhin)",
+                self.chamber_inlet_height_ratio_var,
+            ),
+            self._field(
+                chambers,
+                3,
+                4,
+                "Outlet height ratio (Rhout)",
+                self.chamber_outlet_height_ratio_var,
+            ),
+            self._field(
+                chambers,
+                4,
+                0,
+                "Inlet length ratio (Rlin)",
+                self.chamber_inlet_length_ratio_var,
+            ),
+            self._field(
+                chambers,
+                4,
+                2,
+                "Outlet length ratio (Rlout)",
+                self.chamber_outlet_length_ratio_var,
+            ),
+        )
+        ttk.Label(
+            chambers,
+            text=f"Enabled mode automatically uses {DEFAULT_CHAMBER_TEMPLATE.name}.",
+            style="CardMuted.TLabel",
+        ).grid(row=4, column=4, columnspan=2, sticky="w", padx=(8, 0))
+
         holes = self._card(tab, "Hole shapes / internal boundaries")
-        holes.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        holes.grid(row=2, column=0, columnspan=2, sticky="nsew")
         holes.columnconfigure(7, weight=1)
         ttk.Checkbutton(holes, text="Enable holes", variable=self.holes_enabled_var, command=self._on_holes_toggle).grid(row=0, column=0, sticky="w", pady=(0, 7))
         ttk.Button(holes, text="Add hole", style="Quiet.TButton", command=self._add_hole_row).grid(row=0, column=1, padx=(8, 0), pady=(0, 7))
@@ -746,6 +873,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.holes_rows_start = 5
         self.hole_shape_rows: list[HoleShapeRow] = []
         self.hole_row_widgets = []
+        self._toggle_chambers()
         self._toggle_holes()
         self._draw_inflation_preview()
 
@@ -988,6 +1116,18 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.constant_zmin_var,
             self.constant_zmax_var,
             self.characterization_enabled_var,
+            self.chambers_enabled_var,
+            self.chamber_height_var,
+            self.chamber_inlet_length_var,
+            self.chamber_outlet_length_var,
+            self.chamber_inlet_height_elements_var,
+            self.chamber_outlet_height_elements_var,
+            self.chamber_inlet_length_elements_var,
+            self.chamber_outlet_length_elements_var,
+            self.chamber_inlet_height_ratio_var,
+            self.chamber_outlet_height_ratio_var,
+            self.chamber_inlet_length_ratio_var,
+            self.chamber_outlet_length_ratio_var,
             self.re_ti_var,
             self.re_crpa_var,
             self.re_smfa_var,
@@ -1239,7 +1379,44 @@ class ScientificApp(PythonHoleInterpolationApp):
                 for hole in geometries
             ]
         params.hole_shapes = geometries
+        params.chambers = ChamberParameters(
+            enabled=self.chambers_enabled_var.get(),
+            height=baseline.parse_float(self.chamber_height_var.get()),
+            inlet_length=baseline.parse_float(self.chamber_inlet_length_var.get()),
+            outlet_length=baseline.parse_float(self.chamber_outlet_length_var.get()),
+            inlet_height_elements=int(
+                self.chamber_inlet_height_elements_var.get().strip()
+            ),
+            outlet_height_elements=int(
+                self.chamber_outlet_height_elements_var.get().strip()
+            ),
+            inlet_length_elements=int(
+                self.chamber_inlet_length_elements_var.get().strip()
+            ),
+            outlet_length_elements=int(
+                self.chamber_outlet_length_elements_var.get().strip()
+            ),
+            inlet_height_ratio=baseline.parse_float(
+                self.chamber_inlet_height_ratio_var.get()
+            ),
+            outlet_height_ratio=baseline.parse_float(
+                self.chamber_outlet_height_ratio_var.get()
+            ),
+            inlet_length_ratio=baseline.parse_float(
+                self.chamber_inlet_length_ratio_var.get()
+            ),
+            outlet_length_ratio=baseline.parse_float(
+                self.chamber_outlet_length_ratio_var.get()
+            ),
+        )
         return params
+
+    def _validate_params(self, params: baseline.CastemMainParams) -> None:
+        super()._validate_params(params)
+        chambers = chambers_from_params(params)
+        chambers.validated()
+        if chambers.enabled and self.solver_mode_var.get() != "python":
+            raise ValueError("Enabled chambers require the Bulk Python mesh mode.")
 
     def _set_hole_row_geometry(self, row: HoleShapeRow, geometry: HoleGeometry) -> None:
         geometry = normalize_hole_geometry(geometry)
@@ -1308,6 +1485,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.opti_stl_var.set(bool(params["opti_stl"]))
             self.opti_visu_var.set(bool(params["opti_visu"]))
             self.do_merge_var.set(bool(params["merge_bdfs"]))
+            self.chambers_enabled_var.set(False)
             while self.hole_shape_rows:
                 self._remove_hole_row()
             self.holes_enabled_var.set(bool(params["holes_enabled"]))
@@ -1324,6 +1502,7 @@ class ScientificApp(PythonHoleInterpolationApp):
                 )
             self.solver_mode_var.set("python")
             self._refresh_surface_mode()
+            self._toggle_chambers()
             self._toggle_holes()
             self._update_method_summary()
         finally:
@@ -1346,6 +1525,44 @@ class ScientificApp(PythonHoleInterpolationApp):
                 self._set_hole_row_geometry(self.hole_shape_rows[-1], geometry)
             self.solver_mode_var.set("python")
             self._toggle_holes()
+            self._update_method_summary()
+            self.notebook.select(self.mesh_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_chamber_example(self) -> None:
+        """Load the validated no-displacement inlet/outlet chamber case."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.workdir_var.set(
+                str((ROOT / "_runtime" / "chambers-interface-example").resolve())
+            )
+            self.nelem_x_var.set("2")
+            self.nelem_y_var.set("2")
+            self.nelem_z_var.set("30")
+            self.re_fact_z_var.set("1.025")
+            self.num_el_fill_var.set("15")
+            self.re_fact_hole_var.set("5.0")
+            self.opti_stl_var.set(True)
+            self.opti_visu_var.set(False)
+            self.do_merge_var.set(True)
+            self.solver_mode_var.set("python")
+            self.chambers_enabled_var.set(True)
+            self.chamber_height_var.set("0.20")
+            self.chamber_inlet_length_var.set("0.20")
+            self.chamber_outlet_length_var.set("0.20")
+            self.chamber_inlet_height_elements_var.set("10")
+            self.chamber_outlet_height_elements_var.set("10")
+            self.chamber_inlet_length_elements_var.set("10")
+            self.chamber_outlet_length_elements_var.set("10")
+            self.chamber_inlet_height_ratio_var.set("5.0")
+            self.chamber_outlet_height_ratio_var.set("5.0")
+            self.chamber_inlet_length_ratio_var.set("5.0")
+            self.chamber_outlet_length_ratio_var.set("5.0")
+            self._toggle_chambers()
             self._update_method_summary()
             self.notebook.select(self.mesh_tab)
         finally:
@@ -1429,10 +1646,12 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.opti_visu_var.set(mesh.getboolean("open_gmsh"))
             self.do_merge_var.set(mesh.getboolean("merge_bdfs"))
             self.solver_mode_var.set(mesh.get("mode", "python"))
+            self.chambers_enabled_var.set(False)
             while self.hole_shape_rows:
                 self._remove_hole_row()
             self.holes_enabled_var.set(holes.getboolean("enabled"))
             self._refresh_surface_mode()
+            self._toggle_chambers()
             self._toggle_holes()
             self._update_method_summary()
             self.notebook.select(self.input_tab)
@@ -1492,6 +1711,18 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._update_method_summary()
         self._mark_dirty()
 
+    def _on_chambers_toggle(self) -> None:
+        self._toggle_chambers()
+        self._update_method_summary()
+        self._mark_dirty()
+
+    def _toggle_chambers(self) -> None:
+        if not hasattr(self, "chamber_entries"):
+            return
+        state = "normal" if self.chambers_enabled_var.get() else "disabled"
+        for entry in self.chamber_entries:
+            entry.configure(state=state)
+
     def _toggle_holes(self) -> None:
         if not hasattr(self, "hole_shape_rows"):
             return
@@ -1510,6 +1741,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         else:
             self.method_summary_var.set("Reference mode retains the original circle-only Cast3M interpolation and displacement workflow.")
         mode = "bulk inflated holes" if self.solver_mode_var.get() == "python" else "T13 reference"
+        if self.chambers_enabled_var.get():
+            mode += " + inlet/outlet chambers"
         self.context_var.set(f"Active mode: {mode}")
 
     def _preflight_workdir(self) -> Path:
@@ -1533,9 +1766,13 @@ class ScientificApp(PythonHoleInterpolationApp):
             raise ValueError(f"Unknown validation operation: {operation}")
         try:
             template_raw = (
-                self.dgibi_var.get().strip()
-                if operation == "mesh"
-                else self.fiss_dgibi_var.get().strip()
+                str(DEFAULT_CHAMBER_TEMPLATE)
+                if operation == "mesh" and self.chambers_enabled_var.get()
+                else (
+                    self.dgibi_var.get().strip()
+                    if operation == "mesh"
+                    else self.fiss_dgibi_var.get().strip()
+                )
             )
             if not template_raw:
                 raise ValueError("Select the DGIBI template for this operation.")
@@ -1609,6 +1846,20 @@ class ScientificApp(PythonHoleInterpolationApp):
                 details.append("No holes enabled")
             if operation == "mesh":
                 details.append("Solver mode: " + ("Bulk Python inflated holes" if self.solver_mode_var.get() == "python" else "Original T13 baseline"))
+                chambers = chambers_from_params(params)
+                if chambers.enabled:
+                    details.append(
+                        "Chambers: "
+                        f"H={chambers.height:g}; "
+                        f"Lin/Lout={chambers.inlet_length:g}/{chambers.outlet_length:g}; "
+                        f"Nheight={chambers.inlet_height_elements}/"
+                        f"{chambers.outlet_height_elements}; "
+                        f"Nlength={chambers.inlet_length_elements}/"
+                        f"{chambers.outlet_length_elements}"
+                    )
+                    details.append(f"Chamber source: {DEFAULT_CHAMBER_TEMPLATE.name}")
+                else:
+                    details.append("Chambers: disabled")
                 stale_count = len(existing_mesh_outputs(workdir)) if workdir.is_dir() else 0
                 if stale_count:
                     details.append(f"Prior mesh artifacts: {stale_count} (archived automatically before run)")

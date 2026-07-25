@@ -17,6 +17,8 @@ from typing import Callable, Iterable
 
 import numpy as np
 
+from chamber_geometry import CHAMBER_STL_SURFACES
+
 
 @dataclass(frozen=True)
 class SurfaceExport:
@@ -28,7 +30,12 @@ class SurfaceExport:
     skipped_degenerate_triangles: int
 
 
-def boundary_output_pairs(workdir: Path, hole_count: int) -> tuple[tuple[Path, Path], ...]:
+def boundary_output_pairs(
+    workdir: Path,
+    hole_count: int,
+    *,
+    include_chambers: bool = False,
+) -> tuple[tuple[Path, Path], ...]:
     """Return the established Cast3M boundary-BDF to STL filename mapping."""
 
     pairs = [
@@ -44,6 +51,8 @@ def boundary_output_pairs(workdir: Path, hole_count: int) -> tuple[tuple[Path, P
         (f"castem_mesh_surf_trou_{index}.bdf", f"castem_mesh_surf_trou_{index}.stl")
         for index in range(1, hole_count + 1)
     )
+    if include_chambers:
+        pairs.extend((f"{stem}.bdf", f"{stem}.stl") for stem in CHAMBER_STL_SURFACES)
     return tuple((workdir / source, workdir / target) for source, target in pairs)
 
 
@@ -249,12 +258,17 @@ def export_boundary_bdfs_to_stl(
     workdir: Path,
     *,
     hole_count: int,
+    include_chambers: bool = False,
     log: Callable[[str], None] | None = None,
 ) -> tuple[SurfaceExport, ...]:
     """Convert all expected boundary BDFs to high-precision ASCII STL files."""
 
     logger = log or (lambda _message: None)
-    pairs = boundary_output_pairs(workdir, hole_count)
+    pairs = boundary_output_pairs(
+        workdir,
+        hole_count,
+        include_chambers=include_chambers,
+    )
     missing = [source.name for source, _target in pairs if not source.is_file()]
     if missing:
         raise FileNotFoundError(

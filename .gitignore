@@ -83,6 +83,7 @@ temp/
 *.vtu
 *.xdmf
 *.geo_unrolled
+*.pos
 *.h5
 *.hdf5
 result.h

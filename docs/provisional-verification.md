@@ -153,6 +153,8 @@ These orientation checks detect inverted or collapsed elements in that run. They
 
 - Before either scientific mesh mode starts, fixed-name BDF/MED/STL and prior generated fill files are moved—not deleted—to a timestamped `_previous_mesh_runs` subdirectory.
 - The expected output manifest includes the volume, lower/upper/mean surfaces, four side surfaces, and exactly one hole surface per configured hole.
+- When chambers are enabled, the manifest additionally requires the combined
+  exterior, separate inlet/outlet volumes, and all named chamber boundaries.
 - The workbench reports success only after process return code `0`, every expected fresh BDF exists, and the requested combined BDF was created.
 - Focused tests verify that a stale third-hole surface is archived and is not part of the next two-hole output manifest.
 
@@ -167,6 +169,28 @@ Reference measurements were retained from the complete verified benchmark; the s
 | 4 | 247.457748 s | 40.639917 s | 6.089× | 128 | 37,680 | 75,360 |
 
 At refinement 1, the reference and scientific exports retain the same element counts. At refinements 2 and 4, the scientific path intentionally adds the angular subdivisions required to make the hole-fill interface conformal; therefore its counts are higher than the old non-conformal reference. Python preparation took at most 0.053138 s in the controlled benchmark.
+
+## Chamber integration verification
+
+The embedded GUI preset and
+[`examples/chambers/run.ini`](../examples/chambers/run.ini) use the same
+validated `2 x 2 x 30` crack refinement, 15 radial hole cells, shared chamber
+height `0.20`, inlet/outlet lengths `0.20`, ten height and length cells at each
+end, and four grading ratios of five.
+
+The full single-launcher headless run returned process code `0` and Cast3M
+error level `0`. It found no missing outputs, preserved both 64-to-64 circular
+hole interfaces, and wrote a 198,524,672-byte merged BDF. The safe Python STL
+path converted 24 crack, hole, and chamber boundaries into 392,920 triangles;
+no exactly degenerate triangle was omitted. The native Cast3M STL block was
+present only as comments.
+
+The resulting 177,009,121-byte volume BDF has SHA-256
+`47c880db1517e8472c2d4dc791aa0e20681db0a0947c1439ac16ad3eb70fb580`,
+identical to the reviewed chamber mesh used for the 798,400-HEXA8 topology,
+six-surface partition, monotonic grading, and center/corner Jacobian checks.
+Complete machine-readable evidence is in
+[`validation-summary.json`](../examples/chambers/validation-summary.json).
 
 ## Known signal and validation boundary
 

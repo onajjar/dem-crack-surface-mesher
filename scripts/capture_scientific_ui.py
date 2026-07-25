@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MESH_ASSET = ROOT / "docs" / "assets" / "scientific-workbench.png"
+CHAMBER_ASSET = ROOT / "docs" / "assets" / "scientific-workbench-chambers.png"
 RUN_ASSET = ROOT / "docs" / "assets" / "scientific-workbench-run-results.png"
 SURFACE_ASSET = ROOT / "docs" / "assets" / "scientific-surface-fractal.png"
 DEMO_ASSET = ROOT / "docs" / "assets" / "demo.gif"
@@ -104,6 +105,16 @@ def main() -> int:
         save_image(clean_images[app.mesh_tab], MESH_ASSET)
         save_image(clean_images[app.run_tab], RUN_ASSET)
 
+        app._load_chamber_example()
+        app.dgibi_var.set("source_codes/castem_tool.dgibi")
+        app.fiss_dgibi_var.set("source_codes/fuite_fissure.dgibi")
+        app.workdir_var.set("_runtime/chambers-interface-example")
+        app._validate_inputs(operation="mesh")
+        app.notebook.select(app.mesh_tab)
+        chamber_image = grab_current_tab()
+        save_image(chamber_image, CHAMBER_ASSET)
+        frames.insert(2, badge(chamber_image, "INLET / OUTLET CHAMBERS", "#0f766e"))
+
         app._load_fractal_example()
         app.dgibi_var.set("source_codes/castem_tool.dgibi")
         app.fiss_dgibi_var.set("source_codes/fuite_fissure.dgibi")
@@ -134,7 +145,7 @@ def main() -> int:
             DEMO_ASSET,
             save_all=True,
             append_images=encoded[1:],
-            duration=[2300, 1800, 2200, 1900, 1800],
+            duration=[2300, 1800, 2200, 2200, 1900, 1800],
             loop=0,
             optimize=False,
             disposal=2,

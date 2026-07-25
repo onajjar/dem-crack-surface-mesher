@@ -12,6 +12,12 @@ from datetime import datetime
 from pathlib import Path
 
 import castem_pipeline_gui_t13 as baseline
+from chamber_geometry import (
+    CHAMBER_OUTPUT_NAMES,
+    chambers_from_params,
+    mesh_template_for_params,
+    patch_chamber_program,
+)
 from python_hole_interpolation import build_python_holes_dgibi
 from stl_export import (
     active_native_stl_sort_lines,
@@ -80,6 +86,8 @@ def expected_mesh_output_names(params: baseline.CastemMainParams) -> tuple[str, 
             f"castem_mesh_surf_trou_{index}.bdf"
             for index in range(1, len(params.holes) + 1)
         )
+    if chambers_from_params(params).enabled:
+        names.extend(CHAMBER_OUTPUT_NAMES)
     return tuple(names)
 
 
@@ -93,6 +101,7 @@ def patch_mesh_program(template: str, params: baseline.CastemMainParams) -> str:
     """Patch a mesh program and disable Cast3M's fragile native STL writer."""
 
     program = baseline.patch_dgibi_main_program(template, params)
+    program = patch_chamber_program(program, chambers_from_params(params))
     if params.opti_stl:
         program = comment_native_stl_export(program)
         active = active_native_stl_sort_lines(program)
@@ -127,7 +136,8 @@ class PythonHoleInterpolationApp(baseline.App):
         try:
             preview = self._read_params()
             self._validate_params(preview)
-            dgibi = Path(self.dgibi_var.get().strip())
+            configured_template = Path(self.dgibi_var.get().strip())
+            dgibi = mesh_template_for_params(preview, configured_template)
             if not dgibi.exists():
                 raise FileNotFoundError("DGIBI template not found.")
 
@@ -163,11 +173,19 @@ class PythonHoleInterpolationApp(baseline.App):
                 )
                 if hole_meshes is None:
                     raise RuntimeError("Python hole interpolation requires at least one hole.")
-                mode_suffix = "_python_holes"
+                mode_suffix = (
+                    "_chambers_python_holes"
+                    if chambers_from_params(params).enabled
+                    else "_python_holes"
+                )
             else:
                 patched = patch_mesh_program(template_text, params)
                 hole_meshes = None
-                mode_suffix = "_reference"
+                mode_suffix = (
+                    "_chambers"
+                    if chambers_from_params(params).enabled
+                    else "_reference"
+                )
         except Exception as exc:
             baseline.messagebox.showerror("Error", str(exc))
             return
@@ -227,6 +245,7 @@ class PythonHoleInterpolationApp(baseline.App):
                 export_boundary_bdfs_to_stl(
                     workdir,
                     hole_count=len(params.holes) if params.holes_enabled else 0,
+                    include_chambers=chambers_from_params(params).enabled,
                     log=self._log,
                 )
 

@@ -132,6 +132,20 @@ python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 
 Relative paths are interpreted from the INI file. Edit `operation = mesh` to `fiss` or `both` when the optional FISS calculation is required.
 
+## Run the inlet/outlet chamber example
+
+The same chamber preset available in the Scientific Workbench has a portable
+headless configuration:
+
+```powershell
+python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini
+```
+
+It enables the validated no-displacement chamber source automatically and
+records every chamber parameter in `headless-run-report.json`. See the
+[chamber guide](chambers/README.md) for the reviewed mesh and grading checks.
+
 ## Run a raw DEAP application
 
 Each [`deap`](deap/README.md) case keeps its discrete-simulation HDF5 files in

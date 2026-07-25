@@ -1,6 +1,9 @@
 # Bulk inflated hole meshing
 
-The scientific launcher uses a Python-generated surface mesh for circle, rectangle, equilateral-triangle, and regular-polygon fills. The immutable T13 GUI and every file under `source_codes/` remain unchanged.
+The scientific launcher uses a Python-generated surface mesh for circle,
+rectangle, equilateral-triangle, and regular-polygon fills. The immutable T13
+GUI and protected baseline source files remain unchanged; the optional chamber
+workflow uses its explicitly additive DGIBI source.
 
 ## Why this path exists
 

@@ -59,6 +59,7 @@ def test_deap_toolbar_example_loads_bundled_raw_hdf5_case() -> None:
         "do_merge_var",
         "solver_mode_var",
         "holes_enabled_var",
+        "chambers_enabled_var",
     )
     for name in variable_names:
         setattr(app, name, _Variable())
@@ -67,6 +68,7 @@ def test_deap_toolbar_example_loads_bundled_raw_hdf5_case() -> None:
     app.input_tab = object()
     app._refresh_surface_mode = lambda: None
     app._toggle_holes = lambda: None
+    app._toggle_chambers = lambda: None
     app._update_method_summary = lambda: None
     validated: list[str] = []
     app._validate_inputs = lambda operation="mesh": validated.append(operation) or True

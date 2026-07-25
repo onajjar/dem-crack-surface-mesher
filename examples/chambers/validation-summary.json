@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "generated_on": "2026-07-25",
   "solver": "Cast3M 25.0",
   "castem_error_level": 0,
@@ -89,6 +89,25 @@
     0.066841045
   ],
   "length_grading_is_monotonic": true,
+  "integrated_headless_run": {
+    "config": "examples/chambers/run.ini",
+    "launcher": "castem_pipeline_gui_scientific.py --headless",
+    "return_code": 0,
+    "castem_elapsed_seconds": 77.665765,
+    "missing_expected_outputs": [],
+    "generated_dgibi": "castem_tool_chambers_chambers_python_holes_ti60_crpa1_smfa5_numsp50_opmin1.dgibi",
+    "volume_bdf_bytes": 177009121,
+    "volume_bdf_sha256": "47c880db1517e8472c2d4dc791aa0e20681db0a0947c1439ac16ad3eb70fb580",
+    "volume_matches_reviewed_mesh": true,
+    "final_bdf": "combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf",
+    "final_bdf_bytes": 198524672,
+    "native_cast3m_stl_export": "commented_out",
+    "python_stl_files": 24,
+    "python_stl_triangles": 392920,
+    "python_stl_degenerate_triangles_skipped": 0,
+    "interface_counts_match": true,
+    "hole_wall_edges_per_hole": [64, 64]
+  },
   "reviewed_images": [
     "chamber_mesh_preview.png",
     "chamber_mesh_top.png"

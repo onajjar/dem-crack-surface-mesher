@@ -19,6 +19,11 @@ from castem_pipeline_gui_python_holes import (
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
+from chamber_geometry import (
+    ChamberParameters,
+    mesh_template_for_params,
+    patch_chamber_program,
+)
 from crack_characterization import (
     CharacterizationConfig,
     SyntheticConfig,
@@ -87,6 +92,7 @@ class HeadlessSetup:
     csv_zmin: Path
     csv_zmax: Path
     params: baseline.CastemMainParams
+    chambers: ChamberParameters
     fiss: baseline.FissSetup
     characterization_enabled: bool
     characterization_output: Path
@@ -357,6 +363,49 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         ],
     )
     params.hole_shapes = [hole for _index, hole in holes]
+    chambers_section = (
+        parser["chambers"] if parser.has_section("chambers") else None
+    )
+    if chambers_section is None:
+        chambers = ChamberParameters()
+    else:
+        chambers = ChamberParameters(
+            enabled=chambers_section.getboolean("enabled", fallback=False),
+            height=baseline.parse_float(
+                chambers_section.get("height", "0.20")
+            ),
+            inlet_length=baseline.parse_float(
+                chambers_section.get("inlet_length", "0.20")
+            ),
+            outlet_length=baseline.parse_float(
+                chambers_section.get("outlet_length", "0.20")
+            ),
+            inlet_height_elements=chambers_section.getint(
+                "inlet_height_elements", fallback=10
+            ),
+            outlet_height_elements=chambers_section.getint(
+                "outlet_height_elements", fallback=10
+            ),
+            inlet_length_elements=chambers_section.getint(
+                "inlet_length_elements", fallback=10
+            ),
+            outlet_length_elements=chambers_section.getint(
+                "outlet_length_elements", fallback=10
+            ),
+            inlet_height_ratio=baseline.parse_float(
+                chambers_section.get("inlet_height_ratio", "5.0")
+            ),
+            outlet_height_ratio=baseline.parse_float(
+                chambers_section.get("outlet_height_ratio", "5.0")
+            ),
+            inlet_length_ratio=baseline.parse_float(
+                chambers_section.get("inlet_length_ratio", "5.0")
+            ),
+            outlet_length_ratio=baseline.parse_float(
+                chambers_section.get("outlet_length_ratio", "5.0")
+            ),
+        )
+    params.chambers = chambers
 
     characterization_section = (
         parser["characterization"] if parser.has_section("characterization") else None
@@ -465,6 +514,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         )
         synthetic.validated()
 
+    configured_mesh_template = _path(base, files.get("mesh_template"))
     return HeadlessSetup(
         config_path=config_path,
         operation=operation,
@@ -474,7 +524,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         mesh_mode=mesh.get("mode", "python").strip().lower(),
         merge_bdfs=mesh.getboolean("merge_bdfs", fallback=True),
         open_gmsh=mesh.getboolean("open_gmsh", fallback=False),
-        mesh_template=_path(base, files.get("mesh_template")),
+        mesh_template=mesh_template_for_params(params, configured_mesh_template),
         fiss_template=_path(base, files.get("fiss_template")),
         surface_source=surface_source,
         csv_x=csv_x,
@@ -482,6 +532,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         csv_zmin=csv_zmin,
         csv_zmax=csv_zmax,
         params=params,
+        chambers=chambers,
         fiss=_build_fiss(parser["fiss"]),
         characterization_enabled=characterization_enabled,
         characterization_output=characterization_output,
@@ -520,6 +571,13 @@ def validate_setup(
         )
     if setup.mesh_mode not in SUPPORTED_MESH_MODES:
         raise ValueError("mesh mode must be python or reference.")
+    setup.chambers.validated()
+    if (
+        setup.chambers.enabled
+        and _operation_uses_mesh(setup.operation)
+        and setup.mesh_mode != "python"
+    ):
+        raise ValueError("Enabled chambers require mesh mode = python.")
     surface_grid = surface_grid or build_surface_grid(setup.surface_source)
     if _operation_uses_mesh(setup.operation) and not setup.mesh_template.is_file():
         raise FileNotFoundError(f"Mesh DGIBI template does not exist: {setup.mesh_template}")
@@ -656,6 +714,7 @@ def _combined_name(p: baseline.CastemMainParams) -> str:
 
 def _patch_mesh_program(template: str, params: baseline.CastemMainParams) -> str:
     program = baseline.patch_dgibi_main_program(template, params)
+    program = patch_chamber_program(program, getattr(params, "chambers", ChamberParameters()))
     if params.opti_stl:
         program = comment_native_stl_export(program)
         active = active_native_stl_sort_lines(program)
@@ -697,10 +756,14 @@ def run_mesh(
         )
         if hole_meshes is None or not generated_program_uses_python_holes(program):
             raise RuntimeError("The conformal Python-hole DGIBI was not generated correctly.")
-        mode_suffix = "_python_holes"
+        mode_suffix = (
+            "_chambers_python_holes"
+            if setup.chambers.enabled
+            else "_python_holes"
+        )
     else:
         program = _patch_mesh_program(template, setup.params)
-        mode_suffix = "_reference"
+        mode_suffix = "_chambers" if setup.chambers.enabled else "_reference"
 
     p = setup.params
     dgibi = workdir / (
@@ -718,6 +781,7 @@ def run_mesh(
             stl_exports = export_boundary_bdfs_to_stl(
                 workdir,
                 hole_count=len(p.holes) if p.holes_enabled else 0,
+                include_chambers=setup.chambers.enabled,
                 log=lambda message: print(message, end=""),
             )
         if setup.merge_bdfs:
@@ -740,6 +804,7 @@ def run_mesh(
         "return_code": return_code,
         "elapsed_seconds": round(elapsed, 6),
         "mode": setup.mesh_mode,
+        "chambers": setup.chambers.report(),
         "surface_mode": setup.surface_source.normalized_mode,
         "surface_grid_points": [surface_grid.shape[1], surface_grid.shape[0]],
         "generated_dgibi": dgibi.name,
@@ -835,6 +900,7 @@ def main(argv: list[str] | None = None) -> int:
             "mesh_mode": setup.mesh_mode,
             "surface_mode": setup.surface_source.normalized_mode,
             "workdir": str(setup.workdir),
+            "chambers": setup.chambers.report(),
             "characterization_enabled": setup.characterization_enabled,
             "characterization_output": str(setup.characterization_output),
             "hole_shapes": [

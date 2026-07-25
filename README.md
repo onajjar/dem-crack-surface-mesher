@@ -10,7 +10,10 @@ proxies; converts the same
 surface into Cast3M meshes; prepares a combined NASTRAN BDF for downstream CFD
 import; and optionally evaluates crack flow with Cast3M's `FISS` operator.
 
-> **Baseline status:** `v0.1.0-baseline` preserves the historical T13 program. `castem_pipeline_gui_t13.py` and every file in `source_codes/` remain byte-for-byte protected; current development is isolated in the scientific launcher and its supporting modules.
+> **Baseline status:** `v0.1.0-baseline` preserves the historical T13 program.
+> `castem_pipeline_gui_t13.py` and the files listed in `BASELINE_SHA256SUMS`
+> remain byte-for-byte protected; current additions are isolated in the
+> scientific launcher, supporting modules, and explicitly additive sources.
 
 ## Citation
 
@@ -145,7 +148,10 @@ The two-hole run carried the same `IEEE_INVALID_FLAG` notice and the same valida
 
 ### Scientific launcher and accelerated hole path
 
-`castem_pipeline_gui_scientific.py` is the single launcher for the enhanced workflow. It keeps the immutable T13 GUI and every file in `source_codes/` unchanged, while offering both the original reference mode and the fast bulk Python hole mode from one interface.
+`castem_pipeline_gui_scientific.py` is the single launcher for the enhanced
+workflow. It keeps the protected T13 GUI and baseline Cast3M sources unchanged,
+while offering the original reference mode, the fast bulk Python hole mode,
+and optional inlet/outlet chambers from one interface.
 
 ```powershell
 python castem_pipeline_gui_scientific.py
@@ -160,6 +166,16 @@ A standalone two-hole reproduction remains available for automated verification:
 ```powershell
 python scripts\run_python_holes_example.py --clean
 ```
+
+Enable **inlet and outlet chambers** in the same Mesh & holes tab, or use the
+one-click **Chamber example** preset. Chamber mode automatically selects the
+validated additive `castem_tool_chambers.dgibi` source, uses the bulk Python
+hole surfaces, and writes separate inlet/outlet volumes and boundary BDFs. The
+shared height is split above and below the crack; inlet/outlet lengths,
+height/length cell counts, and four grading ratios remain independently
+configurable.
+
+![Embedded inlet and outlet chamber controls](docs/assets/scientific-workbench-chambers.png)
 
 On the documented 50 × 50 CSV input with two holes and Cast3M 25, the conformal bulk-hole benchmark produced:
 
@@ -262,12 +278,14 @@ The same scientific mesh and FISS settings can be supplied in a plain INI file, 
 ```powershell
 python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only
 python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
+python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini
 python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode deap --validate-only
 python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode csv --validate-only
 ```
 
-The committed configuration lists every surface, path, mesh, hole, export,
-merge, Gmsh, and FISS option. The five `[naming]` values are manual inputs only
+The committed configurations list every surface, path, mesh, hole, chamber,
+export, merge, Gmsh, and FISS option. The five `[naming]` values are manual inputs only
 for DEAP fitting; CSV mode derives them from all four canonical filenames, and
 generated surface modes retain the established defaults. Paths are resolved
 relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set
@@ -337,7 +355,7 @@ The immutable `castem_pipeline_gui_t13.py` remains available when an exact histo
 
 Then:
 
-1. Choose **Load documented example** or **DEAP fitting example**, or select
+1. Choose **Load documented example**, **Chamber example**, or **DEAP fitting example**, or select
    `source_codes\castem_tool.dgibi` as the mesh template. The DEAP action loads
    the bundled `1_simple` raw-HDF5 fitting case.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
@@ -345,10 +363,18 @@ Then:
 4. For DEAP fitting, enter `re_ti`, `re_crpa`, `re_smfa`, `re_numspa`, and
    `re_opmin`. In CSV mode these read-only values are decoded from the four
    filenames and cross-checked automatically.
-5. Review mesh density, holes, inflation, export, merge, and Gmsh options. For holes, choose the reference mode or **Bulk Python hole mesh — fast + inflated**.
+5. Review mesh density, holes, chambers, inflation, export, merge, and Gmsh
+   options. Chamber mode uses **Bulk Python hole mesh — fast + inflated** and
+   the validated no-displacement chamber source automatically.
 6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
-See [examples/README.md](examples/README.md) for the shared input/output policy, [examples/deap/README.md](examples/deap/README.md) for the four raw-DEAP applications and fit/CSV switch, [examples/surfaces/README.md](examples/surfaces/README.md) for generated sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md) for the two-hole walkthrough.
+See [examples/README.md](examples/README.md) for the shared input/output policy,
+[examples/chambers/README.md](examples/chambers/README.md) for the chamber
+workflow, [examples/deap/README.md](examples/deap/README.md) for the four
+raw-DEAP applications and fit/CSV switch,
+[examples/surfaces/README.md](examples/surfaces/README.md) for generated
+sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md)
+for the two-hole walkthrough.
 
 ## Surface input contract
 
@@ -396,6 +422,8 @@ With the supplied mesh template, a successful run writes:
 | `castem_mesh_surf_mean.bdf` | Mean surface; intentionally excluded from the integrated merge. |
 | `castem_mesh_surf_xmin.bdf`, `..._xmax.bdf`, `..._ymin.bdf`, `..._ymax.bdf` | Side boundaries. |
 | `castem_mesh_surf_trou_{n}.bdf` | One boundary per configured hole. |
+| `castem_mesh_v_inlet.bdf`, `castem_mesh_v_outlet.bdf` | Separate chamber volumes when chambers are enabled. |
+| `castem_mesh_surf_inlet_*.bdf`, `castem_mesh_surf_outlet_*.bdf` | Chamber interface, remote, top, bottom, and X-side boundaries. |
 | `combined_ti...bdf` | Optional merged volume and boundary BDF. |
 | `castem_mesh_v.med` | Optional MED volume mesh. |
 | `castem_mesh_surf_*.stl` | Optional triangulated surface exports. |
@@ -426,14 +454,16 @@ The template builds lines through the crack, derives local opening and extent, a
 ├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
 ├── castem_pipeline_headless.py          # compatibility headless backend/entry point
 ├── python_hole_interpolation.py         # bulk inflated fill generation
+├── chamber_geometry.py                  # chamber configuration and DGIBI patching
 ├── surface_generation.py                # CSV, self-affine, and planar surface sources
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
-├── source_codes/                # unchanged Cast3M and helper sources
+├── source_codes/                # protected baseline plus additive chamber source
 ├── examples/
 │   ├── input/                   # existing 50 × 50 CSV quartet
 │   ├── output/                  # verified no-hole run artifacts
 │   ├── scientific-run.ini       # complete headless configuration
+│   ├── chambers/                # GUI/headless chamber example and validation
 │   ├── shaped-holes/            # circle/rectangle/triangle/polygon gallery
 │   ├── surfaces/                # fractal-H, fractal-D, and constant examples
 │   └── multiple-holes/          # verified two-hole configuration/output
@@ -493,6 +523,9 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 - The scientific bulk-hole path is additive. Its common rectilinear interpolation is vectorized; the robust bilinear-inversion fallback for curvilinear structured grids still searches cells per query point. Its `CQUAD4` fill is not numerically or node-for-node equivalent to the preserved Cast3M planar-arc/displacement construction.
 - Generalized shapes are convex and center-star-shaped: circles, rectangles, equilateral triangles, and regular polygons. Arbitrary concave polygons, free-form splines, and user-supplied vertex lists are not yet supported.
 - Non-circular holes require the scientific Python mode. The preserved T13 reference mode and preserved FISS path remain circle-only.
+- Chambers attach only at global `Ymin` and `Ymax`. Their total height cell
+  counts must be even, grading ratios must be at least one, and chamber mode
+  requires the bulk Python mesh path.
 - Cast3M and Gmsh are external applications and are not installed by `requirements.txt`.
 - The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.
 - The fractal generator is an isotropic Gaussian spectral model with one power-law exponent. It does not yet model anisotropy, roll-off wavelengths, non-Gaussian height distributions, or independently rough opposing walls; its two walls are parallel with constant aperture.
@@ -530,8 +563,9 @@ supported and use the unchanged `opmin = 1e-6` default.
 
 Use the Scientific Workbench or headless runner with `export_stl = true`. The
 generated DGIBI comments out Cast3M's native `SORT 'STL'` block, then Python
-converts the completed boundary BDF files to high-precision ASCII STL and
-omits only triangles that are already exactly zero-area in the BDF.
+converts the completed crack, hole, and enabled chamber boundary BDF files to
+high-precision ASCII STL and omits only triangles that are already exactly
+zero-area in the BDF.
 
 **DEAP fitting cannot find its inputs**
 
