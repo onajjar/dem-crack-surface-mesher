@@ -925,6 +925,8 @@ def build_python_holes_dgibi(
         nelem_y=int(getattr(params, "nelem_y")),
         tolerance=float(getattr(params, "re_tol", 1.0e-10)),
     )
+    if generated_program_uses_python_holes(patched):
+        return patched, mesh_files
     return replace_hole_interpolation_block(patched, mesh_files), mesh_files
 
 

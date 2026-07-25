@@ -3,7 +3,9 @@
 This example uses the real `ti60` CSV crack surface and the two circular holes
 already provided in `examples/input`. It demonstrates the chamber-enabled
 Cast3M source without changing the graphical interface or the protected
-baseline source.
+baseline source. The hole fills are generated directly on the three rough
+surfaces by Python and imported as NASTRAN meshes. The runnable DGIBI contains
+no `DISPLACE`, `DEPL`, `INT_COMP` or Cast3M hole-fill `REGL` operation.
 
 ## Result
 
@@ -35,6 +37,8 @@ crack/chamber junction and increase monotonically toward each remote boundary.
 | Chamber | Length ratio factor | 5.0 each |
 | Holes | Circular holes | `(-0.20, 0.20, 0.07)` and `(0.20, -0.20, 0.07)` |
 | Holes | Radial elements | 15 |
+| Holes | Nodes per imported surface | 2,048 |
+| Holes | Quadrilaterals per imported surface | 1,920 |
 
 The height-element count is the total added count and must be positive and
 even. It is divided equally between the upper and lower half-height
@@ -50,6 +54,7 @@ $run = Join-Path $repo "_runtime\demo-output\chambers-reproduction"
 New-Item -ItemType Directory -Path $run -Force | Out-Null
 
 Copy-Item "examples\chambers\castem_tool_chambers_example.dgibi" $run
+Copy-Item "examples\chambers\python_hole_fill_*.bdf" $run
 Copy-Item "examples\input\*.csv" $run
 
 Set-Location $run
@@ -59,7 +64,7 @@ Set-Location $repo
 python.exe scripts\render_mesh.py `
   --bdf "$run\castem_mesh_v.bdf" `
   --output "$run\chamber_mesh_preview.png" `
-  --title "Crack mesh with inlet and outlet chambers" `
+  --title "No-displacement crack mesh with inlet and outlet chambers" `
   --view isometric
 ```
 
@@ -68,6 +73,7 @@ outlet volumes. Each chamber also has independent `all`, `interface`, `outer`,
 `top`, `bottom`, `xmin` and `xmax` surface BDF files.
 
 The reviewed numerical checks are recorded in
-[`validation-summary.json`](validation-summary.json). Generated BDF files are
-intentionally excluded from Git because the full example output is several
-gigabytes.
+[`validation-summary.json`](validation-summary.json). The three compact
+Python-generated hole-fill BDF inputs are included so the Cast3M example is
+standalone. The complete generated volume and boundary BDF outputs are
+intentionally excluded from Git because they occupy several gigabytes.

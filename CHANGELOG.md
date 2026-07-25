@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a validated inlet/outlet chamber source and reproducible example; its
+  hole surfaces are generated in Python and bulk-loaded from BDF without the
+  legacy Cast3M `REGL`, `INT_COMP`, `DISPLACE` or `DEPL` path.
 - Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
 - Added centralized pytest/Ruff configuration, CI linting, public contribution templates, and broader generated-file exclusions for release readiness.
 - Removed a dead scientific-UI assignment without changing runtime behavior.

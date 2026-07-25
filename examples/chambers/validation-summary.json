@@ -1,8 +1,20 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "generated_on": "2026-07-25",
   "solver": "Cast3M 25.0",
   "castem_error_level": 0,
+  "castem_runtime_seconds": 76.65,
+  "hole_fill_method": {
+    "producer": "python_hole_interpolation.prepare_hole_fill_meshes",
+    "import": "Three NASTRAN CQUAD4 surface meshes loaded with LIRE NAS",
+    "nodes_per_surface": 2048,
+    "quadrilaterals_per_surface": 1920,
+    "points_per_hole_boundary": [64, 64],
+    "contains_displace": false,
+    "contains_depl": false,
+    "contains_int_comp": false,
+    "contains_castem_hole_regl": false
+  },
   "inputs": {
     "surface": "examples/input/*ti60_crpa1_smfa5_numsp50_opmin1.csv",
     "elements_x": 2,
@@ -36,9 +48,9 @@
     "hole_radial_elements": 15
   },
   "combined_mesh": {
-    "points": 801422,
-    "hexa8": 740800,
-    "exterior_quad4": 69640,
+    "points": 840572,
+    "hexa8": 798400,
+    "exterior_quad4": 63880,
     "surface_bdf_matches_volume_exterior": true,
     "surface_symmetric_difference": 0
   },

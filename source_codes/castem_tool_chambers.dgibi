@@ -1,4 +1,6 @@
 * Chamber-enabled derivative of the protected castem_tool.dgibi baseline.
+* Enabled holes require python_hole_fill_min/max/mean.bdf in the working directory.
+* Those imported nodes already contain their final three-dimensional coordinates.
 OPTION DIME 3 ELEM CUB8;
 OPTI TRAC 'OPEN' ;
 
@@ -56,25 +58,6 @@ DEBP INTER_SEC pi*'POINT' xc*'FLOTTANT' yc*'FLOTTANT' rc*'FLOTTANT' ;
     pp1 = POIN xint1 yint1 0.0 ;
     pc  = POIN xc yc 0.0 ;
 FINP pp1 pc;
-
-****Displace a geometry   ******
-DEBP DISPLACE mail*'MAILLAGE' cp_disp*'CHPOINT' ;
-    n_elem = NBEL mail ;
-    REPETER boup n_elem ;
-        ne = &boup ;
-        el_ori = ELEM mail ne ;
-        nb_p = NBNO el_ori ;
-        REPETER boui nb_p ;
-            i = &boui ;
-            p_ori = mail POIN i ne ;
-            z_p = COOR p_ori 3 ;
-            z_new_p = EXTR cp_disp 'SCAL' p_ori ;
-            z_to_add = z_new_p - z_p ;
-            DEPL p_ori 'PLUS' (0.0 0.0 z_to_add) ;
-        FIN boui ;
-    FIN boup ;
-FINP ;
-
 
 ****Angle ******
 DEBP ANG_PO pi*'POINT' xc*'FLOTTANT' yc*'FLOTTANT' ;
@@ -409,45 +392,41 @@ surf_zmin tab_hole_min = CR_SURF co_po_x co_po_y co_po_zmin nelem_x nelem_y re_t
 surf_zmax tab_hole_max = CR_SURF co_po_x co_po_y co_po_zmax nelem_x nelem_y re_tol re_cr re_cx re_cy ;
 surf_zmean tab_hole_mean = CR_SURF co_po_x co_po_y co_po_zmean nelem_x nelem_y re_tol re_cr re_cx re_cy ;
 
-* Correct the z coordinates for the filling elements based on the original point clouds
+* Python-prepared hole interpolation: retain one comparison surface for OPEN_CHAMP.
 surf_zmin_comp tab_hole_comp = CR_SURF co_po_x co_po_y co_po_zmin nelem_x nelem_y re_tol (PROG) (PROG) (PROG) ;
-surf_zmax_comp tab_hole_comp = CR_SURF co_po_x co_po_y co_po_zmax nelem_x nelem_y re_tol (PROG) (PROG) (PROG) ;
-surf_zmean_comp tab_hole_comp = CR_SURF co_po_x co_po_y co_po_zmean nelem_x nelem_y re_tol (PROG) (PROG) (PROG) ;
 
-* Fill holes if any
+* Bulk-load complete inflated hole-fill meshes generated in Python.
 SI (NON (EGA (DIME re_cr) 0)) ;
-    ce_rec_min ce_pint_min = CIRC_INT surf_zmin tab_hole_min re_tol re_cr re_cx re_cy ;
-    ce_rec_max ce_pint_max = CIRC_INT surf_zmax tab_hole_max re_tol re_cr re_cx re_cy ;
-    ce_rec_mean ce_pint_mean = CIRC_INT surf_zmean tab_hole_mean re_tol re_cr re_cx re_cy ;
-
-    fil_hi_min = ce_rec_min REGL (-1*num_el_fill) 'DINI' (re_fact_hole*re_dens_hole) 'DFIN' re_dens_hole ce_pint_min ;
-    fil_hi_max = ce_rec_max REGL (-1*num_el_fill) 'DINI' (re_fact_hole*re_dens_hole) 'DFIN' re_dens_hole ce_pint_max ;
-    fil_hi_mean = ce_rec_mean REGL (-1*num_el_fill) 'DINI' (re_fact_hole*re_dens_hole) 'DFIN' re_dens_hole ce_pint_mean ;
-* OPTI DONN 5 ;
-* Remove duplicated nodes
+    py_tab_min = LIRE 'NAS' 'python_hole_fill_min.bdf' ;
+    py_ind_min = INDE (py_tab_min . 'MAILLAGES') ;
+    fil_hi_min = VIDE 'MAILLAGE' ;
+    REPETER py_bou_min (DIME py_ind_min) ;
+        py_i_min = &py_bou_min ;
+        fil_hi_min = fil_hi_min ET (py_tab_min . 'MAILLAGES' . (py_ind_min . py_i_min)) ;
+    FIN py_bou_min ;
+    ELIM fil_hi_min re_tol ;
+    py_tab_max = LIRE 'NAS' 'python_hole_fill_max.bdf' ;
+    py_ind_max = INDE (py_tab_max . 'MAILLAGES') ;
+    fil_hi_max = VIDE 'MAILLAGE' ;
+    REPETER py_bou_max (DIME py_ind_max) ;
+        py_i_max = &py_bou_max ;
+        fil_hi_max = fil_hi_max ET (py_tab_max . 'MAILLAGES' . (py_ind_max . py_i_max)) ;
+    FIN py_bou_max ;
+    ELIM fil_hi_max re_tol ;
+    py_tab_mean = LIRE 'NAS' 'python_hole_fill_mean.bdf' ;
+    py_ind_mean = INDE (py_tab_mean . 'MAILLAGES') ;
+    fil_hi_mean = VIDE 'MAILLAGE' ;
+    REPETER py_bou_mean (DIME py_ind_mean) ;
+        py_i_mean = &py_bou_mean ;
+        fil_hi_mean = fil_hi_mean ET (py_tab_mean . 'MAILLAGES' . (py_ind_mean . py_i_mean)) ;
+    FIN py_bou_mean ;
+    ELIM fil_hi_mean re_tol ;
     surf_zmin = surf_zmin ET fil_hi_min ;
     surf_zmax = surf_zmax ET fil_hi_max ;
     surf_zmean = surf_zmean ET fil_hi_mean ;
     ELIM surf_zmin re_tol ;
     ELIM surf_zmax re_tol ;
     ELIM surf_zmean re_tol ;
-
-    z_coord_zmin = COOR surf_zmin_comp 3 ;
-    z_coord_zmax = COOR surf_zmax_comp 3 ;
-    z_coord_zmean = COOR surf_zmean_comp 3 ;
-* cp_open = OPEN_CHAMP surf_zmin_comp co_po_x co_po_y co_po_zmin co_po_cr_open ;
-
-    OPTI DIME 2 ;
-    coord_new_zmin = INT_COMP surf_zmin_comp z_coord_zmin surf_zmin ;
-    coord_new_zmax = INT_COMP surf_zmax_comp z_coord_zmax surf_zmax ;
-    coord_new_zmean = INT_COMP surf_zmean_comp z_coord_zmean surf_zmean ;
-* cr_open_mean = INT_COMP surf_zmin_comp cp_open surf_zmean ;
-* cr_open_mean = cr_open_mean / 2.0 ;
-* cr_open_max = INT_COMP surf_zmin_comp cp_open surf_zmax ;
-    OPTI DIME 3 ;
-    DISPLACE surf_zmin coord_new_zmin ;
-    DISPLACE surf_zmax coord_new_zmax;
-    DISPLACE surf_zmean coord_new_zmean;
 FINSI ;
 
 * Remove duplicated nodes

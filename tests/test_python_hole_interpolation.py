@@ -230,6 +230,30 @@ def test_derived_program_bulk_loads_inflated_hole_meshes_without_displace() -> N
         assert text.endswith("ENDDATA\n")
 
 
+def test_preoptimized_chamber_template_is_reused_without_displace() -> None:
+    params = baseline.CastemMainParams(
+        holes_enabled=True,
+        holes=(baseline.Hole(-0.20, 0.20, 0.07), baseline.Hole(0.20, -0.20, 0.07)),
+    )
+    template = (ROOT / "source_codes" / "castem_tool_chambers.dgibi").read_text(
+        encoding="utf-8"
+    )
+    program, hole_meshes = build_python_holes_dgibi(
+        template,
+        params,
+        INPUT / "xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "yrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmin_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        INPUT / "zfit_zmax_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+        baseline.patch_dgibi_main_program,
+        hole_mesh_directory=ROOT / "_runtime" / "test-preoptimized-chamber",
+    )
+
+    assert hole_meshes is not None
+    assert generated_program_uses_python_holes(program)
+    assert program == baseline.patch_dgibi_main_program(template, params)
+
+
 def test_no_hole_program_is_the_unmodified_baseline_parameter_patch() -> None:
     params = baseline.CastemMainParams(holes_enabled=False, holes=())
     template = (ROOT / "source_codes" / "castem_tool.dgibi").read_text(encoding="utf-8")
