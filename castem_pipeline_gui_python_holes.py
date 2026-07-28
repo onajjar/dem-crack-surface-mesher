@@ -15,7 +15,6 @@ import castem_pipeline_gui_t13 as baseline
 from chamber_geometry import (
     CHAMBER_OUTPUT_NAMES,
     chambers_from_params,
-    mesh_template_for_params,
     patch_chamber_program,
 )
 from python_hole_interpolation import build_python_holes_dgibi
@@ -136,8 +135,7 @@ class PythonHoleInterpolationApp(baseline.App):
         try:
             preview = self._read_params()
             self._validate_params(preview)
-            configured_template = Path(self.dgibi_var.get().strip())
-            dgibi = mesh_template_for_params(preview, configured_template)
+            dgibi = Path(self.dgibi_var.get().strip())
             if not dgibi.exists():
                 raise FileNotFoundError("DGIBI template not found.")
 

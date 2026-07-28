@@ -11,13 +11,13 @@ from castem_pipeline_gui_scientific import ScientificApp
 from castem_pipeline_headless import load_setup, validate_setup
 from chamber_geometry import (
     CHAMBER_OUTPUT_NAMES,
-    DEFAULT_CHAMBER_TEMPLATE,
     ChamberParameters,
 )
 from stl_export import boundary_output_pairs
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "examples" / "chambers" / "run.ini"
+MESH_TEMPLATE = ROOT / "source_codes" / "castem_tool.dgibi"
 
 
 class _Variable:
@@ -39,16 +39,23 @@ class _Notebook:
         self.selected = tab
 
 
-def test_headless_chamber_example_uses_validated_template_and_parameters() -> None:
+def test_headless_chamber_example_uses_single_template_and_validated_parameters() -> None:
     setup = load_setup(CONFIG)
 
-    assert setup.mesh_template == DEFAULT_CHAMBER_TEMPLATE
+    assert setup.mesh_template == MESH_TEMPLATE
     assert setup.chambers == ChamberParameters(enabled=True)
     assert setup.params.nelem_x == setup.params.nelem_y == 2
     assert setup.params.nelem_z == 30
     assert setup.params.num_el_fill == 15
     assert setup.params.opti_stl == 1
     assert validate_setup(setup) == (64, 64)
+
+
+def test_repository_has_one_maintained_castem_mesh_source() -> None:
+    assert tuple((ROOT / "source_codes").glob("castem_tool*.dgibi")) == (
+        MESH_TEMPLATE,
+    )
+    assert not tuple((ROOT / "examples" / "chambers").glob("*.dgibi"))
 
 
 def test_chamber_source_is_patched_without_displacement() -> None:
@@ -77,7 +84,7 @@ def test_chamber_source_is_patched_without_displacement() -> None:
     )
 
     program = patch_mesh_program(
-        DEFAULT_CHAMBER_TEMPLATE.read_text(encoding="utf-8"),
+        MESH_TEMPLATE.read_text(encoding="utf-8"),
         params,
     )
 
@@ -102,6 +109,8 @@ def test_chamber_source_is_patched_without_displacement() -> None:
     assert "DISPLACE" not in active
     assert "DEPL" not in active
     assert "INT_COMP" not in active
+    assert program.count("Step5: Create the inlet and outlet chambers") == 1
+    assert "single maintained\n* source_codes/castem_tool.dgibi template" in program
 
 
 def test_chamber_outputs_are_required_only_when_enabled() -> None:

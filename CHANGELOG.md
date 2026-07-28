@@ -2,11 +2,14 @@
 
 ## Unreleased
 
-- Integrated the validated inlet/outlet chamber source into the single
-  Scientific Workbench and headless runner, with an embedded one-click preset,
-  a complete `[chambers]` example, automatic template selection, parameter and
-  output reporting, named BDF/STL boundaries, and no legacy Cast3M `REGL`,
-  `INT_COMP`, `DISPLACE` or `DEPL` hole path.
+- Consolidated meshing on the single byte-preserved
+  `source_codes/castem_tool.dgibi` source. The Scientific Workbench and
+  headless runner now inject the validated inlet/outlet chamber block only into
+  each generated working-directory DGIBI; the redundant chamber template and
+  standalone example DGIBI were removed.
+- Kept the embedded chamber preset, complete `[chambers]` example, parameter
+  and output reporting, named BDF/STL boundaries, and the no-`REGL`,
+  no-`INT_COMP`, no-`DISPLACE`/`DEPL` generated chamber path.
 - Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
 - Added centralized pytest/Ruff configuration, CI linting, public contribution templates, and broader generated-file exclusions for release readiness.
 - Removed a dead scientific-UI assignment without changing runtime behavior.

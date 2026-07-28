@@ -26,7 +26,6 @@ from castem_pipeline_gui_python_holes import (
     missing_mesh_outputs,
 )
 from chamber_geometry import (
-    DEFAULT_CHAMBER_TEMPLATE,
     ChamberParameters,
     chambers_from_params,
 )
@@ -832,7 +831,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         )
         ttk.Label(
             chambers,
-            text=f"Enabled mode automatically uses {DEFAULT_CHAMBER_TEMPLATE.name}.",
+            text="Optional chamber code is generated from the single mesh template.",
             style="CardMuted.TLabel",
         ).grid(row=4, column=4, columnspan=2, sticky="w", padx=(8, 0))
 
@@ -1766,13 +1765,9 @@ class ScientificApp(PythonHoleInterpolationApp):
             raise ValueError(f"Unknown validation operation: {operation}")
         try:
             template_raw = (
-                str(DEFAULT_CHAMBER_TEMPLATE)
-                if operation == "mesh" and self.chambers_enabled_var.get()
-                else (
-                    self.dgibi_var.get().strip()
-                    if operation == "mesh"
-                    else self.fiss_dgibi_var.get().strip()
-                )
+                self.dgibi_var.get().strip()
+                if operation == "mesh"
+                else self.fiss_dgibi_var.get().strip()
             )
             if not template_raw:
                 raise ValueError("Select the DGIBI template for this operation.")
@@ -1857,7 +1852,10 @@ class ScientificApp(PythonHoleInterpolationApp):
                         f"Nlength={chambers.inlet_length_elements}/"
                         f"{chambers.outlet_length_elements}"
                     )
-                    details.append(f"Chamber source: {DEFAULT_CHAMBER_TEMPLATE.name}")
+                    details.append(
+                        f"Mesh source: {Path(self.dgibi_var.get()).name} "
+                        "(chambers injected in generated run file)"
+                    )
                 else:
                     details.append("Chambers: disabled")
                 stale_count = len(existing_mesh_outputs(workdir)) if workdir.is_dir() else 0

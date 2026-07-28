@@ -21,7 +21,6 @@ from castem_pipeline_gui_python_holes import (
 )
 from chamber_geometry import (
     ChamberParameters,
-    mesh_template_for_params,
     patch_chamber_program,
 )
 from crack_characterization import (
@@ -514,7 +513,6 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         )
         synthetic.validated()
 
-    configured_mesh_template = _path(base, files.get("mesh_template"))
     return HeadlessSetup(
         config_path=config_path,
         operation=operation,
@@ -524,7 +522,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         mesh_mode=mesh.get("mode", "python").strip().lower(),
         merge_bdfs=mesh.getboolean("merge_bdfs", fallback=True),
         open_gmsh=mesh.getboolean("open_gmsh", fallback=False),
-        mesh_template=mesh_template_for_params(params, configured_mesh_template),
+        mesh_template=_path(base, files.get("mesh_template")),
         fiss_template=_path(base, files.get("fiss_template")),
         surface_source=surface_source,
         csv_x=csv_x,

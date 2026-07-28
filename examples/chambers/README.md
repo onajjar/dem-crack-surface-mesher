@@ -3,9 +3,11 @@
 This example uses the real `ti60` CSV crack surface and the two circular holes
 already provided in `examples/input`. It demonstrates the chamber option now
 embedded in the single Scientific Workbench and headless runner while leaving
-the protected baseline source unchanged. The hole fills are generated directly on the three rough
-surfaces by Python and imported as NASTRAN meshes. The runnable DGIBI contains
-no `DISPLACE`, `DEPL`, `INT_COMP` or Cast3M hole-fill `REGL` operation.
+the protected, single `source_codes/castem_tool.dgibi` mesh source unchanged.
+The hole fills are generated directly on the three rough surfaces by Python
+and imported as NASTRAN meshes. Chamber code is injected into the generated
+working-directory DGIBI, which contains no `DISPLACE`, `DEPL`, `INT_COMP` or
+Cast3M hole-fill `REGL` operation.
 
 ## Result
 
@@ -57,28 +59,11 @@ For the interactive path, run
 `python.exe .\castem_pipeline_gui_scientific.py`, click **Chamber example**,
 review the embedded chamber controls, and run the converter.
 
-The following direct Cast3M commands reproduce the preserved reviewed artifact
-without exercising the interface integration:
-
-```powershell
-$repo = (Get-Location).Path
-$run = Join-Path $repo "_runtime\demo-output\chambers-reproduction"
-New-Item -ItemType Directory -Path $run -Force | Out-Null
-
-Copy-Item "examples\chambers\castem_tool_chambers_example.dgibi" $run
-Copy-Item "examples\chambers\python_hole_fill_*.bdf" $run
-Copy-Item "examples\input\*.csv" $run
-
-Set-Location $run
-cmd.exe /c C:\Cast3M\PCW_25\bin\castem25.bat castem_tool_chambers_example.dgibi
-Set-Location $repo
-
-python.exe scripts\render_mesh.py `
-  --bdf "$run\castem_mesh_v.bdf" `
-  --output "$run\chamber_mesh_preview.png" `
-  --title "No-displacement crack mesh with inlet and outlet chambers" `
-  --view isometric
-```
+The headless launcher is the reproducible non-interactive route. It reads the
+one mesh template, materializes the three Python hole-fill BDFs, injects the
+chamber construction, writes the generated DGIBI into the configured working
+directory, and then calls Cast3M. This prevents a second maintained Cast3M
+source from drifting away from the normal mesh workflow.
 
 The run writes the combined volume, complete exterior and separate inlet and
 outlet volumes. Each chamber also has independent `all`, `interface`, `outer`,
@@ -88,9 +73,10 @@ the same high-precision BDF-to-STL path used for the crack and hole surfaces.
 
 The reviewed numerical checks are recorded in
 [`validation-summary.json`](validation-summary.json). The three compact
-Python-generated hole-fill BDF inputs are included so the Cast3M example is
-standalone. The complete generated volume and boundary BDF outputs are
-intentionally excluded from Git because they occupy several gigabytes.
+Python-generated hole-fill BDF inputs used for the reviewed validation are
+included for audit and comparison; the launcher regenerates them during a new
+run. The complete generated volume and boundary BDF outputs are intentionally
+excluded from Git because they occupy several gigabytes.
 
 The integrated `run.ini` execution also returned Cast3M error level `0`, found
 no missing expected outputs, wrote the 198,524,672-byte merged BDF, and safely

@@ -2,8 +2,9 @@
 
 The scientific launcher uses a Python-generated surface mesh for circle,
 rectangle, equilateral-triangle, and regular-polygon fills. The immutable T13
-GUI and protected baseline source files remain unchanged; the optional chamber
-workflow uses its explicitly additive DGIBI source.
+GUI and protected baseline source files remain unchanged. Ordinary and chamber
+meshing both begin from the one maintained `source_codes/castem_tool.dgibi`
+template; chamber code is injected only into the derived per-run DGIBI.
 
 ## Why this path exists
 
@@ -25,7 +26,9 @@ For every configured hole, the implementation:
 8. Replaces only the derived run program's expensive hole-correction block with three `LIRE 'NAS'` imports and merges the imported meshes into the corresponding Cast3M surfaces.
 9. Archives fixed-name artifacts from a prior run before launching Cast3M, then verifies the complete expected output manifest before the GUI reports success.
 
-The source template on disk is never edited.
+The source template on disk is never edited. Chamber mode additionally removes
+the unused baseline displacement procedure from the generated copy and installs
+this same bulk-reader block before adding chamber geometry.
 
 ## Conformal angular subdivision
 

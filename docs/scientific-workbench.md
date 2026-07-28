@@ -103,9 +103,11 @@ boundary.
 
 The chamber checkbox and all eleven values are embedded in **Mesh & holes**;
 no second window or second Python launcher is used. Disabled chamber fields are
-retained but inactive, and the normal template remains selected. Enabling the
-option automatically uses `source_codes/castem_tool_chambers.dgibi` and
-requires bulk Python mode.
+retained but inactive. Both ordinary and chamber meshes use the one maintained
+mesh source, `source_codes/castem_tool.dgibi`. Enabling the option requires
+bulk Python mode and injects chamber parameters, geometry, and named exports
+only into the generated DGIBI in the working directory. The source template
+remains byte-identical.
 
 `Hch` is the common inlet/outlet height. `Lin` and `Lout` are the lengths in
 the negative and positive global-Y directions. `Nhin`/`Nhout` are total

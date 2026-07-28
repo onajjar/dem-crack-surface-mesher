@@ -142,9 +142,10 @@ python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini --
 python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini
 ```
 
-It enables the validated no-displacement chamber source automatically and
-records every chamber parameter in `headless-run-report.json`. See the
-[chamber guide](chambers/README.md) for the reviewed mesh and grading checks.
+It derives the validated no-displacement chamber run from the same single
+`source_codes/castem_tool.dgibi` mesh template and records every chamber
+parameter in `headless-run-report.json`. See the [chamber
+guide](chambers/README.md) for the reviewed mesh and grading checks.
 
 ## Run a raw DEAP application
 
