@@ -2,12 +2,12 @@
 
 This example uses the real `ti60` CSV crack surface and the two circular holes
 already provided in `examples/input`. It demonstrates the chamber option now
-embedded in the single Scientific Workbench and headless runner while leaving
-the protected, single `source_codes/castem_tool.dgibi` mesh source unchanged.
-The hole fills are generated directly on the three rough surfaces by Python
-and imported as NASTRAN meshes. Chamber code is injected into the generated
-working-directory DGIBI, which contains no `DISPLACE`, `DEPL`, `INT_COMP` or
-Cast3M hole-fill `REGL` operation.
+embedded in the single Scientific Workbench and headless runner. The single
+`source_codes/castem_tool.dgibi` mesh source now owns all chamber construction
+and conditional exports behind `opti_chamb`. The hole fills are generated
+directly on the three rough surfaces by Python and imported as NASTRAN meshes;
+this independent optimization replaces the expensive legacy hole-correction
+calls in the generated run copy.
 
 ## Result
 
@@ -60,10 +60,10 @@ For the interactive path, run
 review the embedded chamber controls, and run the converter.
 
 The headless launcher is the reproducible non-interactive route. It reads the
-one mesh template, materializes the three Python hole-fill BDFs, injects the
-chamber construction, writes the generated DGIBI into the configured working
-directory, and then calls Cast3M. This prevents a second maintained Cast3M
-source from drifting away from the normal mesh workflow.
+one mesh source, patches native `opti_chamb=1` and its scalar values,
+materializes the three Python hole-fill BDFs, writes the generated DGIBI into
+the configured working directory, and then calls Cast3M. Python does not
+generate or inject the chamber geometry.
 
 The run writes the combined volume, complete exterior and separate inlet and
 outlet volumes. Each chamber also has independent `all`, `interface`, `outer`,

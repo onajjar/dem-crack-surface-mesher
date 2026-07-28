@@ -80,7 +80,7 @@ python scripts\run_multiple_holes_example.py --clean
 
 ## Run the accelerated multiple-hole path
 
-The scientific bulk-hole implementation preserves the published baseline sources, creates all inflated radial rings in Python, writes three complete `CQUAD4` BDF surfaces, and removes the expensive Cast3M `REGL`/`INT_COMP`/`DISPLACE` hole pass. Use `castem_pipeline_gui_scientific.py` for interactive work; the script below is its non-interactive documented reproduction.
+The scientific bulk-hole implementation preserves the historical T13 interface, creates all inflated radial rings in Python, writes three complete `CQUAD4` BDF surfaces, and removes the expensive Cast3M `REGL`/`INT_COMP`/`DISPLACE` hole pass from the active generated block. The authoritative Cast3M mesh source also contains the native optional-chamber branch. Use `castem_pipeline_gui_scientific.py` for interactive work; the script below is its non-interactive documented reproduction.
 
 ```powershell
 python scripts\run_python_holes_example.py --clean

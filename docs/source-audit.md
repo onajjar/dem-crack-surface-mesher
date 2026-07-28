@@ -58,18 +58,24 @@ The exact current source selected for the baseline is:
 
 Historical GUI variants (`castem_pipeline_gui.py`, T2 through T12, and T11-old), experiment directories, and generated results are not runtime dependencies of T13 and were not imported.
 
-## Byte-preservation manifest
+## Runtime integrity manifest
 
 | File | Newlines | SHA-256 |
 |---|---|---|
 | `castem_pipeline_gui_t13.py` | CRLF | `7610c790c689ebaab40756f369b68a11930b50f11c11773857b103d22bb6fe82` |
 | `bpm_cfx.ico` | binary | `a906a62b5e698885bb7271784818fd75b816e389c79d27ccfbb69af7d1ca68c1` |
-| `source_codes/castem_tool.dgibi` | LF | `97f458ec43a423e2a65cf2e474e537fde97e61168e12c5fd67f9b7fdc0f2ea36` |
+| `source_codes/castem_tool.dgibi` | LF | `90945e526a29fe3cfce495fde4a76f3dcba447523abe48eac1b39130674371e7` |
 | `source_codes/fiss.eso` | LF | `05f215afd73c20ef516e5fe2a7f561c37d9ef8e9f899b336c3b84fa6f7b16807` |
 | `source_codes/fuite_fissure.dgibi` | CRLF | `b3d38b25eaf701fff60072f922b346e50b7a819da6e869b8540e6ee1eee33191` |
 | `source_codes/merge_surface_bdf.py` | LF | `83b65655b26d28c7bcabda1a503df1d15e1b49d1819cea2cf15b003158e7dbd3` |
 
-`.gitattributes`, `BASELINE_SHA256SUMS`, `scripts/verify_baseline.py`, and CI protect these bytes, including their original newline styles.
+`.gitattributes`, `BASELINE_SHA256SUMS`, `scripts/verify_baseline.py`, and CI
+protect the current runtime bytes and newline styles. The mesh source is the
+one intentional exception to the original import snapshot: it now contains
+the user-requested native `opti_chamb` branch. Its original SHA-256 was
+`97f458ec43a423e2a65cf2e474e537fde97e61168e12c5fd67f9b7fdc0f2ea36`
+and remains recoverable from Git history. The other listed runtime files remain
+byte-preserved from the imported baseline.
 
 ## Dependencies
 
@@ -79,11 +85,9 @@ The GUI imports standard-library modules plus:
 - Tkinter/Tcl-Tk for the interface; and
 - h5py optionally for FISS TXT-to-HDF5 conversion.
 
-The additive Python DEAP fitter additionally requires SciPy and h5py. It is not
-part of the immutable baseline and does not alter the byte-preservation
-manifest. The historical MATLAB implementation and its helpers are preserved
-separately in `legacy/matlab`; MATLAB is not a runtime dependency of the
-enhanced pipeline.
+The additive Python DEAP fitter additionally requires SciPy and h5py. The
+historical MATLAB implementation and its helpers are preserved separately in
+`legacy/matlab`; MATLAB is not a runtime dependency of the enhanced pipeline.
 
 Python 3.10 or newer is required by the source syntax. Cast3M is required for meshing and FISS. Gmsh is optional and is launched only for visualization. The baseline resolves a `CASTEM_PATH` override before its version-derived Windows installation layout, then runs Cast3M using `cmd.exe /c`. It resolves Gmsh from `GMSH_PATH`, standard installation locations, matching home-directory folders, or `PATH`.
 
@@ -118,7 +122,10 @@ The FISS path is separate. It copies the same CSV geometry into a model-specific
 
 ## Security and sensitive-data review
 
-No likely credentials, API tokens, private-key headers, credentialed URLs, email addresses, or actual user-home paths were found in the immutable baseline files. A wider scan of source/configuration-like files and sensitive filenames also found no credential material.
+No likely credentials, API tokens, private-key headers, credentialed URLs,
+email addresses, or actual user-home paths were found in the reviewed runtime
+files. A wider scan of source/configuration-like files and sensitive filenames
+also found no credential material.
 
 One generated Cast3M trace contained a personal absolute path. That trace and all other traces were excluded. The source contains only generic installation defaults and placeholders.
 

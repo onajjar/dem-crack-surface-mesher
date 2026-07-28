@@ -854,27 +854,6 @@ def replace_hole_interpolation_block(
 ) -> str:
     """Replace full-mesh interpolation with three bulk NASTRAN mesh reads."""
 
-    return replace_hole_interpolation_block_names(
-        template_text,
-        min_filename=mesh_files.min_path.name,
-        max_filename=mesh_files.max_path.name,
-        mean_filename=mesh_files.mean_path.name,
-    )
-
-
-def replace_hole_interpolation_block_names(
-    template_text: str,
-    *,
-    min_filename: str = "python_hole_fill_min.bdf",
-    max_filename: str = "python_hole_fill_max.bdf",
-    mean_filename: str = "python_hole_fill_mean.bdf",
-) -> str:
-    """Install the bulk-reader block using stable run-directory filenames.
-
-    This filename-only form lets optional geometry extensions prepare the
-    generated DGIBI before the BDF files themselves are written.
-    """
-
     if template_text.count(MAIN_HOLE_BLOCK_START) != 1 or template_text.count(MAIN_HOLE_BLOCK_END) != 1:
         raise ValueError(
             "The selected DGIBI must contain exactly one recognized baseline hole interpolation block."
@@ -892,9 +871,9 @@ def replace_hole_interpolation_block_names(
         "* Bulk-load complete inflated hole-fill meshes generated in Python.",
         "SI (NON (EGA (DIME re_cr) 0)) ;",
     ]
-    replacement_lines.extend(_nastran_mesh_reader("min", min_filename))
-    replacement_lines.extend(_nastran_mesh_reader("max", max_filename))
-    replacement_lines.extend(_nastran_mesh_reader("mean", mean_filename))
+    replacement_lines.extend(_nastran_mesh_reader("min", mesh_files.min_path.name))
+    replacement_lines.extend(_nastran_mesh_reader("max", mesh_files.max_path.name))
+    replacement_lines.extend(_nastran_mesh_reader("mean", mesh_files.mean_path.name))
     replacement_lines.extend(
         (
             "    surf_zmin = surf_zmin ET fil_hi_min ;",

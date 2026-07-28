@@ -1,14 +1,14 @@
 {
-  "schema_version": 4,
-  "generated_on": "2026-07-28",
+  "schema_version": 5,
+  "generated_on": "2026-07-29",
   "solver": "Cast3M 25.0",
   "castem_error_level": 0,
-  "castem_runtime_seconds": 98.38,
+  "castem_runtime_seconds": 141.71,
   "mesh_source": {
     "maintained_source": "source_codes/castem_tool.dgibi",
-    "sha256": "97f458ec43a423e2a65cf2e474e537fde97e61168e12c5fd67f9b7fdc0f2ea36",
-    "chamber_generation": "Python injection into the working-directory DGIBI",
-    "source_template_modified": false,
+    "sha256": "90945e526a29fe3cfce495fde4a76f3dcba447523abe48eac1b39130674371e7",
+    "chamber_generation": "Native Cast3M option opti_chamb in the maintained mesh source",
+    "source_template_modified": true,
     "redundant_chamber_template_present": false
   },
   "hole_fill_method": {
@@ -17,9 +17,10 @@
     "nodes_per_surface": 2048,
     "quadrilaterals_per_surface": 1920,
     "points_per_hole_boundary": [64, 64],
-    "contains_displace": false,
-    "contains_depl": false,
-    "contains_int_comp": false,
+    "calls_displace_in_active_hole_block": false,
+    "calls_depl_in_active_hole_block": false,
+    "calls_int_comp_in_active_hole_block": false,
+    "legacy_displace_procedure_defined_but_unused": true,
     "contains_castem_hole_regl": false
   },
   "inputs": {
@@ -96,11 +97,18 @@
     0.066841045
   ],
   "length_grading_is_monotonic": true,
+  "disabled_control_run": {
+    "config": "examples/scientific-run.ini",
+    "opti_chamb": 0,
+    "return_code": 0,
+    "castem_elapsed_seconds": 13.236344,
+    "missing_expected_outputs": []
+  },
   "integrated_headless_run": {
     "config": "examples/chambers/run.ini",
     "launcher": "castem_pipeline_gui_scientific.py --headless",
     "return_code": 0,
-    "castem_elapsed_seconds": 104.027427,
+    "castem_elapsed_seconds": 147.958791,
     "missing_expected_outputs": [],
     "generated_dgibi": "castem_tool_chambers_python_holes_ti60_crpa1_smfa5_numsp50_opmin1.dgibi",
     "volume_bdf_bytes": 177009121,

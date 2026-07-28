@@ -831,7 +831,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         )
         ttk.Label(
             chambers,
-            text="Optional chamber code is generated from the single mesh template.",
+            text="Native Cast3M option: opti_chamb in the single mesh source.",
             style="CardMuted.TLabel",
         ).grid(row=4, column=4, columnspan=2, sticky="w", padx=(8, 0))
 
@@ -1854,7 +1854,7 @@ class ScientificApp(PythonHoleInterpolationApp):
                     )
                     details.append(
                         f"Mesh source: {Path(self.dgibi_var.get()).name} "
-                        "(chambers injected in generated run file)"
+                        "(native opti_chamb activated)"
                     )
                 else:
                     details.append("Chambers: disabled")

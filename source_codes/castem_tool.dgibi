@@ -363,6 +363,23 @@ nelem_z = 30;
 re_tol = 1.e-10 ; 
 ***** Parameters for Inflation meshing along z direction *****
 re_fact_z = 1.25 ;
+***** Parameters for optional inlet and outlet chambers *****
+* opti_chamb = 0 keeps the historical crack-only mesh.
+* opti_chamb = 1 creates both chambers at global Ymin and Ymax.
+opti_chamb = 0 ;
+* Heights are added symmetrically: one half above and one half below the crack.
+height_inlet = 0.20 ;
+height_outlet = height_inlet ;
+length_inlet = 0.20 ;
+length_outlet = 0.20 ;
+nelem_height_inlet = 10 ;
+nelem_height_outlet = 10 ;
+nelem_length_inlet = 10 ;
+nelem_length_outlet = 10 ;
+re_fact_height_inlet = 5.0 ;
+re_fact_height_outlet = 5.0 ;
+re_fact_length_inlet = 5.0 ;
+re_fact_length_outlet = 5.0 ;
 ***** Parameters for hole filling (if any)*****
 num_el_fill = 20 ;
 re_fact_hole = 5.0 ;
@@ -497,9 +514,149 @@ SI (NON (EGA (DIME re_cr) 0)) ;
     FIN bouh ;
 FINSI ; 
 
-******** Step5: Export the results ***************
+******** Step5: Create optional inlet and outlet chambers ***************
+SI (NON (EGA opti_chamb 0)) ;
+* The crack flow direction is global Y: inlet at ymin and outlet at ymax.
+* Negative layer counts activate DINI/DFIN grading. The smallest cells are
+* at the crack interfaces and grow towards the remote box boundaries.
+    nelem_half_height_inlet = ENTI (nelem_height_inlet / 2.0) ;
+    nelem_half_height_outlet = ENTI (nelem_height_outlet / 2.0) ;
+
+    re_dens_length_inlet = length_inlet / nelem_length_inlet ;
+    re_dens_length_outlet = length_outlet / nelem_length_outlet ;
+    re_dens_height_inlet = (0.5 * height_inlet) / nelem_half_height_inlet ;
+    re_dens_height_outlet = (0.5 * height_outlet) / nelem_half_height_outlet ;
+
+* Recover both halves of each complete crack end face before their volume
+* union. FACE 3 above remains unchanged for the wall and hole exports.
+    surf_cr1_all = ENVE vo_cr1 ;
+    surf_cr2_all = ENVE vo_cr2 ;
+    po_cr1_inlet = (surf_cr1_all COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+    po_cr2_inlet = (surf_cr2_all COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+    po_cr1_outlet = (surf_cr1_all COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+    po_cr2_outlet = (surf_cr2_all COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+    surf_cr_inlet = ELIM (
+        (surf_cr1_all ELEM 'APPUYE' 'STRICTEMENT' po_cr1_inlet) ET
+        (surf_cr2_all ELEM 'APPUYE' 'STRICTEMENT' po_cr2_inlet)
+        ) re_tol ;
+    surf_cr_outlet = ELIM (
+        (surf_cr1_all ELEM 'APPUYE' 'STRICTEMENT' po_cr1_outlet) ET
+        (surf_cr2_all ELEM 'APPUYE' 'STRICTEMENT' po_cr2_outlet)
+        ) re_tol ;
+    surf_cr_inlet = ORIE surf_cr_inlet 'POINT' (0.0 -10000.0 0.0) ;
+    surf_cr_outlet = ORIE surf_cr_outlet 'POINT' (0.0 10000.0 0.0) ;
+
+* Extrude the complete crack inlet and outlet faces in global Y.
+    vo_ch_in_base = surf_cr_inlet VOLU (-1*nelem_length_inlet)
+        'DINI' re_dens_length_inlet
+        'DFIN' (re_fact_length_inlet*re_dens_length_inlet)
+        'TRAN' (0.0 (-1.0*length_inlet) 0.0) ;
+    vo_ch_out_base = surf_cr_outlet VOLU (-1*nelem_length_outlet)
+        'DINI' re_dens_length_outlet
+        'DFIN' (re_fact_length_outlet*re_dens_length_outlet)
+        'TRAN' (0.0 length_outlet 0.0) ;
+
+* Build references for the upper and lower lateral faces of both base
+* extrusions, then extract those faces from the complete envelopes.
+    cont_zmax = CONT surf_zmax ;
+    cont_zmin = CONT surf_zmin ;
+    po_li_in_up = (cont_zmax COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+    po_li_in_low = (cont_zmin COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+    li_in_up = cont_zmax ELEM 'APPUYE' 'STRICTEMENT' po_li_in_up ;
+    li_in_low = cont_zmin ELEM 'APPUYE' 'STRICTEMENT' po_li_in_low ;
+    po_li_out_up = (cont_zmax COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+    po_li_out_low = (cont_zmin COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+    li_out_up = cont_zmax ELEM 'APPUYE' 'STRICTEMENT' po_li_out_up ;
+    li_out_low = cont_zmin ELEM 'APPUYE' 'STRICTEMENT' po_li_out_low ;
+
+    surf_ch_in_up_ref = li_in_up TRAN (-1*nelem_length_inlet)
+        'DINI' re_dens_length_inlet
+        'DFIN' (re_fact_length_inlet*re_dens_length_inlet)
+        (0.0 (-1.0*length_inlet) 0.0) ;
+    surf_ch_in_low_ref = li_in_low TRAN (-1*nelem_length_inlet)
+        'DINI' re_dens_length_inlet
+        'DFIN' (re_fact_length_inlet*re_dens_length_inlet)
+        (0.0 (-1.0*length_inlet) 0.0) ;
+    surf_ch_out_up_ref = li_out_up TRAN (-1*nelem_length_outlet)
+        'DINI' re_dens_length_outlet
+        'DFIN' (re_fact_length_outlet*re_dens_length_outlet)
+        (0.0 length_outlet 0.0) ;
+    surf_ch_out_low_ref = li_out_low TRAN (-1*nelem_length_outlet)
+        'DINI' re_dens_length_outlet
+        'DFIN' (re_fact_length_outlet*re_dens_length_outlet)
+        (0.0 length_outlet 0.0) ;
+
+    fac_ch_in_base = ENVE vo_ch_in_base ;
+    fac_ch_out_base = ENVE vo_ch_out_base ;
+    ELIM (fac_ch_in_base ET surf_ch_in_up_ref ET surf_ch_in_low_ref) re_tol ;
+    ELIM (fac_ch_out_base ET surf_ch_out_up_ref ET surf_ch_out_low_ref) re_tol ;
+    surf_ch_in_up = fac_ch_in_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_in_up_ref ;
+    surf_ch_in_low = fac_ch_in_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_in_low_ref ;
+    surf_ch_out_up = fac_ch_out_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_out_up_ref ;
+    surf_ch_out_low = fac_ch_out_base ELEM 'APPUYE' 'STRICTEMENT' surf_ch_out_low_ref ;
+    surf_ch_in_up = ORIE surf_ch_in_up 'POINT' (0.0 0.0 10000.0) ;
+    surf_ch_in_low = ORIE surf_ch_in_low 'POINT' (0.0 0.0 -10000.0) ;
+    surf_ch_out_up = ORIE surf_ch_out_up 'POINT' (0.0 0.0 10000.0) ;
+    surf_ch_out_low = ORIE surf_ch_out_low 'POINT' (0.0 0.0 -10000.0) ;
+
+* Extrude the extracted upper and lower surfaces by half the chamber height.
+    vo_ch_in_up = surf_ch_in_up VOLU (-1*nelem_half_height_inlet)
+        'DINI' re_dens_height_inlet
+        'DFIN' (re_fact_height_inlet*re_dens_height_inlet)
+        'TRAN' (0.0 0.0 (0.5*height_inlet)) ;
+    vo_ch_in_low = surf_ch_in_low VOLU (-1*nelem_half_height_inlet)
+        'DINI' re_dens_height_inlet
+        'DFIN' (re_fact_height_inlet*re_dens_height_inlet)
+        'TRAN' (0.0 0.0 (-0.5*height_inlet)) ;
+    vo_ch_out_up = surf_ch_out_up VOLU (-1*nelem_half_height_outlet)
+        'DINI' re_dens_height_outlet
+        'DFIN' (re_fact_height_outlet*re_dens_height_outlet)
+        'TRAN' (0.0 0.0 (0.5*height_outlet)) ;
+    vo_ch_out_low = surf_ch_out_low VOLU (-1*nelem_half_height_outlet)
+        'DINI' re_dens_height_outlet
+        'DFIN' (re_fact_height_outlet*re_dens_height_outlet)
+        'TRAN' (0.0 0.0 (-0.5*height_outlet)) ;
+
+    vo_ch_in = ELIM (vo_ch_in_base ET vo_ch_in_up ET vo_ch_in_low) re_tol ;
+    vo_ch_out = ELIM (vo_ch_out_base ET vo_ch_out_up ET vo_ch_out_low) re_tol ;
+    vo_all = ELIM (vo_cr ET vo_ch_in ET vo_ch_out) re_tol ;
+
+* Extract complete chamber envelopes and each recognizable boundary.
+    surf_ch_in_all = ENVE vo_ch_in ;
+    surf_ch_out_all = ENVE vo_ch_out ;
+    surf_all = ENVE vo_all ;
+    po_ch_in_interface = (surf_ch_in_all COOR 2) POIN 'COMPRIS' (ymin-re_tol) (ymin+re_tol) ;
+    surf_ch_in_interface = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_interface ;
+    po_ch_in_outer = (surf_ch_in_all COOR 2) POIN 'COMPRIS'
+        (ymin-length_inlet-re_tol) (ymin-length_inlet+re_tol) ;
+    surf_ch_in_outer = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_outer ;
+    po_ch_in_xmin = (surf_ch_in_all COOR 1) POIN 'COMPRIS' (xmin-re_tol) (xmin+re_tol) ;
+    surf_ch_in_xmin = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_xmin ;
+    po_ch_in_xmax = (surf_ch_in_all COOR 1) POIN 'COMPRIS' (xmax-re_tol) (xmax+re_tol) ;
+    surf_ch_in_xmax = surf_ch_in_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_in_xmax ;
+    surf_ch_in_top = FACE vo_ch_in_up 2 ;
+    surf_ch_in_bottom = FACE vo_ch_in_low 2 ;
+
+    po_ch_out_interface = (surf_ch_out_all COOR 2) POIN 'COMPRIS' (ymax-re_tol) (ymax+re_tol) ;
+    surf_ch_out_interface = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_interface ;
+    po_ch_out_outer = (surf_ch_out_all COOR 2) POIN 'COMPRIS'
+        (ymax+length_outlet-re_tol) (ymax+length_outlet+re_tol) ;
+    surf_ch_out_outer = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_outer ;
+    po_ch_out_xmin = (surf_ch_out_all COOR 1) POIN 'COMPRIS' (xmin-re_tol) (xmin+re_tol) ;
+    surf_ch_out_xmin = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_xmin ;
+    po_ch_out_xmax = (surf_ch_out_all COOR 1) POIN 'COMPRIS' (xmax-re_tol) (xmax+re_tol) ;
+    surf_ch_out_xmax = surf_ch_out_all ELEM 'APPUYE' 'STRICTEMENT' po_ch_out_xmax ;
+    surf_ch_out_top = FACE vo_ch_out_up 2 ;
+    surf_ch_out_bottom = FACE vo_ch_out_low 2 ;
+FINSI ;
+
+******** Step6: Export the results ***************
+vo_export = vo_cr ;
+SI (NON (EGA opti_chamb 0)) ;
+    vo_export = vo_all ;
+FINSI ;
 OPTI SORT 'castem_mesh_v.bdf' ;
-SORT 'NAS' vo_cr ; 
+SORT 'NAS' vo_export ;
 OPTI SORT 'castem_mesh_surf_min.bdf' ;
 SORT 'NAS' surf_zmin ; 
 OPTI SORT 'castem_mesh_surf_max.bdf' ;
@@ -515,6 +672,45 @@ SORT 'NAS' surf_ymin ;
 OPTI SORT 'castem_mesh_surf_ymax.bdf' ;
 SORT 'NAS' surf_ymax ; 
 
+SI (NON (EGA opti_chamb 0)) ;
+* Complete exterior and separate chamber volumes and boundaries.
+    OPTI SORT 'castem_mesh_surf_all.bdf' ;
+    SORT 'NAS' surf_all ;
+    OPTI SORT 'castem_mesh_v_inlet.bdf' ;
+    SORT 'NAS' vo_ch_in ;
+    OPTI SORT 'castem_mesh_surf_inlet_all.bdf' ;
+    SORT 'NAS' surf_ch_in_all ;
+    OPTI SORT 'castem_mesh_surf_inlet_interface.bdf' ;
+    SORT 'NAS' surf_ch_in_interface ;
+    OPTI SORT 'castem_mesh_surf_inlet_outer.bdf' ;
+    SORT 'NAS' surf_ch_in_outer ;
+    OPTI SORT 'castem_mesh_surf_inlet_top.bdf' ;
+    SORT 'NAS' surf_ch_in_top ;
+    OPTI SORT 'castem_mesh_surf_inlet_bottom.bdf' ;
+    SORT 'NAS' surf_ch_in_bottom ;
+    OPTI SORT 'castem_mesh_surf_inlet_xmin.bdf' ;
+    SORT 'NAS' surf_ch_in_xmin ;
+    OPTI SORT 'castem_mesh_surf_inlet_xmax.bdf' ;
+    SORT 'NAS' surf_ch_in_xmax ;
+
+    OPTI SORT 'castem_mesh_v_outlet.bdf' ;
+    SORT 'NAS' vo_ch_out ;
+    OPTI SORT 'castem_mesh_surf_outlet_all.bdf' ;
+    SORT 'NAS' surf_ch_out_all ;
+    OPTI SORT 'castem_mesh_surf_outlet_interface.bdf' ;
+    SORT 'NAS' surf_ch_out_interface ;
+    OPTI SORT 'castem_mesh_surf_outlet_outer.bdf' ;
+    SORT 'NAS' surf_ch_out_outer ;
+    OPTI SORT 'castem_mesh_surf_outlet_top.bdf' ;
+    SORT 'NAS' surf_ch_out_top ;
+    OPTI SORT 'castem_mesh_surf_outlet_bottom.bdf' ;
+    SORT 'NAS' surf_ch_out_bottom ;
+    OPTI SORT 'castem_mesh_surf_outlet_xmin.bdf' ;
+    SORT 'NAS' surf_ch_out_xmin ;
+    OPTI SORT 'castem_mesh_surf_outlet_xmax.bdf' ;
+    SORT 'NAS' surf_ch_out_xmax ;
+FINSI ;
+
 SI (NON (EGA (DIME re_cr) 0)) ;
     REPETER bouh (DIME re_cr) ;
         hi = &bouh ;
@@ -524,9 +720,9 @@ SI (NON (EGA (DIME re_cr) 0)) ;
     FIN bouh ;
 FINSI ; 
 
-**Visualization of the crack volume**
+**Visualization of the selected crack/chamber volume**
 SI (NON (EGA opti_visu 0)) ;
-    TRAC 'FACE' (COUL 'ROUG' vo_cr) 'TITR' 'Crack Volume' ;
+    TRAC 'FACE' (COUL 'ROUG' vo_export) 'TITR' 'Crack volume with optional chambers' ;
 FINSI ;
 
 *export STL or MED files (if needed)*
@@ -534,7 +730,7 @@ FINSI ;
 
 SI (NON (EGA opti_med 0)) ;
     OPTI SORT 'castem_mesh_v.med' ;
-    SORT 'MED' vo_cr ; 
+    SORT 'MED' vo_export ;
 FINSI ;
 
 SI (NON (EGA opti_stl 0)) ;
@@ -575,5 +771,3 @@ FINSI ;
 
 
 FIN ; 
-
-

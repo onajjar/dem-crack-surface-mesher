@@ -58,7 +58,7 @@ def test_repository_has_one_maintained_castem_mesh_source() -> None:
     assert not tuple((ROOT / "examples" / "chambers").glob("*.dgibi"))
 
 
-def test_chamber_source_is_patched_without_displacement() -> None:
+def test_chamber_source_owns_geometry_and_python_only_patches_parameters() -> None:
     params = baseline.CastemMainParams(
         nelem_x=2,
         nelem_y=2,
@@ -89,6 +89,7 @@ def test_chamber_source_is_patched_without_displacement() -> None:
     )
 
     expected = (
+        "opti_chamb = 1",
         "height_inlet = 0.3",
         "height_outlet = height_inlet",
         "length_inlet = 0.25",
@@ -103,14 +104,26 @@ def test_chamber_source_is_patched_without_displacement() -> None:
         "re_fact_length_outlet = 6",
     )
     assert all(text in program for text in expected)
-    active = "\n".join(
-        line for line in program.splitlines() if not line.lstrip().startswith("*")
-    ).upper()
-    assert "DISPLACE" not in active
-    assert "DEPL" not in active
-    assert "INT_COMP" not in active
-    assert program.count("Step5: Create the inlet and outlet chambers") == 1
-    assert "single maintained\n* source_codes/castem_tool.dgibi template" in program
+    assert program.count("Step5: Create optional inlet and outlet chambers") == 1
+    assert "SI (NON (EGA opti_chamb 0)) ;" in program
+    assert "vo_ch_in_base = surf_cr_inlet VOLU" in program
+    assert "vo_ch_out_base = surf_cr_outlet VOLU" in program
+    assert "SORT 'NAS' surf_ch_in_interface" in program
+    assert "SORT 'NAS' surf_ch_out_outer" in program
+
+    python_source = (ROOT / "chamber_geometry.py").read_text(encoding="utf-8")
+    assert "vo_ch_in_base" not in python_source
+    assert "CHAMBER_CONSTRUCTION" not in python_source
+    assert "CHAMBER_EXPORTS" not in python_source
+
+
+def test_disabled_chambers_patch_native_toggle_to_zero() -> None:
+    params = baseline.CastemMainParams()
+    params.chambers = ChamberParameters(enabled=False)
+
+    program = patch_mesh_program(MESH_TEMPLATE.read_text(encoding="utf-8"), params)
+
+    assert "opti_chamb = 0" in program
 
 
 def test_chamber_outputs_are_required_only_when_enabled() -> None:

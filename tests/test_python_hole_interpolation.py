@@ -232,7 +232,7 @@ def test_derived_program_bulk_loads_inflated_hole_meshes_without_displace() -> N
         assert text.endswith("ENDDATA\n")
 
 
-def test_python_injected_chamber_program_reuses_bulk_holes_without_displace() -> None:
+def test_native_chamber_program_combines_with_bulk_python_holes() -> None:
     params = baseline.CastemMainParams(
         holes_enabled=True,
         holes=(baseline.Hole(-0.20, 0.20, 0.07), baseline.Hole(0.20, -0.20, 0.07)),
@@ -252,8 +252,10 @@ def test_python_injected_chamber_program_reuses_bulk_holes_without_displace() ->
 
     assert hole_meshes is not None
     assert generated_program_uses_python_holes(program)
-    assert program == patch_mesh_program(template, params)
-    assert "Step5: Create the inlet and outlet chambers" in program
+    assert program != patch_mesh_program(template, params)
+    assert "opti_chamb = 1" in program
+    assert "Step5: Create optional inlet and outlet chambers" in program
+    assert "vo_ch_in_base = surf_cr_inlet VOLU" in program
 
 
 def test_no_hole_program_is_the_unmodified_baseline_parameter_patch() -> None:

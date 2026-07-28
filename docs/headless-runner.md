@@ -131,9 +131,10 @@ The legacy three-number circle shorthand remains valid. Non-circular shapes requ
 
 The optional `[chambers]` section creates attached boxes at the crack's global
 `Ymin` and `Ymax` faces. The `[files] mesh_template` is the single maintained
-mesh source whether chambers are enabled or disabled. When enabled, Python
-injects the validated chamber block only into the generated DGIBI placed in the
-working directory; it does not modify the configured template.
+mesh source whether chambers are enabled or disabled. The source contains the
+complete geometry behind `opti_chamb`. The runner sets that option to `1` with
+the validated scalar values when enabled and to `0` when disabled; Python does
+not contain or inject the chamber construction.
 
 ```ini
 [chambers]

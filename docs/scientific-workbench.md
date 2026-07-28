@@ -3,7 +3,8 @@
 `castem_pipeline_gui_scientific.py` is the single launcher for the enhanced
 workflow. It adds a clearer scientific interface, accelerated bulk-hole
 implementation, and optional inlet/outlet chambers without editing the
-immutable T13 GUI or protected Cast3M templates.
+immutable T13 GUI. The chamber algorithm is integrated in the single
+authoritative Cast3M mesh source behind `opti_chamb`.
 
 Run it without arguments for the interactive workbench, or pass `--headless CONFIG` to execute the same scientific pipeline from an INI file without creating a Tk window.
 
@@ -105,9 +106,10 @@ The chamber checkbox and all eleven values are embedded in **Mesh & holes**;
 no second window or second Python launcher is used. Disabled chamber fields are
 retained but inactive. Both ordinary and chamber meshes use the one maintained
 mesh source, `source_codes/castem_tool.dgibi`. Enabling the option requires
-bulk Python mode and injects chamber parameters, geometry, and named exports
-only into the generated DGIBI in the working directory. The source template
-remains byte-identical.
+bulk Python mode and patches `opti_chamb=1` plus the eleven scalar chamber
+values. The Cast3M source itself owns the guarded chamber geometry and named
+exports. Disabling the option patches `opti_chamb=0`, so Cast3M follows the
+ordinary crack-only branch.
 
 `Hch` is the common inlet/outlet height. `Lin` and `Lout` are the lengths in
 the negative and positive global-Y directions. `Nhin`/`Nhout` are total

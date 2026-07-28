@@ -4,33 +4,50 @@
 
 The repository maintains one Cast3M source for crack-volume meshing:
 `source_codes/castem_tool.dgibi`. Ordinary meshes, meshes with Python-generated
-hole fills, and meshes with inlet/outlet chambers all begin from this same
-byte-preserved file.
+hole fills, and meshes with inlet/outlet chambers all use this same file.
 
 `source_codes/fuite_fissure.dgibi` is intentionally separate because it runs
 the optional FISS flow calculation rather than the mesh converter.
 `source_codes/fiss.eso` is operator source and is not a mesh program.
 
-## How chamber runs are generated
+## Native chamber option
 
-The launcher never edits the maintained mesh source. It performs the following
-operations in memory:
+The complete chamber construction is implemented directly in
+`castem_tool.dgibi`. Its Main Program contains:
 
-1. Patch the normal mesh, naming, hole, visualization, and export parameters.
-2. When chambers are enabled, remove the unused node-by-node `DISPLACE`
-   procedure from the generated copy.
-3. Replace the historical hole-correction block with the three bulk NASTRAN
-   readers used by the Python hole workflow.
-4. Insert the validated inlet/outlet parameters and construction block before
-   the normal export stage.
-5. Redirect the main volume, MED, and visualization targets to the combined
-   crack-and-chamber volume and add every named chamber boundary export.
-6. Write the resulting DGIBI into the configured working directory and run
-   Cast3M there.
+```text
+opti_chamb = 0 ;
+```
 
-The transformation is implemented in `chamber_geometry.py`. Its anchors are
-validated strictly: a missing or repeated source marker raises an error instead
-of producing a partially patched run file.
+- `0` follows the normal crack-only branch.
+- `1` creates inlet and outlet chambers and exports their named volumes and
+  boundaries.
+
+The geometry and exports are guarded by native Cast3M conditions:
+
+```text
+SI (NON (EGA opti_chamb 0)) ;
+    * chamber construction or chamber-only exports
+FINSI ;
+```
+
+The source always exports `vo_export`: it refers to `vo_cr` when chambers are
+disabled and `vo_all` when they are enabled. MED output and the optional
+Cast3M visualization use the same selected volume.
+
+## Python boundary
+
+Python does not contain or inject Cast3M chamber geometry. The
+`chamber_geometry.py` module only:
+
+1. validates dimensions, element counts, and grading ratios;
+2. sets `opti_chamb` to `0` or `1`;
+3. patches the eleven scalar assignments in the generated run copy; and
+4. declares the expected BDF/STL filenames for output verification.
+
+The separate Python hole optimizer may still replace the historical
+hole-interpolation block in the generated run copy. That optimization is
+independent of the chamber geometry already present in the Cast3M source.
 
 ## Reproducible commands
 
@@ -56,11 +73,14 @@ python.exe .\castem_pipeline_gui_scientific.py --headless `
 ```
 
 Both INI files point to `source_codes/castem_tool.dgibi`. Chamber behavior is
-controlled only by `[chambers] enabled`.
+controlled by `[chambers] enabled`, which maps directly to `opti_chamb`.
 
-## Preservation and verification
+## Integrity and verification
 
-`BASELINE_SHA256SUMS` records the authoritative mesh-source digest. Run:
+The mesh source was intentionally extended to satisfy the native-source
+requirement; its earlier byte-preserved version remains available in Git
+history. `BASELINE_SHA256SUMS` now records the authoritative current runtime
+digest. Run:
 
 ```powershell
 python.exe .\scripts\verify_baseline.py
@@ -68,7 +88,10 @@ python.exe -m pytest
 python.exe -m ruff check .
 ```
 
-The chamber test suite also checks that the generated active Cast3M program
-contains no `DISPLACE`, `DEPL`, `INT_COMP`, or legacy hole-fill `REGL`
-operation, requires every named chamber BDF, and retains the single-source
-marker.
+The chamber tests assert that:
+
+- the repository has one `castem_tool*.dgibi` file;
+- Cast3M owns the chamber `VOLU` construction and guarded exports;
+- Python contains no chamber construction/export program strings;
+- enabled and disabled configurations patch `opti_chamb` to `1` and `0`; and
+- every named chamber boundary remains part of the expected output manifest.

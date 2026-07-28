@@ -149,9 +149,9 @@ The two-hole run carried the same `IEEE_INVALID_FLAG` notice and the same valida
 ### Scientific launcher and accelerated hole path
 
 `castem_pipeline_gui_scientific.py` is the single launcher for the enhanced
-workflow. It keeps the protected T13 GUI and baseline Cast3M sources unchanged,
-while offering the original reference mode, the fast bulk Python hole mode,
-and optional inlet/outlet chambers from one interface.
+workflow. It keeps the historical T13 GUI unchanged while offering the
+original reference mode, the fast bulk Python hole mode, and optional
+inlet/outlet chambers from one interface and one Cast3M mesh source.
 
 ```powershell
 python castem_pipeline_gui_scientific.py
@@ -169,13 +169,14 @@ python scripts\run_python_holes_example.py --clean
 
 Enable **inlet and outlet chambers** in the same Mesh & holes tab, or use the
 one-click **Chamber example** preset. Meshing has one maintained Cast3M source:
-`source_codes/castem_tool.dgibi`. When chambers are enabled, Python injects the
-validated optional chamber construction into the generated DGIBI in the
-working directory; it never edits the source template. The run uses the bulk
-Python hole surfaces and writes separate inlet/outlet volumes and boundary
+`source_codes/castem_tool.dgibi`. That file contains the complete chamber
+geometry and conditional exports behind the native Cast3M integer option
+`opti_chamb` (`0` disabled, `1` enabled). Python only copies the user-entered
+toggle and scalar parameters into the generated run file. The run uses the
+bulk Python hole surfaces and writes separate inlet/outlet volumes and boundary
 BDFs. The shared height is split above and below the crack; inlet/outlet
-lengths, height/length cell counts, and four grading ratios remain
-independently configurable.
+lengths, height/length cell counts, and four grading ratios remain independently
+configurable.
 
 ![Embedded inlet and outlet chamber controls](docs/assets/scientific-workbench-chambers.png)
 
@@ -367,8 +368,7 @@ Then:
    filenames and cross-checked automatically.
 5. Review mesh density, holes, chambers, inflation, export, merge, and Gmsh
    options. Chamber mode uses **Bulk Python hole mesh — fast + inflated** and
-   injects the validated no-displacement chamber block into the generated run
-   file automatically.
+   activates the native Cast3M `opti_chamb` branch automatically.
 6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
 See [examples/README.md](examples/README.md) for the shared input/output policy,
@@ -379,7 +379,7 @@ raw-DEAP applications and fit/CSV switch,
 sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md)
 for the two-hole walkthrough. The
 [single-mesh-source contract](docs/single-mesh-source.md) documents chamber
-injection, source preservation, and reproducible verification.
+activation, source ownership, and reproducible verification.
 
 ## Surface input contract
 
@@ -459,11 +459,11 @@ The template builds lines through the crack, derives local opening and extent, a
 ├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
 ├── castem_pipeline_headless.py          # compatibility headless backend/entry point
 ├── python_hole_interpolation.py         # bulk inflated fill generation
-├── chamber_geometry.py                  # chamber configuration and DGIBI patching
+├── chamber_geometry.py                  # chamber validation and scalar patching
 ├── surface_generation.py                # CSV, self-affine, and planar surface sources
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
-├── source_codes/                # one protected mesh source plus separate FISS sources
+├── source_codes/                # one integrated mesh source plus separate FISS sources
 ├── examples/
 │   ├── input/                   # existing 50 × 50 CSV quartet
 │   ├── output/                  # verified no-hole run artifacts
@@ -488,7 +488,7 @@ The template builds lines through the crack, derives local opening and extent, a
 
 ## Reproducibility checks
 
-Verify the immutable baseline files against the committed SHA-256 manifest:
+Verify the authoritative runtime files against the committed SHA-256 manifest:
 
 ```powershell
 python scripts\verify_baseline.py

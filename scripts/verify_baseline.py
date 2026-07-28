@@ -1,4 +1,4 @@
-"""Verify that the published baseline files retain their original bytes."""
+"""Verify the committed runtime files against their authoritative digests."""
 
 from __future__ import annotations
 
@@ -131,7 +131,7 @@ def verify_entries(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Verify immutable baseline files against BASELINE_SHA256SUMS."
+        description="Verify runtime files against BASELINE_SHA256SUMS."
     )
     parser.add_argument(
         "--root",
@@ -156,17 +156,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         entries = read_manifest(manifest)
     except ManifestError as exc:
-        print(f"Baseline verification failed: {exc}", file=sys.stderr)
+        print(f"Runtime integrity verification failed: {exc}", file=sys.stderr)
         return 2
 
     failures = verify_entries(entries, root)
     if failures:
-        print("Baseline verification failed:", file=sys.stderr)
+        print("Runtime integrity verification failed:", file=sys.stderr)
         for failure in failures:
             print(f"- {failure}", file=sys.stderr)
         return 1
 
-    print(f"Baseline verification passed: {len(entries)} files match.")
+    print(f"Runtime integrity verification passed: {len(entries)} files match.")
     return 0
 
 

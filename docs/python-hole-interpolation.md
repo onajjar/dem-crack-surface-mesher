@@ -1,10 +1,10 @@
 # Bulk inflated hole meshing
 
 The scientific launcher uses a Python-generated surface mesh for circle,
-rectangle, equilateral-triangle, and regular-polygon fills. The immutable T13
-GUI and protected baseline source files remain unchanged. Ordinary and chamber
-meshing both begin from the one maintained `source_codes/castem_tool.dgibi`
-template; chamber code is injected only into the derived per-run DGIBI.
+rectangle, equilateral-triangle, and regular-polygon fills. The historical T13
+GUI remains unchanged. Ordinary and chamber meshing both use the one maintained
+`source_codes/castem_tool.dgibi` template; that Cast3M file contains the native
+`opti_chamb` branch and all chamber geometry.
 
 ## Why this path exists
 
@@ -26,9 +26,10 @@ For every configured hole, the implementation:
 8. Replaces only the derived run program's expensive hole-correction block with three `LIRE 'NAS'` imports and merges the imported meshes into the corresponding Cast3M surfaces.
 9. Archives fixed-name artifacts from a prior run before launching Cast3M, then verifies the complete expected output manifest before the GUI reports success.
 
-The source template on disk is never edited. Chamber mode additionally removes
-the unused baseline displacement procedure from the generated copy and installs
-this same bulk-reader block before adding chamber geometry.
+The hole optimizer edits only the generated working-directory copy: it replaces
+the legacy hole interpolation/displacement block with the bulk readers above.
+It does not generate or inject chamber geometry; the native Cast3M chamber
+branch remains in place and is controlled only by its scalar toggle.
 
 ## Conformal angular subdivision
 

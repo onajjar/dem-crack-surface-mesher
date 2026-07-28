@@ -24,7 +24,7 @@ python -m pip install -r requirements.txt -c constraints-baseline.txt
 python scripts/run_multiple_holes_example.py
 ```
 
-The runner configures two GUI hole rows and calls `castem_pipeline_gui_t13.App._run` directly. It refuses to reuse a non-empty `_runtime/multiple-holes-output` directory, disables Python bytecode, keeps the Matplotlib cache inside that runtime, and checks the immutable source manifest before and after execution.
+The runner configures two GUI hole rows and calls `castem_pipeline_gui_t13.App._run` directly. It refuses to reuse a non-empty `_runtime/multiple-holes-output` directory, disables Python bytecode, keeps the Matplotlib cache inside that runtime, and checks the authoritative runtime-integrity manifest before and after execution.
 
 To recreate the preview after a successful run, install the optional rendering dependencies and run:
 

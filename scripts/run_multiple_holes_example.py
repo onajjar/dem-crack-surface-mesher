@@ -2,7 +2,7 @@
 
 The application is configured through its Tk variables and executed through
 ``App._run``.  Every runtime artifact is confined to
-``_runtime/multiple-holes-output``; the tracked baseline sources are hashed
+``_runtime/multiple-holes-output``; the tracked authoritative sources are hashed
 before and after the run.
 """
 
@@ -121,7 +121,9 @@ def main(argv: list[str] | None = None) -> int:
     before = immutable_hashes()
     expected = expected_hashes()
     if before != expected:
-        raise RuntimeError("Immutable source hashes do not match BASELINE_SHA256SUMS.")
+        raise RuntimeError(
+            "Runtime source hashes do not match BASELINE_SHA256SUMS."
+        )
 
     required = {
         "dgibi": ROOT / "source_codes" / "castem_tool.dgibi",
