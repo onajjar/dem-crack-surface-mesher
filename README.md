@@ -35,7 +35,10 @@ GitHub-compatible citation metadata are provided in
 
 ## What it does
 
-- Selects an existing four-CSV dataset, reconstructs a DEAP crack surface with the MATLAB-compatible Python quadratic LOESS fit, synthesizes a reproducible self-affine fractal surface, or creates two constant-Z planes.
+- Selects an existing four-CSV dataset, reconstructs a DEAP crack surface with
+  the MATLAB-compatible Python quadratic LOESS fit, synthesizes legacy or
+  directional/non-Gaussian opposing fractal walls, or creates two constant-Z
+  planes.
 - Materializes every source as the same canonical `xrange`, `yrange`, `zfit_zmax`, and `zfit_zmin` matrices expected by the preserved Cast3M templates.
 - Optionally characterizes the reconstructed surface before meshing—or without
   meshing—and exports reproducible statistics, diagnostics, reports, and
@@ -54,7 +57,7 @@ flowchart LR
     A[CSV files] --> B[Surface source]
     A1[Raw DEAP HDF5] --> A4[Python quadratic LOESS fit]
     A4 --> B
-    A2[Self-affine fractal] --> B
+    A2[Directional fractal walls] --> B
     A3[Constant Z planes] --> B
     B --> C[Four canonical matrices]
     C --> P{Characterize?}
@@ -62,10 +65,13 @@ flowchart LR
     Q --> R[Reports, figures and optional synthetic CSV surface]
     P -->|No| D[GUI or headless runner]
     Q --> D
-    D --> E[Patch DGIBI Main Program]
+    D --> S{Mesh backend}
+    S -->|Python-only default| Y[NumPy HEXA8 mesher]
+    S -->|Bulk Python or reference| E[Patch DGIBI Main Program]
     C --> F[Cast3M mesh run]
     E --> F
-    F --> G[Volume and boundary BDFs]
+    Y --> G[Volume and boundary BDFs]
+    F --> G
     G --> H{Optional outputs}
     H --> I[Combined BDF]
     H --> J[MED / STL]
@@ -87,14 +93,21 @@ The scientific launcher changes its visible inputs with the selected source:
 |---|---|---|
 | Existing CSV | Four equally shaped matrices | Values supplied by the dataset |
 | Raw DEAP results | `deap_post.h5`, `deap_output.h5`, fit parameters, and boundary | Python-fitted lower and upper crack faces |
-| Synthetic fractal | Grid points, X/Y size and center, `H` or `D`, RMS height, aperture, seed | Parallel self-affine walls |
+| Synthetic fractal | Grid/extent, X/Y exponents and roll-off, wall RMS/correlation, marginal distribution, aperture bounds, seed | Correlated or independent opposing walls with variable aperture |
 | Constant Z planes | Grid points, X/Y size and center, lower Z, upper Z | No fluctuations |
 
-For a two-dimensional surface graph embedded in three dimensions, the implemented relation is `D = 3 - H`, with `0 < H < 1` and `2 < D < 3`. Isotropic spectral synthesis uses `S(k) ∝ k^-(2H+2)`. The random mean surface is normalized to the requested RMS height; the upper and lower walls are parallel and separated by the requested aperture. The seed makes the generated matrices reproducible.
+For a two-dimensional surface graph embedded in three dimensions, the
+implemented relation is `D = 3 - H`, with `0 < H < 1` and `2 < D < 3`.
+Equal X/Y exponents, equal wall RMS values, Gaussian heights, correlation one,
+and blank roll-off wavelengths retain the original parallel-wall result
+byte-for-byte. Directional exponents, paired roll-off wavelengths,
+Gaussian/uniform/Laplace/lognormal marginals, and wall correlation extend the
+model to anisotropic independently rough walls. The seed makes every
+realization reproducible, while the report records achieved statistics.
 
 An exponent defines scale dependence, not vertical magnitude, so RMS height cannot be inferred from `H` or `D`. Likewise, a positive aperture is required for Cast3M volume meshing. In constant mode the lower wall may be `z = 0` everywhere, but the upper wall must be greater than the lower wall.
 
-![Real generated self-affine and constant crack-wall sources](docs/assets/synthetic-surface-comparison.png)
+![Legacy isotropic, advanced independently rough, and constant-plane crack-wall sources](docs/assets/synthetic-surface-comparison.png)
 
 The committed examples were executed with Cast3M 25 and the same circle/rectangle hole configuration:
 
@@ -107,6 +120,7 @@ All 5,180 HEXA8 elements and all 41,440 evaluated element corners in each real B
 
 ```powershell
 python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini
+python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-advanced.ini
 python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-planes.ini
 ```
 
@@ -278,13 +292,13 @@ All characterization artifacts are written to
 python.exe .\castem_pipeline_gui_scientific.py
 ```
 
-![Current scientific workbench walkthrough covering geometry, mesh controls, run results, and FISS setup](docs/assets/demo.gif)
+![Current scientific workbench walkthrough covering advanced fractal inputs, geometry, mesh controls, characterization, run results, and FISS setup](docs/assets/demo.gif)
 
-![Scientific workbench: deterministic self-affine surface definition](docs/assets/scientific-surface-fractal.png)
+![Scientific workbench: directional roll-off, non-Gaussian, independent-wall fractal definition](docs/assets/scientific-surface-fractal.png)
 
 ![Scientific workbench: mesh and hole controls](docs/assets/scientific-workbench.png)
 
-![Scientific workbench: run controls including one-click Gmsh opening](docs/assets/scientific-workbench-run-results.png)
+![Scientific workbench: backend-neutral run controls and live solver log](docs/assets/scientific-workbench-run-results.png)
 
 See [docs/scientific-workbench.md](docs/scientific-workbench.md) for use, scope, and safety notes.
 Scientific definitions are documented in
@@ -394,9 +408,11 @@ The immutable `castem_pipeline_gui_t13.py` remains available when an exact histo
 Then:
 
 1. Choose **Load documented example**, **Python-only chamber example**, or
-   **DEAP fitting example**. Select `source_codes\castem_tool.dgibi` only for
-   a Cast3M backend; the Python-only backend does not read a DGIBI source. The
-   DEAP action loads the bundled `1_simple` raw-HDF5 fitting case.
+   **DEAP fitting example**; **Fractal example** loads the advanced directional
+   source-free case. Python-only is the initial backend. Its Cast3M source,
+   source-browser, launcher-version, and Gmsh controls are inactive because
+   that backend reads none of them. Selecting either Cast3M mode restores those
+   controls. The DEAP action loads the bundled `1_simple` raw-HDF5 fitting case.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
 3. Select **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**, or **Constant Z planes**. For DEAP fitting, put `deap_post.h5`, `deap_output.h5`, and normally `input.boundary` in the working directory; for CSV mode, select the four existing matrices.
 4. For DEAP fitting, enter `re_ti`, `re_crpa`, `re_smfa`, `re_numspa`, and
@@ -511,7 +527,7 @@ The template builds lines through the crack, derives local opening and extent, a
 │   ├── chambers/                # GUI/headless chamber example and validation
 │   ├── python-only-chambers/    # source-free equivalent and exact comparison
 │   ├── shaped-holes/            # circle/rectangle/triangle/polygon gallery
-│   ├── surfaces/                # fractal-H, fractal-D, and constant examples
+│   ├── surfaces/                # legacy/advanced fractal and constant examples
 │   └── multiple-holes/          # verified two-hole configuration/output
 ├── docs/
 │   ├── assets/                  # authentic screenshots and diagrams
@@ -581,7 +597,11 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 - Cast3M and Gmsh are external applications and are not installed by
   `requirements.txt`; neither is resolved or started in Python-only mode.
 - The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.
-- The fractal generator is an isotropic Gaussian spectral model with one power-law exponent. It does not yet model anisotropy, roll-off wavelengths, non-Gaussian height distributions, or independently rough opposing walls; its two walls are parallel with constant aperture.
+- The fractal generator supports directional exponents and roll-off wavelengths,
+  Gaussian/uniform/Laplace/lognormal marginals, and independently rough walls.
+  Rank mapping and minimum-aperture enforcement can shift the achieved spectrum,
+  RMS, and wall correlation, so the generated target-versus-achieved metadata
+  should be reviewed for each finite realization.
 - Python-only HEXA8 Jacobian checks cover all eight 2 × 2 × 2 Gauss points.
   They do not replace skewness/orthogonality checks or validation in the
   target CFD solver.

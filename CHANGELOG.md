@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Made source-free Python-only HEXA8 the Workbench default and disabled the
+  Cast3M DGIBI path/browser, launcher version, and Gmsh controls until a Cast3M
+  backend is selected.
+- Extended meshing-time fractal synthesis with directional Hurst exponents,
+  paired X/Y roll-off wavelengths, Gaussian/uniform/Laplace/lognormal
+  marginals, separate lower/upper wall RMS targets, configurable wall
+  correlation, independent opposing walls, variable aperture, and positive
+  minimum-aperture enforcement with target-versus-achieved reporting.
+- Added and fully meshed the source-free `fractal-advanced.ini` example; its
+  13,870 HEXA8 cells passed all Gauss-point checks with minimum scaled Jacobian
+  `0.580399`, and an independent topology audit found 110,960 positive corner
+  Jacobians with no residual hole-fill seams.
+- Refreshed the current Workbench stills, characterization stills, generated
+  surface comparison, workflow diagram, and animated walkthrough; the demo now
+  includes the embedded Characterization tab.
 - Integrated the complete inlet/outlet chamber construction and conditional
   BDF exports directly into the single `source_codes/castem_tool.dgibi` mesh
   source behind the native `opti_chamb = 0/1` option.
@@ -13,7 +28,8 @@
 - Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
 - Added centralized pytest/Ruff configuration, CI linting, public contribution templates, and broader generated-file exclusions for release readiness.
 - Removed a dead scientific-UI assignment without changing runtime behavior.
-- Replaced the legacy T13 interface GIF with a current four-tab Scientific Workbench walkthrough and removed the obsolete baseline screenshot.
+- Replaced the legacy T13 interface GIF with the current multi-tab Scientific
+  Workbench walkthrough and removed the obsolete baseline screenshot.
 - Added CSV, reproducible self-affine fractal, and constant-plane surface sources behind one canonical four-grid Cast3M contract.
 - Replaced the MATLAB runtime dependency for DEAP crack fitting with a Python
   quadratic LOESS implementation, explicit DEAP-fit/CSV-bypass controls, four

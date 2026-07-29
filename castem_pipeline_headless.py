@@ -330,8 +330,30 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
             center_y=baseline.parse_float(surface_section.get("center_y", "0.0")),
             hurst_exponent=_optional_number(surface_section, "hurst_exponent"),
             fractal_dimension=_optional_number(surface_section, "fractal_dimension"),
+            hurst_exponent_x=_optional_number(surface_section, "hurst_exponent_x"),
+            hurst_exponent_y=_optional_number(surface_section, "hurst_exponent_y"),
             rms_height=baseline.parse_float(surface_section.get("rms_height", "5e-5")),
+            lower_wall_rms=_optional_number(surface_section, "lower_wall_rms"),
+            upper_wall_rms=_optional_number(surface_section, "upper_wall_rms"),
             mean_aperture=baseline.parse_float(surface_section.get("mean_aperture", "2e-4")),
+            minimum_aperture=baseline.parse_float(
+                surface_section.get("minimum_aperture", "1e-12")
+            ),
+            wall_correlation=baseline.parse_float(
+                surface_section.get("wall_correlation", "1.0")
+            ),
+            rolloff_wavelength_x=_optional_number(
+                surface_section, "rolloff_wavelength_x"
+            ),
+            rolloff_wavelength_y=_optional_number(
+                surface_section, "rolloff_wavelength_y"
+            ),
+            height_distribution=surface_section.get(
+                "height_distribution", "gaussian"
+            ),
+            lognormal_shape=baseline.parse_float(
+                surface_section.get("lognormal_shape", "0.75")
+            ),
             random_seed=surface_section.getint("random_seed", fallback=20260721),
             constant_zmin=baseline.parse_float(surface_section.get("constant_zmin", "0.0")),
             constant_zmax=baseline.parse_float(surface_section.get("constant_zmax", "2e-4")),
@@ -1027,18 +1049,38 @@ def main(argv: list[str] | None = None) -> int:
             "opmin": setup.params.re_opmin,
         }
         if source.normalized_mode == "fractal":
-            summary["hurst_exponent"] = round(
-                source.resolved_hurst_exponent, 12
+            hurst_x, hurst_y = source.resolved_hurst_exponents
+            dimension_x, dimension_y = source.resolved_fractal_dimensions
+            isotropic = math.isclose(hurst_x, hurst_y, rel_tol=0.0, abs_tol=1.0e-12)
+            summary["hurst_exponent"] = round(hurst_x, 12) if isotropic else None
+            summary["fractal_dimension"] = (
+                round(dimension_x, 12) if isotropic else None
             )
-            summary["fractal_dimension"] = round(
-                source.resolved_fractal_dimension, 12
-            )
+            summary["hurst_exponents"] = {
+                "x": round(hurst_x, 12),
+                "y": round(hurst_y, 12),
+            }
+            summary["fractal_dimensions"] = {
+                "x": round(dimension_x, 12),
+                "y": round(dimension_y, 12),
+            }
             summary["surface_parameters"] = {
                 "center": [source.center_x, source.center_y],
                 "rms_height": source.rms_height,
+                "lower_wall_rms": source.lower_wall_rms,
+                "upper_wall_rms": source.upper_wall_rms,
                 "mean_aperture": source.mean_aperture,
+                "minimum_aperture": source.minimum_aperture,
+                "wall_correlation": source.wall_correlation,
+                "rolloff_wavelength": [
+                    source.rolloff_wavelength_x,
+                    source.rolloff_wavelength_y,
+                ],
+                "height_distribution": source.height_distribution,
+                "lognormal_shape": source.lognormal_shape,
                 "random_seed": source.random_seed,
             }
+            summary["surface_generation"] = surface_grid.metadata
         elif source.normalized_mode == "constant":
             summary["surface_parameters"] = {
                 "center": [source.center_x, source.center_y],

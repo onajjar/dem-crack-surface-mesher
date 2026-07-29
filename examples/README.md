@@ -96,6 +96,7 @@ The [`surfaces`](surfaces/README.md) directory contains complete configurations 
 
 ```powershell
 python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini
+python castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-advanced.ini
 python castem_pipeline_gui_scientific.py --headless examples\surfaces\constant-planes.ini
 ```
 

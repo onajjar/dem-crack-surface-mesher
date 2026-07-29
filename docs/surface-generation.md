@@ -6,7 +6,7 @@ matrices consumed by the preserved Cast3M readers, so hole construction,
 volume extrusion, named-boundary export, BDF merge, Gmsh opening, and optional
 FISS execution follow one downstream path.
 
-## Self-affine model
+## Directional self-affine model
 
 A self-affine height field has the statistical scaling relation
 
@@ -24,35 +24,79 @@ D = 3 - H
 with `0 < H < 1` and `2 < D < 3`. The user may enter either value. If an INI
 supplies both, they must satisfy the relation to numerical tolerance.
 
-The isotropic two-dimensional power spectral density follows
+The legacy isotropic two-dimensional power spectral density follows
 
 ```text
 S(k) ∝ k^-(2H+2)
 ```
 
-Therefore white-noise Fourier coefficients are multiplied by
-`k^-(H+1)`. The zero-frequency coefficient is removed, the inverse transform
-is centered at zero, and the field is normalized to the requested RMS height.
-An integer seed initializes NumPy's random generator and makes every matrix
-reproducible on the supported NumPy path.
+Therefore white-noise Fourier coefficients are multiplied by `k^-(H+1)`.
+Leaving the directional and roll-off controls at their defaults retains this
+path byte-for-byte for a given seed.
+
+The extended model accepts `hurst_exponent_x` and `hurst_exponent_y`. In
+directional Fourier coordinates, it interpolates the local exponent by squared
+direction cosines:
+
+```text
+wx = qx^2 / (qx^2 + qy^2)
+H(qx, qy) = Hx wx + Hy (1 - wx)
+```
+
+Optional `rolloff_wavelength_x` and `rolloff_wavelength_y` define
+`k0x = 2 pi / lambda0x` and `k0y = 2 pi / lambda0y`. Both must be supplied
+together. With
+
+```text
+q = sqrt((kx / k0x)^2 + (ky / k0y)^2)
+```
+
+the amplitude filter uses `max(q, 1)^-(H(q)+1)`. It is therefore flat below
+the directional roll-off and self-affine above it. Blank roll-off values use
+the unmodified power law. The zero-frequency coefficient is always removed.
+
+## Height distribution
+
+`height_distribution` accepts `gaussian`, `uniform`, `laplace`, or
+`lognormal`. Gaussian synthesis uses the filtered field directly. The three
+non-Gaussian options rank-map the field to deterministic target quantiles and
+then recenter and normalize it. `lognormal_shape` controls the lognormal shape
+parameter and must be in `(0, 3]`.
+
+Rank mapping gives the requested discrete marginal distribution while retaining
+the spatial rank structure. It does not preserve every Fourier amplitude
+exactly, so generated metadata records achieved wall skewness, RMS values, wall
+correlation, and aperture statistics.
 
 ## Wall construction
 
-The synthesized field represents the mean surface `zm`. The crack walls are
+Two seeded spectral fields are generated for the opposing walls. Their Gaussian
+precursors are coupled using the requested `wall_correlation`:
 
 ```text
-zmin = zm - mean_aperture / 2
-zmax = zm + mean_aperture / 2
+gu = rho gl + sqrt(1 - rho^2) gi
 ```
 
-This creates parallel rough walls with constant positive aperture. It avoids
-wall intersections and makes the existing Cast3M extrusion well defined.
-`rms_height` is essential: `H` or `D` controls scale dependence but contains no
-absolute vertical magnitude.
+where `gi` is an independent realization. `lower_wall_rms` and
+`upper_wall_rms` set the two roughness magnitudes. The physical walls are
 
-The current model deliberately does not generate two statistically independent
-walls or a spatially varying aperture. It also has no anisotropy, spectral
-roll-off/cut-off controls, or non-Gaussian height distribution.
+```text
+zmin = rl - mean_aperture / 2
+zmax = ru + mean_aperture / 2
+opening = mean_aperture + ru - rl
+```
+
+Thus `wall_correlation = 0` produces independently rough opposing walls and a
+spatially varying aperture. The legacy parallel-wall result is recovered with
+correlation `1`, equal wall RMS values, a Gaussian distribution, equal
+directional exponents, and blank roll-off wavelengths. `rms_height` remains as
+the backward-compatible fallback for both wall RMS values.
+
+`minimum_aperture` must be positive and below the requested mean. If an
+unconstrained realization would cross that value, only the opening fluctuation
+about the unchanged mid-surface is reduced. This preserves the mean aperture
+and prevents intersecting or collapsed walls. The applied scale and all
+achieved statistics are included in the validation/headless report.
 
 ## Constant planes
 
@@ -66,7 +110,8 @@ walls would create collapsed elements and are rejected before Cast3M starts.
 - `points_x` and `points_y` are point counts, not cell counts.
 - The base structured grid contains `(points_x - 1) × (points_y - 1)` cells.
 - X and Y span `center ± size / 2`, including both endpoints.
-- Z, RMS height, and aperture use the same length unit as X and Y.
+- Z, wall RMS heights, roll-off wavelengths, and apertures use the same length
+  unit as X and Y.
 - Existing post-processing implicitly treats coordinates as metres.
 
 ## Runtime contract
@@ -81,6 +126,7 @@ these files.
 
 ```powershell
 python -B castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini --validate-only
+python -B castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-advanced.ini --validate-only
 python -B castem_pipeline_gui_scientific.py --headless examples\surfaces\fractal-hurst.ini
 
 python -B scripts\verify_shape_interfaces.py `
@@ -93,3 +139,12 @@ The committed real-run evidence is summarized in
 [Provisional verification](provisional-verification.md). Center/corner Jacobian
 and interface checks do not replace full element-quality evaluation or validation
 in the target CFD solver.
+
+## Remaining statistical limitations
+
+Directional exponents are blended continuously in Fourier space rather than
+fitted to a measured two-dimensional PSD. Non-Gaussian rank mapping and
+minimum-aperture enforcement can change the achieved spectrum, RMS values, and
+Pearson wall correlation. The report exposes those achieved quantities; a
+single finite realization should not be treated as an exact simultaneous match
+to every target statistic.

@@ -54,6 +54,7 @@ DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
 DEAP_EXAMPLE_CONFIG = ROOT / "examples" / "deap" / "1_simple" / "run.ini"
 COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
 ARTICLE_URL = "https://doi.org/10.1016/j.nucengdes.2025.114718"
+DEFAULT_SOLVER_MODE = "python_only"
 SHAPE_GALLERY = (
     HoleGeometry("circle", -0.25, 0.25, radius=0.045),
     HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
@@ -164,8 +165,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._validated_surface_grid: SurfaceGrid | None = None
         self.status_var = tk.StringVar(value="Initializing")
         self.status_tone = "neutral"
-        self.solver_mode_var = tk.StringVar(value="python")
-        self.context_var = tk.StringVar(value="Active mode: bulk inflated holes")
+        self.solver_mode_var = tk.StringVar(value=DEFAULT_SOLVER_MODE)
+        self.context_var = tk.StringVar(value="Active mode: Python-only HEXA8")
         self.input_summary_var = tk.StringVar(value="Select or generate a structured crack surface, then validate the configuration.")
         self.method_summary_var = tk.StringVar()
         self.run_summary_var = tk.StringVar(value="No run has been started in this session.")
@@ -175,7 +176,8 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.deap_bounding_box_var = tk.StringVar(value="")
         self.fractal_parameter_var = tk.StringVar(value="Hurst exponent H")
         self.fractal_value_var = tk.StringVar(value="0.8")
-        self.fractal_relation_var = tk.StringVar(value="D = 2.2")
+        self.fractal_value_y_var = tk.StringVar(value="0.8")
+        self.fractal_relation_var = tk.StringVar(value="Dx = 2.2; Dy = 2.2")
         self.surface_points_x_var = tk.StringVar(value="50")
         self.surface_points_y_var = tk.StringVar(value="50")
         self.surface_size_x_var = tk.StringVar(value="1.2")
@@ -183,7 +185,14 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.surface_center_x_var = tk.StringVar(value="0.0")
         self.surface_center_y_var = tk.StringVar(value="0.0")
         self.fractal_rms_height_var = tk.StringVar(value="5e-5")
+        self.fractal_upper_rms_height_var = tk.StringVar(value="5e-5")
         self.fractal_aperture_var = tk.StringVar(value="2e-4")
+        self.fractal_minimum_aperture_var = tk.StringVar(value="1e-12")
+        self.fractal_wall_correlation_var = tk.StringVar(value="1.0")
+        self.fractal_rolloff_x_var = tk.StringVar(value="")
+        self.fractal_rolloff_y_var = tk.StringVar(value="")
+        self.fractal_distribution_var = tk.StringVar(value="Gaussian")
+        self.fractal_lognormal_shape_var = tk.StringVar(value="0.75")
         self.fractal_seed_var = tk.StringVar(value="20260721")
         self.constant_zmin_var = tk.StringVar(value="0.0")
         self.constant_zmax_var = tk.StringVar(value="2e-4")
@@ -300,10 +309,29 @@ class ScientificApp(PythonHoleInterpolationApp):
             ttk.Label(parent, text=note, style="CardMuted.TLabel").grid(row=row + 1, column=column, columnspan=2, sticky="w")
         return entry
 
-    def _path_row(self, parent, row: int, label: str, variable, browse_command) -> None:
+    def _path_row(
+        self,
+        parent,
+        row: int,
+        label: str,
+        variable,
+        browse_command,
+    ) -> tuple[ttk.Entry, ttk.Button]:
         ttk.Label(parent, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", padx=(0, 9), pady=6)
-        ttk.Entry(parent, textvariable=variable, style="Scientific.TEntry").grid(row=row, column=1, sticky="we", pady=6)
-        ttk.Button(parent, text="Browse", style="Quiet.TButton", command=browse_command).grid(row=row, column=2, padx=(8, 0), pady=6)
+        entry = ttk.Entry(
+            parent,
+            textvariable=variable,
+            style="Scientific.TEntry",
+        )
+        entry.grid(row=row, column=1, sticky="we", pady=6)
+        browse_button = ttk.Button(
+            parent,
+            text="Browse",
+            style="Quiet.TButton",
+            command=browse_command,
+        )
+        browse_button.grid(row=row, column=2, padx=(8, 0), pady=6)
+        return entry, browse_button
 
     def _build_input_tab(self) -> None:
         tab = self.input_tab
@@ -314,7 +342,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         setup = self._card(tab, "Run context")
         setup.grid(row=0, column=0, sticky="ew", padx=(0, 10), pady=(0, 10))
         setup.columnconfigure(1, weight=1)
-        self._path_row(
+        dgibi_entry, dgibi_browse_button = self._path_row(
             setup,
             0,
             "Cast3M DGIBI template (unused by Python-only)",
@@ -322,13 +350,18 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._browse_dgibi,
         )
         self._path_row(setup, 1, "Working directory", self.workdir_var, self._browse_workdir)
-        self._field(
+        castem_version_entry = self._field(
             setup,
             2,
             0,
             "Cast3M launcher version (unused by Python-only)",
             self.castem_version_var,
             width=11,
+        )
+        self._castem_mesh_widgets = (
+            dgibi_entry,
+            dgibi_browse_button,
+            castem_version_entry,
         )
         metadata = ttk.LabelFrame(
             setup,
@@ -452,23 +485,116 @@ class ScientificApp(PythonHoleInterpolationApp):
         )
         self.fractal_parameter_combo.grid(row=0, column=1, sticky="we", pady=4)
         self.fractal_parameter_combo.bind("<<ComboboxSelected>>", self._on_fractal_parameter_change)
-        self._field(fractal_frame, 0, 2, "Exponent value", self.fractal_value_var, width=12)
-        ttk.Label(fractal_frame, textvariable=self.fractal_relation_var, style="CardMuted.TLabel").grid(row=0, column=4, columnspan=2, sticky="w", padx=(12, 0))
-        self._field(fractal_frame, 1, 0, "Grid points X", self.surface_points_x_var, width=10)
-        self._field(fractal_frame, 1, 2, "Grid points Y", self.surface_points_y_var, width=10)
-        self._field(fractal_frame, 1, 4, "Random seed", self.fractal_seed_var, width=12)
-        self._field(fractal_frame, 2, 0, "Crack size X", self.surface_size_x_var, width=12)
-        self._field(fractal_frame, 2, 2, "Crack size Y", self.surface_size_y_var, width=12)
-        self._field(fractal_frame, 2, 4, "RMS roughness", self.fractal_rms_height_var, width=12)
-        self._field(fractal_frame, 3, 0, "Center X", self.surface_center_x_var, width=12)
-        self._field(fractal_frame, 3, 2, "Center Y", self.surface_center_y_var, width=12)
-        self._field(fractal_frame, 3, 4, "Mean aperture", self.fractal_aperture_var, width=12)
+        self._field(fractal_frame, 0, 2, "X exponent", self.fractal_value_var, width=12)
+        self._field(
+            fractal_frame,
+            0,
+            4,
+            "Y exponent",
+            self.fractal_value_y_var,
+            width=12,
+        )
         ttk.Label(
             fractal_frame,
-            text="Isotropic spectral synthesis; D = 3 − H. RMS height and aperture use the same length unit as X and Y.",
+            textvariable=self.fractal_relation_var,
             style="CardMuted.TLabel",
-        ).grid(row=4, column=0, columnspan=6, sticky="w", pady=(8, 0))
+        ).grid(row=1, column=0, columnspan=6, sticky="w", pady=(0, 4))
+        self._field(fractal_frame, 2, 0, "Grid points X", self.surface_points_x_var, width=10)
+        self._field(fractal_frame, 2, 2, "Grid points Y", self.surface_points_y_var, width=10)
+        self._field(fractal_frame, 2, 4, "Random seed", self.fractal_seed_var, width=12)
+        self._field(fractal_frame, 3, 0, "Crack size X", self.surface_size_x_var, width=12)
+        self._field(fractal_frame, 3, 2, "Crack size Y", self.surface_size_y_var, width=12)
+        self._field(fractal_frame, 3, 4, "Mean aperture", self.fractal_aperture_var, width=12)
+        self._field(fractal_frame, 4, 0, "Center X", self.surface_center_x_var, width=12)
+        self._field(fractal_frame, 4, 2, "Center Y", self.surface_center_y_var, width=12)
+        self._field(
+            fractal_frame,
+            4,
+            4,
+            "Minimum aperture",
+            self.fractal_minimum_aperture_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            5,
+            0,
+            "Lower-wall RMS",
+            self.fractal_rms_height_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            5,
+            2,
+            "Upper-wall RMS",
+            self.fractal_upper_rms_height_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            5,
+            4,
+            "Wall correlation",
+            self.fractal_wall_correlation_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            6,
+            0,
+            "Roll-off wavelength X",
+            self.fractal_rolloff_x_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            6,
+            2,
+            "Roll-off wavelength Y",
+            self.fractal_rolloff_y_var,
+            width=12,
+        )
+        ttk.Label(
+            fractal_frame,
+            text="Height distribution",
+            style="Card.TLabel",
+        ).grid(row=6, column=4, sticky="w", padx=(0, 7), pady=4)
+        self.fractal_distribution_combo = ttk.Combobox(
+            fractal_frame,
+            textvariable=self.fractal_distribution_var,
+            values=("Gaussian", "Uniform", "Laplace", "Lognormal"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=12,
+        )
+        self.fractal_distribution_combo.grid(row=6, column=5, sticky="we", pady=4)
+        self.fractal_distribution_combo.bind(
+            "<<ComboboxSelected>>",
+            self._on_fractal_distribution_change,
+        )
+        self.fractal_lognormal_shape_entry = self._field(
+            fractal_frame,
+            7,
+            0,
+            "Lognormal shape",
+            self.fractal_lognormal_shape_var,
+            width=12,
+        )
+        ttk.Label(
+            fractal_frame,
+            text=(
+                "Directional spectral synthesis supports roll-off and non-Gaussian "
+                "marginals. Correlation 1 with equal RMS values gives parallel walls; "
+                "correlation 0 gives independent roughness. Both roll-off fields are "
+                "blank to disable roll-off."
+            ),
+            style="CardMuted.TLabel",
+            wraplength=850,
+            justify="left",
+        ).grid(row=8, column=0, columnspan=6, sticky="w", pady=(8, 0))
         self.surface_frames["fractal"] = fractal_frame
+        self._refresh_fractal_distribution_controls()
 
         constant_frame = ttk.Frame(grids, style="Card.TFrame")
         constant_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
@@ -584,26 +710,48 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._mark_dirty()
 
     def _on_fractal_parameter_change(self, _event=None) -> None:
-        try:
-            self.fractal_value_var.set(f"{3.0 - baseline.parse_float(self.fractal_value_var.get()):.12g}")
-        except (TypeError, ValueError):
-            pass
+        for variable in (self.fractal_value_var, self.fractal_value_y_var):
+            try:
+                variable.set(f"{3.0 - baseline.parse_float(variable.get()):.12g}")
+            except (TypeError, ValueError):
+                pass
         self._update_fractal_relation()
         self._mark_dirty()
 
     def _update_fractal_relation(self, *_args) -> None:
         try:
-            value = baseline.parse_float(self.fractal_value_var.get())
+            value_x = baseline.parse_float(self.fractal_value_var.get())
+            value_y = baseline.parse_float(self.fractal_value_y_var.get())
             if self.fractal_parameter_var.get() == "Hurst exponent H":
-                if not 0.0 < value < 1.0:
+                if not 0.0 < value_x < 1.0 or not 0.0 < value_y < 1.0:
                     raise ValueError
-                self.fractal_relation_var.set(f"D = {3.0 - value:.6g}")
+                self.fractal_relation_var.set(
+                    f"Dx = {3.0 - value_x:.6g}; Dy = {3.0 - value_y:.6g}"
+                )
             else:
-                if not 2.0 < value < 3.0:
+                if not 2.0 < value_x < 3.0 or not 2.0 < value_y < 3.0:
                     raise ValueError
-                self.fractal_relation_var.set(f"H = {3.0 - value:.6g}")
+                self.fractal_relation_var.set(
+                    f"Hx = {3.0 - value_x:.6g}; Hy = {3.0 - value_y:.6g}"
+                )
         except (TypeError, ValueError):
-            self.fractal_relation_var.set("Use 0 < H < 1 or 2 < D < 3")
+            self.fractal_relation_var.set(
+                "Use 0 < Hx, Hy < 1 or 2 < Dx, Dy < 3"
+            )
+
+    def _on_fractal_distribution_change(self, _event=None) -> None:
+        self._refresh_fractal_distribution_controls()
+        self._mark_dirty()
+
+    def _refresh_fractal_distribution_controls(self) -> None:
+        if not hasattr(self, "fractal_lognormal_shape_entry"):
+            return
+        state = (
+            "normal"
+            if self.fractal_distribution_var.get().strip().lower() == "lognormal"
+            else "disabled"
+        )
+        self.fractal_lognormal_shape_entry.configure(state=state)
 
     def _surface_source_from_ui(self) -> SurfaceSource:
         mode = self._surface_mode_key(self.surface_mode_var.get())
@@ -654,14 +802,40 @@ class ScientificApp(PythonHoleInterpolationApp):
             "center_y": baseline.parse_float(self.surface_center_y_var.get()),
         }
         if mode == "fractal":
-            value = baseline.parse_float(self.fractal_value_var.get())
+            value_x = baseline.parse_float(self.fractal_value_var.get())
+            value_y = baseline.parse_float(self.fractal_value_y_var.get())
             uses_hurst = self.fractal_parameter_var.get() == "Hurst exponent H"
+
+            def optional_number(variable: tk.StringVar) -> float | None:
+                raw = variable.get().strip()
+                return baseline.parse_float(raw) if raw else None
+
             return SurfaceSource(
                 **common,
-                hurst_exponent=value if uses_hurst else None,
-                fractal_dimension=None if uses_hurst else value,
+                hurst_exponent=None,
+                fractal_dimension=None,
+                hurst_exponent_x=value_x if uses_hurst else 3.0 - value_x,
+                hurst_exponent_y=value_y if uses_hurst else 3.0 - value_y,
                 rms_height=baseline.parse_float(self.fractal_rms_height_var.get()),
+                lower_wall_rms=baseline.parse_float(
+                    self.fractal_rms_height_var.get()
+                ),
+                upper_wall_rms=baseline.parse_float(
+                    self.fractal_upper_rms_height_var.get()
+                ),
                 mean_aperture=baseline.parse_float(self.fractal_aperture_var.get()),
+                minimum_aperture=baseline.parse_float(
+                    self.fractal_minimum_aperture_var.get()
+                ),
+                wall_correlation=baseline.parse_float(
+                    self.fractal_wall_correlation_var.get()
+                ),
+                rolloff_wavelength_x=optional_number(self.fractal_rolloff_x_var),
+                rolloff_wavelength_y=optional_number(self.fractal_rolloff_y_var),
+                height_distribution=self.fractal_distribution_var.get(),
+                lognormal_shape=baseline.parse_float(
+                    self.fractal_lognormal_shape_var.get()
+                ),
                 random_seed=int(self.fractal_seed_var.get().strip()),
             )
         return SurfaceSource(
@@ -998,7 +1172,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         action = self._card(tab, "Execution")
         action.grid(row=0, column=0, sticky="new", padx=(0, 10), pady=(0, 10))
         action.columnconfigure(0, weight=1)
-        ttk.Label(action, text="Review the pre-flight summary before running Cast3M.", style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=0, column=0, sticky="w")
+        ttk.Label(action, text="Review the pre-flight summary before generating the mesh.", style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=0, column=0, sticky="w")
         ttk.Button(action, text="Validate configuration", style="Accent.TButton", command=self._validate_inputs).grid(row=1, column=0, sticky="ew", pady=(15, 8))
         ttk.Checkbutton(
             action,
@@ -1027,7 +1201,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.progress = ttk.Progressbar(progress, style="Scientific.Horizontal.TProgressbar", mode="determinate", variable=self.progress_var, maximum=100)
         self.progress.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         ttk.Label(progress, textvariable=self.status_var, style="Card.TLabel", font=("Segoe UI Semibold", 11)).grid(row=1, column=0, sticky="w")
-        ttk.Label(progress, text="Solver output is streamed below. The GUI remains responsive while Cast3M runs.", style="CardMuted.TLabel", wraplength=620, justify="left").grid(row=2, column=0, sticky="w", pady=(5, 0))
+        ttk.Label(progress, text="Solver output is streamed below. The GUI remains responsive while the selected mesher runs.", style="CardMuted.TLabel", wraplength=620, justify="left").grid(row=2, column=0, sticky="w", pady=(5, 0))
 
         log_card = self._card(tab, "Live solver log")
         log_card.grid(row=1, column=0, columnspan=2, sticky="nsew")
@@ -1134,6 +1308,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.deap_bounding_box_var,
             self.fractal_parameter_var,
             self.fractal_value_var,
+            self.fractal_value_y_var,
             self.surface_points_x_var,
             self.surface_points_y_var,
             self.surface_size_x_var,
@@ -1141,7 +1316,14 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.surface_center_x_var,
             self.surface_center_y_var,
             self.fractal_rms_height_var,
+            self.fractal_upper_rms_height_var,
             self.fractal_aperture_var,
+            self.fractal_minimum_aperture_var,
+            self.fractal_wall_correlation_var,
+            self.fractal_rolloff_x_var,
+            self.fractal_rolloff_y_var,
+            self.fractal_distribution_var,
+            self.fractal_lognormal_shape_var,
             self.fractal_seed_var,
             self.constant_zmin_var,
             self.constant_zmax_var,
@@ -1213,6 +1395,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ):
             variable.trace_add("write", self._on_csv_path_change)
         self.fractal_value_var.trace_add("write", self._update_fractal_relation)
+        self.fractal_value_y_var.trace_add("write", self._update_fractal_relation)
 
     def _mark_dirty(self, *_args) -> None:
         if self._suspend_dirty or self._active_operation is not None:
@@ -1719,18 +1902,33 @@ class ScientificApp(PythonHoleInterpolationApp):
         try:
             self.surface_mode_var.set("Synthetic fractal")
             self.fractal_parameter_var.set("Hurst exponent H")
-            self.fractal_value_var.set("0.8")
+            self.fractal_value_var.set("0.85")
+            self.fractal_value_y_var.set("0.55")
             self.surface_points_x_var.set("50")
             self.surface_points_y_var.set("50")
             self.surface_size_x_var.set("1.2")
             self.surface_size_y_var.set("0.9")
             self.surface_center_x_var.set("0.0")
             self.surface_center_y_var.set("0.0")
-            self.fractal_rms_height_var.set("5e-5")
+            self.fractal_rms_height_var.set("1e-5")
+            self.fractal_upper_rms_height_var.set("1.2e-5")
             self.fractal_aperture_var.set("2e-4")
+            self.fractal_minimum_aperture_var.set("1e-6")
+            self.fractal_wall_correlation_var.set("0.0")
+            self.fractal_rolloff_x_var.set("0.4")
+            self.fractal_rolloff_y_var.set("0.12")
+            self.fractal_distribution_var.set("Lognormal")
+            self.fractal_lognormal_shape_var.set("0.5")
             self.fractal_seed_var.set("20260721")
-            self.workdir_var.set(str((ROOT / "_runtime" / "fractal-surface-run").resolve()))
+            self.solver_mode_var.set("python_only")
+            self.opti_visu_var.set(False)
+            self.workdir_var.set(
+                str((ROOT / "_runtime" / "advanced-fractal-surface-run").resolve())
+            )
             self._refresh_surface_mode()
+            self._refresh_fractal_distribution_controls()
+            self._update_fractal_relation()
+            self._update_method_summary()
             self.notebook.select(self.input_tab)
         finally:
             self._suspend_dirty = False
@@ -1782,25 +1980,22 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._refresh_hole_shape_row(row)
 
     def _on_solver_mode_change(self) -> None:
-        if hasattr(self, "gmsh_checkbox"):
-            python_only = self.solver_mode_var.get() == "python_only"
-            if python_only:
-                self.opti_visu_var.set(False)
-            self.gmsh_checkbox.configure(
-                state="disabled" if python_only else "normal"
-            )
         self._update_method_summary()
         self._mark_dirty()
 
+    def _refresh_solver_mode_controls(self) -> None:
+        python_only = self.solver_mode_var.get() == "python_only"
+        state = "disabled" if python_only else "normal"
+        if python_only:
+            self.opti_visu_var.set(False)
+        if hasattr(self, "gmsh_checkbox"):
+            self.gmsh_checkbox.configure(state=state)
+        for widget in getattr(self, "_castem_mesh_widgets", ()):
+            widget.configure(state=state)
+
     def _update_method_summary(self) -> None:
         solver_mode = self.solver_mode_var.get()
-        if hasattr(self, "gmsh_checkbox"):
-            python_only = solver_mode == "python_only"
-            if python_only:
-                self.opti_visu_var.set(False)
-            self.gmsh_checkbox.configure(
-                state="disabled" if python_only else "normal"
-            )
+        self._refresh_solver_mode_controls()
         if solver_mode == "python_only":
             self.method_summary_var.set(
                 "Source-free NumPy mode generates the complete conformal "

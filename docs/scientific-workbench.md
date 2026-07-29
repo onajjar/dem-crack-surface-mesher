@@ -10,16 +10,22 @@ constructs an independently validated equivalent without reading that source.
 
 Run it without arguments for the interactive workbench, or pass `--headless CONFIG` to execute the same scientific pipeline from an INI file without creating a Tk window.
 
-The animated walkthrough in the main README and both workbench screenshots can be recaptured from the real interface with `python scripts\capture_scientific_ui.py`. Published path fields are converted to repository-relative values before capture.
+The animated walkthrough and workbench screenshots can be recaptured from the
+real interface with `python scripts\capture_scientific_ui.py`; the three
+characterization stills use `python scripts\capture_characterization_ui.py`.
+Published path fields are converted to repository-relative values before
+capture.
 
 ## Workflow
 
 1. Open the workbench and select **Load documented example**, **Python-only
    chamber example**, **DEAP fitting example**, **Fractal example**, or
    **Planar example**; alternatively select
-   the DGIBI template, a dedicated working directory, and define the source
-   manually. The DEAP action loads the bundled `1_simple` raw-HDF5 case and
-   its validated fit parameters.
+   a dedicated working directory and define the source manually. The initial
+   Python-only backend does not use a DGIBI template or Cast3M version. The
+   DEAP action loads the bundled `1_simple` raw-HDF5 case and its validated fit
+   parameters; the fractal action loads the directional lognormal
+   independent-wall example.
 2. Choose **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**,
    or **Constant Z planes**. The five dataset naming fields are editable only
    for DEAP fitting. CSV mode derives and cross-checks them from the four
@@ -31,20 +37,23 @@ The animated walkthrough in the main README and both workbench screenshots can b
    run, synthetic generation, report export, or characterization followed
    directly by meshing.
 5. Use **Preview surface & holes** to inspect the XY topology together with the real lower and upper three-dimensional walls before a run.
-6. In **Mesh & holes**, choose one mode:
+6. In **Mesh & holes**, keep the default Python-only mode or choose another:
    - **Original T13 hole workflow — reference** preserves the original Cast3M construction, interpolation, and displacement behavior.
    - **Bulk Python hole mesh — fast + inflated** vectorizes the common interpolation path, writes complete lower/upper/mean `CQUAD4` fill meshes, and lets Cast3M read them with `LIRE 'NAS'`.
    - **Python-only HEXA8 — no DGIBI, Cast3M, or Gmsh** builds the complete
      volume and every named boundary directly in Python.
+   In Python-only mode, the Cast3M DGIBI entry, its Browse button, the launcher
+   version, and Gmsh are disabled. Selecting either Cast3M mode enables them.
 7. Optionally enable the inlet/outlet chambers in the same tab. Set one shared
    height, separate lengths, separate height/length cell counts, and separate
    grading ratios for each end.
 8. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
 9. In **Run & results**, validate again and launch the selected backend. Both
    Cast3M and Python-only work run without blocking the interface.
-10. In Cast3M mode, use **Open generated mesh in Gmsh** for the exact combined
-    or volume BDF. Python-only mode disables that control and writes
-    `python_mesh_preview.png` automatically.
+10. Use **Open generated mesh in Gmsh** to inspect the exact combined or volume
+    BDF when Gmsh is installed. Python-only mode disables automatic Gmsh
+    launching, does not require Gmsh, and writes `python_mesh_preview.png`
+    automatically; the manual inspection button remains available.
 
 The previous `castem_pipeline_gui_python_holes.py` entry point is retained only
 as a compatibility wrapper and redirects to this workbench.
@@ -153,7 +162,15 @@ provide a six-value bounding box only when `input.boundary` is absent. The fit
 writes its four matrices and `deap-fit-report.json` under
 `_generated_surface_inputs` before entering the selected mesh backend.
 
-The fractal mode implements an isotropic Gaussian self-affine surface through spectral filtering. Enter either the Hurst exponent `H` or the graph dimension `D`; the interface displays the coupled value using `D = 3 - H`. Grid point counts, physical X/Y dimensions, RMS height, mean aperture, and an integer seed complete the definition. The walls share the same rough mean surface and remain separated by a constant aperture, preventing intersections.
+The fractal mode implements directional self-affine spectral synthesis. Enter
+X/Y Hurst exponents `Hx`, `Hy` or graph dimensions `Dx`, `Dy`; the interface
+displays their `D = 3 - H` counterparts. Optional X/Y roll-off wavelengths,
+Gaussian/uniform/Laplace/lognormal height marginals, separate lower/upper wall
+RMS values, and a wall-correlation coefficient control the two realizations.
+Correlation `0` produces independently rough walls and a variable aperture;
+correlation `1` with equal settings retains the legacy parallel-wall model. A
+strictly positive minimum aperture prevents wall intersections, and the
+headless report records target and achieved statistics.
 
 Constant mode creates two planar grids. It supports a lower surface fixed at
 `z = 0`, as in the documented example, but requires a strictly higher upper

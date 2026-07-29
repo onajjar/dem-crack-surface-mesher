@@ -26,8 +26,10 @@ def main() -> int:
     app = ScientificApp()
     # Keep the capture clear of unrelated desktop notifications while retaining
     # a representative, comfortably sized application viewport.
-    app.geometry("1400x860+20+30")
+    app.geometry("1440x1000+10+10")
     app._load_shape_gallery()
+    app.solver_mode_var.set("python_only")
+    app._update_method_summary()
     # Published captures must not expose machine-specific absolute paths.
     app.dgibi_var.set("source_codes/castem_tool.dgibi")
     app.fiss_dgibi_var.set("source_codes/fuite_fissure.dgibi")
@@ -92,8 +94,9 @@ def main() -> int:
         stages = (
             (app.input_tab, "1  GEOMETRY & INPUTS", "#1668a8"),
             (app.mesh_tab, "2  MESH & HOLES", "#0f766e"),
-            (app.run_tab, "3  RUN & RESULTS", "#b45309"),
-            (app.fiss_tab, "4  FISS FLOW", "#6d4c9a"),
+            (app.characterization_tab, "3  CHARACTERIZATION", "#477a55"),
+            (app.run_tab, "4  RUN & RESULTS", "#b45309"),
+            (app.fiss_tab, "FISS FLOW", "#6d4c9a"),
         )
         clean_images: dict[object, Image.Image] = {}
         for tab, label, color in stages:
@@ -118,7 +121,7 @@ def main() -> int:
         app._load_fractal_example()
         app.dgibi_var.set("source_codes/castem_tool.dgibi")
         app.fiss_dgibi_var.set("source_codes/fuite_fissure.dgibi")
-        app.workdir_var.set("_runtime/fractal-surface-run")
+        app.workdir_var.set("_runtime/advanced-fractal-surface-run")
         app._validate_inputs(operation="mesh")
         app.notebook.select(app.input_tab)
         fractal_image = grab_current_tab()
@@ -145,7 +148,7 @@ def main() -> int:
             DEMO_ASSET,
             save_all=True,
             append_images=encoded[1:],
-            duration=[2300, 1800, 2200, 2200, 1900, 1800],
+            duration=[2300, 1800, 2200, 2200, 2200, 1900, 1800],
             loop=0,
             optimize=False,
             disposal=2,

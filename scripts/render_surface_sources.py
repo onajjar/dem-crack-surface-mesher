@@ -22,9 +22,14 @@ OUTPUT = ROOT / "docs" / "assets" / "synthetic-surface-comparison.png"
 def main() -> int:
     cases = (
         (
-            "Self-affine fractal walls",
+            "Legacy isotropic fractal",
             ROOT / "examples" / "surfaces" / "fractal-hurst.ini",
             "H = 0.8, D = 2.2, RMS = 50 µm, seed = 20260721",
+        ),
+        (
+            "Advanced opposing walls",
+            ROOT / "examples" / "surfaces" / "fractal-advanced.ini",
+            "Hx = 0.85, Hy = 0.55, lognormal, wall correlation = 0",
         ),
         (
             "Constant-Z walls",
@@ -32,11 +37,11 @@ def main() -> int:
             "zmin = 0 µm, zmax = 200 µm",
         ),
     )
-    figure = plt.figure(figsize=(16, 7.4), dpi=150, facecolor="#f4f7fb")
+    figure = plt.figure(figsize=(18, 6.8), dpi=150, facecolor="#f4f7fb")
     for index, (title, config, subtitle) in enumerate(cases, start=1):
         setup = load_setup(config)
         grid = build_surface_grid(setup.surface_source)
-        axes = figure.add_subplot(1, 2, index, projection="3d")
+        axes = figure.add_subplot(1, len(cases), index, projection="3d")
         axes.plot_surface(
             grid.x,
             grid.y,
@@ -63,7 +68,7 @@ def main() -> int:
         axes.grid(True, alpha=0.22)
         axes.set_box_aspect((1.2, 0.9, 0.42))
     figure.suptitle(
-        "Generated crack-wall sources used by the Cast3M examples",
+        "Generated crack-wall sources used by the documented examples",
         fontsize=18,
         color="#0f2742",
         weight="bold",
@@ -72,12 +77,12 @@ def main() -> int:
     figure.text(
         0.5,
         0.02,
-        "Blue: lower wall   •   Orange: upper wall   •   Fractal PSD: S(k) ∝ k⁻⁽²ᴴ⁺²⁾   •   Aperture: 200 µm",
+        "Blue: lower wall   •   Orange: upper wall   •   Advanced case: directional roll-off and variable aperture",
         ha="center",
         color="#5d6d82",
         fontsize=11,
     )
-    figure.subplots_adjust(left=0.02, right=0.98, top=0.80, bottom=0.08, wspace=0.02)
+    figure.subplots_adjust(left=0.01, right=0.99, top=0.78, bottom=0.09, wspace=0.01)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(OUTPUT, bbox_inches="tight", facecolor=figure.get_facecolor())
     plt.close(figure)

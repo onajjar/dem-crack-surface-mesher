@@ -83,7 +83,7 @@ Thus every generated fill is conformal at the interface in this real mixed-shape
 
 All 19,936 volume elements also had positive, non-zero center Jacobians in this run; no mixed or zero center orientation was detected.
 
-## Generated surface verification
+## Legacy generated-surface verification
 
 The self-affine Hurst example and constant-plane example were executed through the same headless hole/Cast3M path:
 
@@ -108,7 +108,13 @@ Both returned process code `0`, stopped at Cast3M error level `0`, produced ever
 | Positive corner Jacobians | 41,440 | 41,440 |
 | Negative or zero corner Jacobians | 0 | 0 |
 
-The fractal field had requested `H = 0.8`, derived `D = 2.2`, RMS height `5e-5`, aperture `2e-4`, and seed `20260721`. The constant case used `zmin = 0` and `zmax = 2e-4`. The fractal walls are parallel realizations around one rough mean surface, not independent opposing-wall fields.
+This historical fractal run requested `H = 0.8`, derived `D = 2.2`, RMS height
+`5e-5`, aperture `2e-4`, and seed `20260721`; it deliberately used the
+backward-compatible parallel-wall settings. The current generator also supports
+directional roll-off, non-Gaussian marginals, independent opposing walls, and
+variable positive aperture, as documented in
+[`surface-generation.md`](surface-generation.md) and the current
+[`fractal-advanced.ini`](../examples/surfaces/fractal-advanced.ini).
 
 ## Inflation evidence
 

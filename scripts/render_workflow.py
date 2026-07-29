@@ -106,10 +106,10 @@ def main() -> None:
     draw = ImageDraw.Draw(image)
 
     draw.rectangle((0, 0, WIDTH, 118), fill="#10233f")
-    draw.text((55, 26), "Crack geometry to Cast3M mesh", font=font(40, bold=True), fill="white")
+    draw.text((55, 26), "Crack geometry to CFD-ready mesh", font=font(40, bold=True), fill="white")
     draw.text(
         (56, 78),
-        "CSV, Python-fitted DEAP, and generated surfaces through one preserved Cast3M contract",
+        "CSV, Python-fitted DEAP, directional fractal, and planar surfaces through Python-only or Cast3M",
         font=font(20),
         fill="#cbd9eb",
     )
@@ -130,13 +130,13 @@ def main() -> None:
         draw,
         boxes["csv"],
         "Surface source",
-        ["CSV · fitted DEAP", "fractal · constant Z"],
+        ["CSV · fitted DEAP", "directional fractal · constant Z"],
         "#dff3ff",
         "#4795bd",
     )
-    node(draw, boxes["gui"], "Scientific launcher", ["GUI or headless", "validation · generation"], "#e5f5ec", "#4c9b70")
-    node(draw, boxes["dgibi"], "Canonical run files", ["4 CSV matrices", "patched DGIBI"], "#fff1d8", "#c89236")
-    node(draw, boxes["castem"], "Cast3M 25", ["geometry processing", "mesh generation"], "#fce7e8", "#bc5b60")
+    node(draw, boxes["gui"], "Scientific Workbench", ["GUI or headless", "validation · characterization"], "#e5f5ec", "#4c9b70")
+    node(draw, boxes["dgibi"], "Canonical surface", ["4 CSV matrices", "lower · upper walls"], "#fff1d8", "#c89236")
+    node(draw, boxes["castem"], "Mesh backend", ["Python-only default", "or Cast3M 25"], "#fce7e8", "#bc5b60")
     node(draw, boxes["mesh"], "Mesh outputs", ["volume BDF", "surface BDF files"], "#eae7fb", "#7767b7")
     node(draw, boxes["cfd"], "Combined NASTRAN BDF", ["volume + named surfaces", "for downstream CFD import"], "#dceef7", "#3d82a2")
 
@@ -145,16 +145,28 @@ def main() -> None:
         rbox = boxes[right]
         arrow(draw, (lbox[2] + 8, (lbox[1] + lbox[3]) // 2 - 3), (rbox[0] - 10, (rbox[1] + rbox[3]) // 2 - 3))
 
-    template_box = (330, 145, 570, 270)
+    characterization_box = (622, 145, 862, 270)
+    node(
+        draw,
+        characterization_box,
+        "Characterization",
+        ["aperture · roughness", "Hurst · hydraulic proxies"],
+        "#e5f5ec",
+        "#4c9b70",
+    )
+    arrow(draw, (742, 295), (742, 275), color="#4c9b70")
+    arrow(draw, (870, 220), (904, 335), color="#4c9b70")
+
+    template_box = (914, 145, 1154, 270)
     node(
         draw,
         template_box,
-        "Source templates",
+        "Optional Cast3M templates",
         ["castem_tool.dgibi", "fuite_fissure.dgibi"],
         "#edf1f6",
         "#7890aa",
     )
-    arrow(draw, (450, 275), (450, 295), color="#7890aa")
+    arrow(draw, (1034, 275), (1034, 295), color="#7890aa")
 
     fiss_boxes = {
         "setup": (622, 630, 862, 782),
@@ -168,9 +180,9 @@ def main() -> None:
     arrow(draw, (870, 703), (904, 703), color="#71879e", dashed=True)
     arrow(draw, (1162, 703), (1196, 703), color="#71879e", dashed=True)
 
-    draw.text((56, 838), "Solid path: mesh conversion", font=font(18, bold=True), fill="#446481")
-    draw.text((340, 838), "Dashed path: optional FISS flow calculation", font=font(18), fill="#71879e")
-    draw.text((1410, 838), "Current benchmark", font=font(18, bold=True), fill="#566b82")
+    draw.text((56, 838), "Solid path: mesh conversion · Python-only is the default backend", font=font(18, bold=True), fill="#446481")
+    draw.text((750, 838), "Dashed path: optional FISS flow calculation", font=font(18), fill="#71879e")
+    draw.text((1490, 838), "Current workflow", font=font(18, bold=True), fill="#566b82")
 
     image.save(OUTPUT, optimize=True)
     print(f"Wrote {OUTPUT} ({WIDTH}x{HEIGHT}, {OUTPUT.stat().st_size} bytes)")

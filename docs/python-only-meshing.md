@@ -19,10 +19,12 @@ Gmsh for meshing only.
 | `python` | Python hole fills; chamber branch in DGIBI | Cast3M | Cast3M; Gmsh only when requested |
 | `reference` | Preserved DGIBI path | Cast3M | Cast3M; Gmsh only when requested |
 
-In the GUI, select **Python-only HEXA8 — no DGIBI, Cast3M, or Gmsh**. The
-workbench disables the Gmsh checkbox and creates
-`python_mesh_preview.png` automatically. The **Python-only chamber example**
-button fills the complete validated example without opening another window.
+Python-only is the GUI default. The workbench disables the Cast3M DGIBI entry,
+its Browse button, the Cast3M launcher version, and the Gmsh checkbox because
+none applies to this backend; selecting a Cast3M mode restores those controls.
+Python-only creates `python_mesh_preview.png` automatically. The
+**Python-only chamber example** button fills the complete validated example
+without opening another window.
 
 ## Mesh construction
 

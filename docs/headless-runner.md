@@ -84,7 +84,14 @@ mean_aperture = 2e-4
 random_seed = 20260721
 ```
 
-Specify either `hurst_exponent` or `fractal_dimension`; if both are present they must satisfy `D = 3 - H`. The accepted ranges are `0 < H < 1` and `2 < D < 3`. RMS height supplies the vertical roughness scale that an exponent alone cannot define. The seed makes the spectral synthesis reproducible.
+Specify either the legacy `hurst_exponent`/`fractal_dimension` pair or
+directional `hurst_exponent_x` and `hurst_exponent_y`. Directional roll-off
+wavelengths must be supplied as an X/Y pair. `lower_wall_rms`,
+`upper_wall_rms`, `wall_correlation`, `height_distribution`,
+`lognormal_shape`, and `minimum_aperture` define the opposing-wall statistics.
+The legacy `rms_height` remains the fallback for both walls. The seed makes the
+spectral synthesis reproducible. A complete advanced configuration is
+[`fractal-advanced.ini`](../examples/surfaces/fractal-advanced.ini).
 
 ```ini
 [surface]
@@ -99,7 +106,11 @@ constant_zmin = 0.0
 constant_zmax = 2e-4
 ```
 
-`constant_zmax` must exceed `constant_zmin`; identical planes have zero volume. Runnable Hurst, fractal-dimension, and constant-plane configurations are in [`examples/surfaces`](../examples/surfaces/README.md). The complete [`scientific-run.ini`](../examples/scientific-run.ini) comments every accepted surface key.
+`constant_zmax` must exceed `constant_zmin`; identical planes have zero volume.
+Runnable legacy, advanced directional, and constant-plane configurations are
+in [`examples/surfaces`](../examples/surfaces/README.md). The complete
+[`scientific-run.ini`](../examples/scientific-run.ini) comments every accepted
+surface key.
 
 ## Operations and modes
 

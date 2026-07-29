@@ -27,8 +27,11 @@ def main() -> int:
     from castem_pipeline_gui_scientific import ScientificApp
 
     app = ScientificApp()
-    app.geometry("1440x900+20+20")
+    app.geometry("1440x1000+10+10")
     app._load_documented_example(validate=False)
+    app.solver_mode_var.set("python_only")
+    app._update_method_summary()
+    app._validate_inputs(operation="mesh")
     assert app._show_characterization_tab()
     app.deiconify()
     app.update()
