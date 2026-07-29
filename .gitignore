@@ -138,3 +138,6 @@ _txt_quarantine_*/
 !examples/
 !examples/input/
 !examples/input/*.csv
+
+# Generated root-level characterization results
+/characterization/
