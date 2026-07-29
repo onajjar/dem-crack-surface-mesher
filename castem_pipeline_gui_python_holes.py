@@ -12,10 +12,16 @@ from datetime import datetime
 from pathlib import Path
 
 import castem_pipeline_gui_t13 as baseline
+from bdf_compat import merge_bdfs_compatible
 from chamber_geometry import (
     CHAMBER_OUTPUT_NAMES,
     chambers_from_params,
     patch_chamber_program,
+)
+from platform_runtime import (
+    castem_command,
+    install_legacy_resolvers,
+    resolve_castem_exe,
 )
 from python_hole_interpolation import build_python_holes_dgibi
 from stl_export import (
@@ -23,6 +29,8 @@ from stl_export import (
     comment_native_stl_export,
     export_boundary_bdfs_to_stl,
 )
+
+install_legacy_resolvers(baseline)
 
 MESH_OUTPUT_PATTERNS = (
     "castem_mesh_*.bdf",
@@ -141,7 +149,7 @@ class PythonHoleInterpolationApp(baseline.App):
                 raise FileNotFoundError("DGIBI template not found.")
 
             workdir = baseline.ensure_dir(self.workdir_var.get().strip())
-            castem_exe = baseline.resolve_castem_exe(self.castem_version_var.get())
+            castem_exe = resolve_castem_exe(self.castem_version_var.get())
             csv_x = Path(self.csv_x_var.get().strip())
             csv_y = Path(self.csv_y_var.get().strip())
             csv_zmax = Path(self.csv_zmax_var.get().strip())
@@ -225,7 +233,7 @@ class PythonHoleInterpolationApp(baseline.App):
         out_dgibi.write_text(patched, encoding="utf-8")
         self._log(f"Generated DGIBI: {out_dgibi.name}\n")
 
-        cmd = ["cmd.exe", "/c", str(castem_exe), str(out_dgibi)]
+        cmd = castem_command(castem_exe, out_dgibi)
 
         def after_castem(return_code: int) -> None:
             if return_code != 0:
@@ -249,7 +257,7 @@ class PythonHoleInterpolationApp(baseline.App):
                 )
 
             if self.do_merge_var.get():
-                combined = baseline.merge_bdfs(workdir, self._log)
+                combined = merge_bdfs_compatible(baseline, workdir, self._log)
                 if combined is not None:
                     named = workdir / (
                         f"combined_ti{params.re_ti}_crpa{params.re_crpa}_smfa{params.re_smfa_int}_"

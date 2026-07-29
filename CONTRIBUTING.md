@@ -20,12 +20,12 @@ Run `python scripts/verify_baseline.py` before submitting a change. Behavioral r
 4. Add or update documentation and non-invasive tests where appropriate.
 5. Run:
 
-   ```powershell
-   python scripts\verify_baseline.py
+   ```bash
+   python scripts/verify_baseline.py
    python -m ruff check .
    python -m compileall -q .
    python -m pytest -q
-   python scripts\validate_deap_examples.py
+   python scripts/validate_deap_examples.py
    ```
 
 6. Inspect the complete diff and explicitly identify any checks that could not be executed.
@@ -37,7 +37,8 @@ Do not invent numerical results, meshes, screenshots, or performance claims. Whe
 ## Code and documentation
 
 - Support Python 3.10 or newer unless a compatibility change is discussed first.
-- Prefer small, reviewable changes and preserve the current Windows/Cast3M behavior until a replacement is independently validated.
+- Prefer small, reviewable changes and preserve equivalent Linux/Windows
+  Cast3M behavior with platform-specific launch tests.
 - Keep user-facing instructions free of credentials and machine-specific absolute paths.
 - Document external requirements such as Cast3M and Gmsh; do not silently download them from application code.
 - Use clear English for new public documentation. Existing baseline comments and identifiers are preserved as-is.

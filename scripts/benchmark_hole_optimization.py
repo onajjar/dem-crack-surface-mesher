@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import castem_pipeline_gui_t13 as baseline  # noqa: E402
+from platform_runtime import castem_command, resolve_castem_exe  # noqa: E402
 from python_hole_interpolation import (  # noqa: E402
     build_python_holes_dgibi,
     generated_program_uses_python_holes,
@@ -167,7 +168,7 @@ def run_case(
     started_castem = time.perf_counter()
     with (case_dir / "castem-console.log").open("w", encoding="utf-8") as console:
         completed = subprocess.run(
-            ["cmd.exe", "/c", str(executable), dgibi.name],
+            castem_command(executable, dgibi),
             cwd=case_dir,
             stdout=console,
             stderr=subprocess.STDOUT,
@@ -208,7 +209,7 @@ def main() -> int:
         raise FileNotFoundError("Missing benchmark input: " + ", ".join(missing))
 
     output.mkdir(parents=True, exist_ok=True)
-    executable = baseline.resolve_castem_exe("25")
+    executable = resolve_castem_exe("25")
     previous: dict[str, object] = {}
     if args.reuse_baseline:
         benchmark_path = output / "benchmark.json"

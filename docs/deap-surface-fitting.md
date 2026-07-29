@@ -87,6 +87,12 @@ sanitized evidence is in
 Gmsh 4.15.0 also accepted the combined BDF with `-check -nopopup` and returned
 `0`.
 
+That archived report records the preserved pre-normalization merger. The
+maintained cross-platform launcher now removes the 76 zero-area side
+`CQUAD4` records created where this crack closes exactly. Its current combined
+BDF therefore has 798 non-zero `CQUAD4` cards; the 2,399 nodes, 722 volume
+cells, fitted values, and separate Cast3M outputs are unchanged.
+
 The complete values, runtime versions, input/reference SHA-256 hashes, and
 per-case physical checks are recorded in
 [`validation/deap-surface-report.json`](validation/deap-surface-report.json).

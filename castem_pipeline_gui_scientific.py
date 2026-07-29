@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import math
 import os
-import subprocess
 import sys
 import threading
 import time
@@ -23,6 +22,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 import castem_pipeline_gui_t13 as baseline
+from bdf_compat import merge_bdfs_compatible
 from castem_pipeline_gui_python_holes import (
     PythonHoleInterpolationApp,
     archive_existing_mesh_outputs,
@@ -35,6 +35,12 @@ from chamber_geometry import (
 )
 from characterization_gui import CharacterizationPanel
 from dataset_naming import parse_csv_set_metadata
+from platform_runtime import (
+    adapt_legacy_castem_command,
+    launch_gmsh,
+    open_with_default_application,
+    resolve_castem_exe,
+)
 from python_hole_interpolation import (
     HoleGeometry,
     detect_hole_rings,
@@ -2058,7 +2064,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             castem_exe = (
                 None
                 if python_only
-                else baseline.resolve_castem_exe(self.castem_version_var.get())
+                else resolve_castem_exe(self.castem_version_var.get())
             )
             surface_source = self._surface_source_from_ui()
             surface_grid = build_surface_grid(surface_source)
@@ -2475,7 +2481,11 @@ class ScientificApp(PythonHoleInterpolationApp):
                     )
 
                 if merge_requested:
-                    combined = baseline.merge_bdfs(workdir, thread_log)
+                    combined = merge_bdfs_compatible(
+                        baseline,
+                        workdir,
+                        thread_log,
+                    )
                     if combined is None:
                         raise RuntimeError("The requested BDF merge produced no file.")
                     final_bdf = workdir / (
@@ -2539,6 +2549,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         return baseline.App._run_fiss(self)
 
     def _stream_process_to_log(self, cmd, cwd: Path, on_done=None):
+        cmd = adapt_legacy_castem_command(cmd)
         operation = self._active_operation or "mesh"
         self.progress.configure(mode="indeterminate")
         self.progress.start(10)
@@ -2582,8 +2593,7 @@ class ScientificApp(PythonHoleInterpolationApp):
                 result = combined if combined is not None else Path(cwd) / "castem_mesh_v.bdf"
                 if self._active_open_gmsh_requested:
                     try:
-                        gmsh_exe = baseline.resolve_gmsh_exe()
-                        subprocess.Popen([str(gmsh_exe), str(result)], cwd=str(cwd))
+                        launch_gmsh(result, cwd=Path(cwd))
                         self._log(f"Opened in Gmsh: {result.name}\n")
                     except Exception as exc:
                         self._log(f"Gmsh could not be opened: {exc}\n")
@@ -2619,13 +2629,23 @@ class ScientificApp(PythonHoleInterpolationApp):
         if not COMPARISON_IMAGE.is_file():
             messagebox.showinfo(
                 "Mesh comparison",
-                "No comparison image is available yet. Run scripts\\render_hole_mesh_comparison.py after completing both mesh runs.",
+                "No comparison image is available yet. Run "
+                "scripts/render_hole_mesh_comparison.py after completing both mesh runs.",
             )
             return
         try:
-            os.startfile(str(COMPARISON_IMAGE))
+            open_with_default_application(COMPARISON_IMAGE)
         except OSError as exc:
             messagebox.showerror("Mesh comparison", str(exc))
+
+    def _open_workdir(self) -> None:
+        raw_workdir = self.workdir_var.get().strip()
+        if not raw_workdir:
+            return
+        try:
+            open_with_default_application(Path(raw_workdir))
+        except OSError as exc:
+            messagebox.showerror("Open working directory", str(exc))
 
     def _open_mesh_in_gmsh(self) -> None:
         """Open the preferred existing run artifact without launching Cast3M."""
@@ -2658,8 +2678,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             if mesh is None:
                 raise FileNotFoundError("No combined BDF or castem_mesh_v.bdf exists in the selected working directory.")
 
-            gmsh_exe = baseline.resolve_gmsh_exe()
-            subprocess.Popen([str(gmsh_exe), str(mesh)], cwd=str(workdir))
+            launch_gmsh(mesh, cwd=workdir)
         except Exception as exc:
             messagebox.showerror("Open mesh in Gmsh", str(exc))
             return

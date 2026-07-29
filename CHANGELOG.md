@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added native Linux/macOS Cast3M, Gmsh, desktop-opening, GUI, headless,
+  benchmark, and example launch support while preserving Windows batch
+  behavior and all immutable baseline files.
+- Added Linux setup/launcher scripts, Linux-and-Windows CI coverage, portable
+  command tests, and an end-to-end Linux validation guide.
+- Normalized merged BDF output by omitting only zero-area `CQUAD4` records with
+  fewer than three distinct nodes, allowing exactly closed DEAP crack fronts
+  to pass native Gmsh/CFD importer checks without changing non-zero geometry.
 - Made source-free Python-only HEXA8 the Workbench default and disabled the
   Cast3M DGIBI path/browser, launcher version, and Gmsh controls until a Cast3M
   backend is selected.

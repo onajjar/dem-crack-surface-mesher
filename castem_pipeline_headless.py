@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import castem_pipeline_gui_t13 as baseline
+from bdf_compat import merge_bdfs_compatible
 from castem_pipeline_gui_python_holes import (
     archive_existing_mesh_outputs,
     existing_mesh_outputs,
@@ -29,6 +30,7 @@ from crack_characterization import (
     characterize_surface,
 )
 from dataset_naming import DatasetNaming, parse_csv_set_metadata
+from platform_runtime import castem_command, launch_gmsh, resolve_castem_exe
 from python_hole_interpolation import (
     HoleGeometry,
     build_python_holes_dgibi,
@@ -688,7 +690,7 @@ def validate_setup(
         )
         or _operation_uses_fiss(setup.operation)
     ):
-        baseline.resolve_castem_exe(setup.castem_version)
+        resolve_castem_exe(setup.castem_version)
     return points_per_hole
 
 
@@ -741,7 +743,7 @@ def _run_castem(executable: Path, dgibi: Path, cwd: Path, log_path: Path) -> tup
     started = time.perf_counter()
     with log_path.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(
-            ["cmd.exe", "/c", str(executable), dgibi.name],
+            castem_command(executable, dgibi),
             cwd=str(cwd),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -869,7 +871,11 @@ def run_mesh(
                 log=lambda message: print(message, end=""),
             )
         if setup.merge_bdfs:
-            combined = baseline.merge_bdfs(workdir, lambda message: print(message, end=""))
+            combined = merge_bdfs_compatible(
+                baseline,
+                workdir,
+                lambda message: print(message, end=""),
+            )
             if combined is not None:
                 final_bdf = workdir / _combined_name(p)
                 if final_bdf.exists() and final_bdf != combined:
@@ -881,8 +887,7 @@ def run_mesh(
             final_bdf = volume if volume.is_file() else None
 
     if setup.open_gmsh and final_bdf is not None and final_bdf.is_file():
-        gmsh = baseline.resolve_gmsh_exe()
-        subprocess.Popen([str(gmsh), str(final_bdf)], cwd=str(workdir))
+        launch_gmsh(final_bdf, cwd=workdir)
 
     points_per_hole = (
         python_result.mesh.topology.points_per_hole
@@ -1148,7 +1153,7 @@ def main(argv: list[str] | None = None) -> int:
                 and setup.mesh_mode != "python_only"
             )
         ):
-            executable = baseline.resolve_castem_exe(setup.castem_version)
+            executable = resolve_castem_exe(setup.castem_version)
         if _operation_uses_mesh(setup.operation):
             summary["mesh"] = run_mesh(setup, executable, surface_grid)
         if _operation_uses_fiss(setup.operation):

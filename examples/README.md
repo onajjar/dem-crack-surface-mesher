@@ -26,9 +26,13 @@ For this quartet, `zfit_zmax - zfit_zmin` is positive at every grid point and ra
 
 Start from the repository root:
 
-```powershell
-python castem_pipeline_gui_t13.py
+```bash
+./run_linux.sh
 ```
+
+The immutable `castem_pipeline_gui_t13.py` is the historical Windows baseline.
+Use the scientific launcher above on Linux so its unchanged numerical behavior
+is routed through the native Cast3M and desktop adapters.
 
 Use these selections:
 
@@ -68,22 +72,22 @@ Cast3M and a compatible `FISS` operator are external requirements. If they are u
 
 From repo root, run:
 
-```powershell
-python scripts\run_multiple_holes_example.py
+```bash
+.venv/bin/python scripts/run_multiple_holes_example.py
 ```
 
 If `_runtime\multiple-holes-output` already exists from a prior run, rerun with:
 
-```powershell
-python scripts\run_multiple_holes_example.py --clean
+```bash
+.venv/bin/python scripts/run_multiple_holes_example.py --clean
 ```
 
 ## Run the accelerated multiple-hole path
 
 The scientific bulk-hole implementation preserves the historical T13 interface, creates all inflated radial rings in Python, writes three complete `CQUAD4` BDF surfaces, and removes the expensive Cast3M `REGL`/`INT_COMP`/`DISPLACE` hole pass from the active generated block. The authoritative Cast3M mesh source also contains the native optional-chamber branch. Use `castem_pipeline_gui_scientific.py` for interactive work; the script below is its non-interactive documented reproduction.
 
-```powershell
-python scripts\run_python_holes_example.py --clean
+```bash
+.venv/bin/python scripts/run_python_holes_example.py --clean
 ```
 
 The script writes only ignored files under `_runtime\python-holes-output`. It reports the Cast3M return code, detected contour points, generated fill topology, radial fractions, preparation time, and whether `castem_mesh_v.bdf` was produced. The hole-ring angular count follows `nelem_x` and `nelem_y`, so the hole-wall and square sides of every fill interface have the same number of edges. In the scientific GUI, use **Open generated mesh in Gmsh** on the Run / results tab to inspect an existing combined or volume BDF without rerunning Cast3M. For the method, real multi-size comparison, and element-orientation audit, see [the optimization note](../docs/python-hole-interpolation.md) and [provisional verification](../docs/provisional-verification.md).
@@ -126,9 +130,9 @@ the output map and the synthetic-only input definitions.
 
 [`scientific-run.ini`](scientific-run.ini) contains the complete documented two-hole configuration, including mesh, export, merge, Gmsh, and FISS options. Validate or execute it from the repository root:
 
-```powershell
-python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini --validate-only
-python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
+```bash
+./run_linux.sh --headless examples/scientific-run.ini --validate-only
+./run_linux.sh --headless examples/scientific-run.ini
 ```
 
 Relative paths are interpreted from the INI file. Edit `operation = mesh` to `fiss` or `both` when the optional FISS calculation is required.

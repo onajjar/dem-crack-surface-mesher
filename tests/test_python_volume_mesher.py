@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 import castem_pipeline_gui_t13 as baseline
+import castem_pipeline_headless as headless
 from castem_pipeline_headless import load_setup, validate_setup
 from python_hole_interpolation import HoleGeometry, load_surface_csvs
 from python_volume_mesher import (
@@ -77,7 +78,7 @@ def test_python_only_example_has_no_mesh_source_or_external_solver_requirement(
     setup = load_setup(CONFIG)
     surface = build_surface_grid(setup.surface_source)
     monkeypatch.setattr(
-        baseline,
+        headless,
         "resolve_castem_exe",
         lambda _version: (_ for _ in ()).throw(
             AssertionError("Cast3M must not be resolved")

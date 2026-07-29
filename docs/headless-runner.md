@@ -12,8 +12,8 @@ compatibility entry point.
 
 Copy [the complete example configuration](../examples/scientific-run.ini), edit it, then validate it without starting Cast3M:
 
-```powershell
-python castem_pipeline_gui_scientific.py --headless path\to\run.ini --validate-only
+```bash
+./run_linux.sh --headless path/to/run.ini --validate-only
 ```
 
 Validation checks the INI schema, referenced files, numeric bounds, FISS
@@ -23,15 +23,20 @@ does not resolve Cast3M and does not require a mesh template.
 
 Run the configured operation:
 
-```powershell
-python castem_pipeline_gui_scientific.py --headless path\to\run.ini
+```bash
+./run_linux.sh --headless path/to/run.ini
 ```
 
 Override only the surface decision for an individual run with
 `--surface-mode deap` (fit raw HDF5 in Python) or `--surface-mode csv` (use the
 four existing files). `fit` and `python_fit` are aliases for `deap`.
 
-The process streams Cast3M output to the terminal, writes `castem-console.log`, and records `headless-run-report.json` in the configured working directory. A nonzero process or incomplete expected mesh manifest returns a nonzero command exit status.
+The process streams Cast3M output to the terminal, writes
+`castem-console.log`, and records `headless-run-report.json` in the configured
+working directory. A nonzero process or incomplete expected mesh manifest
+returns a nonzero command exit status. The combined BDF omits only
+line/point-collapsed `CQUAD4` records at an exactly closed crack front; separate
+Cast3M outputs and all non-zero geometry remain unchanged.
 
 ## Surface sources
 
@@ -193,17 +198,17 @@ toward the remote chamber wall. Chamber mode accepts `mesh mode = python` or
 The complete runnable example is
 [`examples/chambers/run.ini`](../examples/chambers/run.ini):
 
-```powershell
-python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\chambers\run.ini --validate-only
-python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\chambers\run.ini
+```bash
+./run_linux.sh --headless examples/chambers/run.ini --validate-only
+./run_linux.sh --headless examples/chambers/run.ini
 ```
 
 The headless report records all chamber dimensions, counts, and ratios.
 The source-free equivalent is:
 
-```powershell
-python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\python-only-chambers\run.ini --validate-only
-python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\python-only-chambers\run.ini
+```bash
+./run_linux.sh --headless examples/python-only-chambers/run.ini --validate-only
+./run_linux.sh --headless examples/python-only-chambers/run.ini
 ```
 
 ## Output safety

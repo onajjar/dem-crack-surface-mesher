@@ -30,7 +30,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Include Windows, Python, Cast3M, Gmsh, and relevant package versions.
+      description: Include the operating system, Python, Cast3M, Gmsh, and relevant package versions.
     validations:
       required: true
   - type: textarea

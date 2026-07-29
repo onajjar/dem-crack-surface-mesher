@@ -34,6 +34,12 @@ os.environ["MPLCONFIGDIR"] = str(MPLCONFIG)
 sys.path.insert(0, str(ROOT))
 
 import castem_pipeline_gui_t13 as baseline  # noqa: E402
+from platform_runtime import (  # noqa: E402
+    adapt_legacy_castem_command,
+    install_legacy_resolvers,
+)
+
+install_legacy_resolvers(baseline)
 
 IMMUTABLE_PATHS = [
     ROOT / "bpm_cfx.ico",
@@ -153,8 +159,9 @@ def main(argv: list[str] | None = None) -> int:
     original_stream = app._stream_process_to_log
 
     def stream_wrapper(cmd: list[str], cwd: Path, on_done=None):
-        state["command"] = [str(part) for part in cmd]
-        process = original_stream(cmd, cwd, on_done=on_done)
+        portable_command = adapt_legacy_castem_command(cmd)
+        state["command"] = portable_command
+        process = original_stream(portable_command, cwd, on_done=on_done)
         state["process"] = process
         return process
 
@@ -267,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
                 "merge_bdfs": True,
             },
             "execution": {
-                "command_form": "cmd.exe /c <resolved-castem-launcher> castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi"
+                "command_form": " ".join(command)
                 if command
                 else None,
                 "return_code": state.get("return_code"),

@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml)
 
-A Windows desktop pipeline that loads CSVs, fits raw DEAP discrete-simulation
-results in Python, or synthesizes structured crack surfaces; optionally
+A cross-platform desktop and headless pipeline that loads CSVs, fits raw DEAP
+discrete-simulation results in Python, or synthesizes structured crack surfaces; optionally
 characterizes aperture, geometrical tortuosity, roughness, Hurst scaling,
 additive wavelet scales, orientation, connectivity, and cubic-law hydraulic
 proxies; converts the same
@@ -44,7 +44,7 @@ GitHub-compatible citation metadata are provided in
   meshing—and exports reproducible statistics, diagnostics, reports, and
   statistically representative synthetic realizations.
 - Patches parameters only inside the marked `Main Program` section of a `.dgibi` template.
-- Invokes Cast3M through its Windows batch launcher and streams solver output into the GUI.
+- Invokes the native Cast3M launcher on Linux, Windows, or macOS and streams solver output into the GUI.
 - Creates a crack volume mesh and named boundary-surface meshes in NASTRAN BDF format.
 - Supports zero, one, or multiple through-holes. The scientific mode accepts circles, rotated rectangles, rotated equilateral triangles, and regular polygons with any integer side count ≥ 3.
 - Optionally exports MED/STL, combines volume and boundary BDF cards, and opens the selected mesh in Gmsh.
@@ -131,6 +131,11 @@ See [Structured surface generation](docs/surface-generation.md) for the spectral
 For each application, select either `deap` to fit raw discrete-simulation HDF5 results in Python or `csv` to bypass fitting and use an existing quartet. The four bundled DEAP applications reproduce every archived MATLAB grid and face value within `1e-12 m`; the maximum observed face error is `4.55e-15 m`. See [Python DEAP crack-surface fitting](docs/deap-surface-fitting.md), the [four runnable application packages](examples/deap/README.md), and the [machine-readable integrated validation report](docs/validation/deap-surface-report.json).
 
 The `1_simple` case was additionally meshed end to end with Cast3M 2025.0 in both modes. Both completed at error level `0` with no missing outputs and produced byte-identical combined BDFs; Gmsh 4.15.0 accepted that BDF with a headless `-check`. The sanitized [integration report](docs/validation/deap-simple-castem-integration.json) records commands, timings, SHA-256, byte size, card counts, and Gmsh return code.
+
+The report preserves the earlier merger result. The maintained
+cross-platform merger additionally omits its 76 zero-area side shells at the
+exactly closed crack front, leaving 798 non-zero `CQUAD4` cards while
+preserving every fitted value and volume cell.
 
 ![Integrated Python fit compared with archived MATLAB surfaces](docs/assets/deap-surface-comparison.png)
 
@@ -350,7 +355,7 @@ stage and then mesh the unchanged `SurfaceGrid`. The `[characterization]` and
 
 | Component | Requirement | Purpose |
 |---|---|---|
-| Operating system | Windows for Cast3M/FISS; Python-only meshing is platform-independent | Legacy backends invoke `cmd.exe` and a Cast3M `.bat` launcher. |
+| Operating system | Linux, Windows, or macOS | Native launchers are selected per platform; Python-only meshing has no external solver dependency. |
 | Python | 3.10 or newer, with Tkinter | The source uses Python 3.10 type syntax and a Tk desktop GUI. |
 | Python packages | NumPy, SciPy, Matplotlib, meshio | Core arrays, validation, plotting, and optional Python-only MED export. |
 | HDF5 support | h5py | Required for raw DEAP fitting and TXT-to-HDF5 FISS post-processing. |
@@ -365,43 +370,62 @@ compatibility.
 
 ## Installation
 
-```powershell
+Linux:
+
+```bash
 git clone https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git
 cd dem-cfd-crack-geometry-to-mesh-converter
+./scripts/setup_linux.sh
+```
 
+The setup script creates `.venv` and installs the recorded runtime dependency
+versions. To install manually, run:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -c constraints-baseline.txt
+```
+
+Windows PowerShell:
+
+```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-To recreate the recorded top-level Python package versions used for the baseline runs, install with the committed constraints:
-
-```powershell
 python -m pip install -r requirements.txt -c constraints-baseline.txt
 ```
 
 Cast3M is resolved in this order:
 
-1. `CASTEM_PATH`, pointing to either a `castem*.bat` file or a directory containing one.
-2. The built-in Windows Cast3M installation layout derived from the version field (`25` and `2025` both select the version-25 launcher).
+1. `CASTEM_PATH`, pointing to a native launcher or its containing directory.
+2. `castem25`/the selected version on `PATH`.
+3. Common native installation layouts, including the historical Windows path.
 
-Gmsh is resolved from `GMSH_PATH`, standard Program Files locations, matching folders in the current user's home directory, or `PATH`.
+Gmsh is resolved from `GMSH_PATH`, `PATH`, or common native installation
+locations. The version field accepts either `25` or `2025`.
 
-Example environment overrides:
+Linux environment overrides:
 
-```powershell
-$env:CASTEM_PATH = 'path\to\castem25.bat'
-$env:GMSH_PATH = 'path\to\gmsh.exe'
+```bash
+export CASTEM_PATH=/path/to/castem25
+export GMSH_PATH=/path/to/gmsh
 ```
+
+See the [Linux installation and validation guide](docs/linux.md) for package
+prerequisites, GUI/headless commands, and native solver diagnostics.
 
 ## Quick start
 
 Launch the scientific application from the repository root so the existing icon and documented examples are discoverable:
 
-```powershell
-python castem_pipeline_gui_scientific.py
+```bash
+./run_linux.sh
 ```
+
+On Windows, activate `.venv` and run
+`python castem_pipeline_gui_scientific.py`.
 
 The immutable `castem_pipeline_gui_t13.py` remains available when an exact historical-baseline run is required.
 
@@ -488,7 +512,14 @@ writes the same named mesh family:
 | `castem_mesh_v.med` | Optional MED volume mesh. |
 | `castem_mesh_surf_*.stl` | Optional triangulated surface exports. |
 
-The combined file is a NASTRAN BDF assembled by the GUI's `merge_bdfs()` function. It is intended to simplify downstream CFD import, but this baseline does not automate or validate import into Ansys CFX and does not perform mesh-quality checks.
+The combined file is a NASTRAN BDF assembled by the maintained merger. Before
+the file is exposed to a CFD importer, the merger omits only `CQUAD4` records
+with fewer than three distinct nodes. Cast3M can emit these zero-area shells
+where a DEAP crack front closes exactly; removing them changes neither volume
+cells nor non-zero boundary geometry, and the separate Cast3M BDFs remain
+untouched. This normalization improves Gmsh/CFD importer compatibility, but it
+does not automate an Ansys CFX import or replace application-specific mesh
+quality checks.
 
 ## Optional FISS flow calculation
 
@@ -584,9 +615,8 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 ## Limitations and known baseline behavior
 
 - The immutable T13 implementation remains an intentionally unrefactored
-  Windows baseline. The source-free mesher is ordinary Python and is not tied
-  to Cast3M's Windows launcher; the overall workbench still exposes legacy
-  Windows-only Cast3M and FISS paths.
+  Windows baseline. Maintained GUI, headless, benchmark, and example entry
+  points route that unchanged behavior through the native platform adapter.
 - The scientific bulk-hole path is additive. Its common rectilinear interpolation is vectorized; the robust bilinear-inversion fallback for curvilinear structured grids still searches cells per query point. Its `CQUAD4` fill is not numerically or node-for-node equivalent to the preserved Cast3M planar-arc/displacement construction.
 - Generalized shapes are convex and center-star-shaped: circles, rectangles, equilateral triangles, and regular polygons. Arbitrary concave polygons, free-form splines, and user-supplied vertex lists are not yet supported.
 - Non-circular holes require bulk-Python Cast3M mode or Python-only mode. The
@@ -616,7 +646,9 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 
 **Cast3M executable not found**
 
-Set `CASTEM_PATH` to the batch file or its containing directory, or enter a version matching the default Cast3M installation layout.
+Set `CASTEM_PATH` to the native launcher or its containing directory, or add
+`castem25` (or the selected version) to `PATH`. On Linux, confirm with
+`command -v castem25`; on Windows, point to the `.bat`, `.cmd`, or `.exe`.
 
 **Gmsh executable not found**
 
@@ -624,7 +656,9 @@ Uncheck **View mesh in Gmsh**, or set `GMSH_PATH` to the executable or its direc
 
 **Tkinter import error**
 
-Install a Python distribution that includes Tcl/Tk. Tkinter is normally included with the standard Windows Python installer.
+Install Tcl/Tk support for the selected Python. On Debian/Ubuntu this is
+normally `sudo apt install python3-tk`; the standard Windows Python installer
+normally includes it.
 
 **Cast3M cannot find a CSV**
 
