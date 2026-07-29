@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
+import pytest
 
 import castem_pipeline_gui_t13 as baseline
 from castem_pipeline_gui_python_holes import patch_mesh_program
@@ -107,3 +108,58 @@ def test_boundary_bdf_export_is_high_precision_and_skips_exact_degeneracy() -> N
         > 0.0
     )
     assert np.ptp(vertices[:, :, 2]) > 0.0
+
+
+def test_boundary_export_reads_each_compact_python_bdf_grid() -> None:
+    workdir = ROOT / "_runtime" / "test-compact-stl-export" / uuid4().hex
+    workdir.mkdir(parents=True)
+    pairs = boundary_output_pairs(workdir, hole_count=0)
+    expected_z: dict[Path, float] = {}
+    for file_index, (source, target) in enumerate(pairs):
+        first_node = 10 * file_index + 1
+        z = 0.125 * file_index
+        points = (
+            (first_node, 0.0, 0.0, z),
+            (first_node + 1, 1.0, 0.0, z),
+            (first_node + 2, 1.0, 1.0, z),
+            (first_node + 3, 0.0, 1.0, z),
+        )
+        source.write_text(
+            "BEGIN BULK\n"
+            + "".join(_large_grid(*point) for point in points)
+            + _small_quad(
+                file_index + 1,
+                (
+                    first_node,
+                    first_node + 1,
+                    first_node + 2,
+                    first_node + 3,
+                ),
+            )
+            + "ENDDATA\n",
+            encoding="ascii",
+        )
+        expected_z[target] = z
+
+    messages: list[str] = []
+    exports = export_boundary_bdfs_to_stl(
+        workdir,
+        hole_count=0,
+        log=messages.append,
+    )
+
+    assert len(exports) == 7
+    assert any("compact boundary GRID tables" in message for message in messages)
+    for item in exports:
+        z_values = [
+            float(match.group(1))
+            for match in re.finditer(
+                r"^\s*vertex\s+\S+\s+\S+\s+(\S+)$",
+                item.target.read_text(encoding="ascii"),
+                flags=re.MULTILINE,
+            )
+        ]
+        assert z_values
+        assert z_values == pytest.approx(
+            [expected_z[item.target]] * len(z_values)
+        )

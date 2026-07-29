@@ -1,17 +1,20 @@
-"""Scientific workbench UI for the preserved Cast3M crack-meshing pipeline.
+"""Scientific workbench UI for crack reconstruction, meshing, and FISS.
 
 This is the single supported launcher for the enhanced workflow. It reuses the
-baseline's execution, FISS, and BDF merge code without modifying immutable
-baseline sources. Users can choose the original Cast3M reference workflow or
-the vectorized, bulk-file Python hole workflow with imported or generated surfaces.
+baseline FISS workflow without modifying immutable baseline sources. Users can
+choose the Cast3M reference paths or a source-free NumPy HEXA8 backend that
+does not require a DGIBI mesh source, Cast3M, or Gmsh.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import sys
+import threading
+import time
 import tkinter as tk
 import webbrowser
 from configparser import ConfigParser
@@ -22,6 +25,7 @@ from tkinter import messagebox, ttk
 import castem_pipeline_gui_t13 as baseline
 from castem_pipeline_gui_python_holes import (
     PythonHoleInterpolationApp,
+    archive_existing_mesh_outputs,
     existing_mesh_outputs,
     missing_mesh_outputs,
 )
@@ -38,6 +42,8 @@ from python_hole_interpolation import (
     normalize_hole_geometry,
     radial_layer_fractions,
 )
+from python_volume_mesher import write_python_mesh_outputs
+from stl_export import export_boundary_bdfs_to_stl
 from surface_generation import SurfaceGrid, SurfaceSource, build_surface_grid, write_surface_grid
 
 ROOT = Path(__file__).resolve().parent
@@ -204,7 +210,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Label(header, text="Crack Meshing Workbench", style="Hero.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
             header,
-            text="CSV, Python-fitted DEAP, or synthetic surfaces → Cast3M volume mesh → CFD-ready BDF",
+            text="CSV, Python-fitted DEAP, or synthetic surfaces → Python or Cast3M volume mesh → CFD-ready BDF",
             style="HeroSub.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(4, 0))
         self.status_label = ttk.Label(header, textvariable=self.status_var, style="Status.TLabel", padding=(12, 6))
@@ -215,7 +221,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ttk.Button(toolbar, text="Load documented example", style="Accent.TButton", command=self._load_documented_example).pack(side="left")
         ttk.Button(
             toolbar,
-            text="Chamber example",
+            text="Python-only chamber example",
             style="Quiet.TButton",
             command=self._load_chamber_example,
         ).pack(side="left", padx=(8, 0))
@@ -308,9 +314,22 @@ class ScientificApp(PythonHoleInterpolationApp):
         setup = self._card(tab, "Run context")
         setup.grid(row=0, column=0, sticky="ew", padx=(0, 10), pady=(0, 10))
         setup.columnconfigure(1, weight=1)
-        self._path_row(setup, 0, "Cast3M DGIBI template", self.dgibi_var, self._browse_dgibi)
+        self._path_row(
+            setup,
+            0,
+            "Cast3M DGIBI template (unused by Python-only)",
+            self.dgibi_var,
+            self._browse_dgibi,
+        )
         self._path_row(setup, 1, "Working directory", self.workdir_var, self._browse_workdir)
-        self._field(setup, 2, 0, "Cast3M launcher version", self.castem_version_var, width=11)
+        self._field(
+            setup,
+            2,
+            0,
+            "Cast3M launcher version (unused by Python-only)",
+            self.castem_version_var,
+            width=11,
+        )
         metadata = ttk.LabelFrame(
             setup,
             text="Dataset naming metadata — editable for DEAP fitting; derived for CSV",
@@ -720,7 +739,12 @@ class ScientificApp(PythonHoleInterpolationApp):
         exports = self._card(tab, "Outputs and solver mode")
         exports.grid(row=0, column=1, sticky="ew", pady=(0, 10))
         ttk.Checkbutton(exports, text="Merge BDF boundary and volume cards", variable=self.do_merge_var).grid(row=0, column=0, sticky="w", pady=3)
-        ttk.Checkbutton(exports, text="Open completed mesh in Gmsh", variable=self.opti_visu_var).grid(row=1, column=0, sticky="w", pady=3)
+        self.gmsh_checkbox = ttk.Checkbutton(
+            exports,
+            text="Open completed mesh in Gmsh (Cast3M modes only)",
+            variable=self.opti_visu_var,
+        )
+        self.gmsh_checkbox.grid(row=1, column=0, sticky="w", pady=3)
         ttk.Checkbutton(exports, text="Export MED volume mesh", variable=self.opti_med_var).grid(row=2, column=0, sticky="w", pady=3)
         ttk.Checkbutton(
             exports,
@@ -729,7 +753,14 @@ class ScientificApp(PythonHoleInterpolationApp):
         ).grid(row=3, column=0, sticky="w", pady=3)
         ttk.Separator(exports, orient="horizontal").grid(row=4, column=0, sticky="ew", pady=10)
         ttk.Radiobutton(exports, text="Original T13 workflow — reference", value="baseline", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=5, column=0, sticky="w", pady=3)
-        ttk.Radiobutton(exports, text="Bulk Python hole mesh — fast + inflated", value="python", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=6, column=0, sticky="w", pady=3)
+        ttk.Radiobutton(exports, text="Bulk Python holes + Cast3M volume", value="python", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=6, column=0, sticky="w", pady=3)
+        ttk.Radiobutton(
+            exports,
+            text="Python-only HEXA8 — no DGIBI, Cast3M, or Gmsh",
+            value="python_only",
+            variable=self.solver_mode_var,
+            command=self._on_solver_mode_change,
+        ).grid(row=7, column=0, sticky="w", pady=3)
 
         chambers = self._card(tab, "Optional inlet and outlet chambers")
         chambers.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
@@ -1412,10 +1443,29 @@ class ScientificApp(PythonHoleInterpolationApp):
 
     def _validate_params(self, params: baseline.CastemMainParams) -> None:
         super()._validate_params(params)
+        if (
+            params.holes_enabled
+            and self.solver_mode_var.get() in {"python", "python_only"}
+        ):
+            if params.num_el_fill < 1:
+                raise ValueError("Hole radial cells must be >= 1.")
+            if (
+                not math.isfinite(params.re_fact_hole)
+                or params.re_fact_hole <= 0.0
+            ):
+                raise ValueError(
+                    "Hole outer/inner ratio must be finite and > 0."
+                )
         chambers = chambers_from_params(params)
         chambers.validated()
-        if chambers.enabled and self.solver_mode_var.get() != "python":
-            raise ValueError("Enabled chambers require the Bulk Python mesh mode.")
+        if (
+            chambers.enabled
+            and self.solver_mode_var.get() not in {"python", "python_only"}
+        ):
+            raise ValueError(
+                "Enabled chambers require the Python-only or "
+                "Bulk Python + Cast3M mesh mode."
+            )
 
     def _set_hole_row_geometry(self, row: HoleShapeRow, geometry: HoleGeometry) -> None:
         geometry = normalize_hole_geometry(geometry)
@@ -1531,13 +1581,13 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._validate_inputs(operation="mesh")
 
     def _load_chamber_example(self) -> None:
-        """Load the validated no-displacement inlet/outlet chamber case."""
+        """Load the validated source-free inlet/outlet chamber case."""
 
         self._load_documented_example(validate=False)
         self._suspend_dirty = True
         try:
             self.workdir_var.set(
-                str((ROOT / "_runtime" / "chambers-interface-example").resolve())
+                str((ROOT / "_runtime" / "python-only-chambers-interface-example").resolve())
             )
             self.nelem_x_var.set("2")
             self.nelem_y_var.set("2")
@@ -1548,7 +1598,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.opti_stl_var.set(True)
             self.opti_visu_var.set(False)
             self.do_merge_var.set(True)
-            self.solver_mode_var.set("python")
+            self.solver_mode_var.set("python_only")
             self.chambers_enabled_var.set(True)
             self.chamber_height_var.set("0.20")
             self.chamber_inlet_length_var.set("0.20")
@@ -1644,7 +1694,10 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.opti_stl_var.set(mesh.getboolean("export_stl"))
             self.opti_visu_var.set(mesh.getboolean("open_gmsh"))
             self.do_merge_var.set(mesh.getboolean("merge_bdfs"))
-            self.solver_mode_var.set(mesh.get("mode", "python"))
+            loaded_mode = mesh.get("mode", "python").strip().lower()
+            self.solver_mode_var.set(
+                "baseline" if loaded_mode == "reference" else loaded_mode
+            )
             self.chambers_enabled_var.set(False)
             while self.hole_shape_rows:
                 self._remove_hole_row()
@@ -1729,17 +1782,45 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._refresh_hole_shape_row(row)
 
     def _on_solver_mode_change(self) -> None:
+        if hasattr(self, "gmsh_checkbox"):
+            python_only = self.solver_mode_var.get() == "python_only"
+            if python_only:
+                self.opti_visu_var.set(False)
+            self.gmsh_checkbox.configure(
+                state="disabled" if python_only else "normal"
+            )
         self._update_method_summary()
         self._mark_dirty()
 
     def _update_method_summary(self) -> None:
-        if not self.holes_enabled_var.get():
-            self.method_summary_var.set("No holes: both modes use the preserved baseline mesh path.")
-        elif self.solver_mode_var.get() == "python":
+        solver_mode = self.solver_mode_var.get()
+        if hasattr(self, "gmsh_checkbox"):
+            python_only = solver_mode == "python_only"
+            if python_only:
+                self.opti_visu_var.set(False)
+            self.gmsh_checkbox.configure(
+                state="disabled" if python_only else "normal"
+            )
+        if solver_mode == "python_only":
+            self.method_summary_var.set(
+                "Source-free NumPy mode generates the complete conformal "
+                "HEXA8 crack and optional chambers, all named BDF/STL "
+                "boundaries, MED on request, and an internal PNG preview."
+            )
+        elif not self.holes_enabled_var.get():
+            self.method_summary_var.set(
+                "No holes: the selected Cast3M mode uses the maintained "
+                "reference volume path."
+            )
+        elif solver_mode == "python":
             self.method_summary_var.set("Bulk mode supports circles, rectangles, equilateral triangles, and regular polygons with conformal inflated CQUAD4 fills.")
         else:
             self.method_summary_var.set("Reference mode retains the original circle-only Cast3M interpolation and displacement workflow.")
-        mode = "bulk inflated holes" if self.solver_mode_var.get() == "python" else "T13 reference"
+        mode = {
+            "python_only": "Python-only HEXA8",
+            "python": "bulk Python holes + Cast3M",
+            "baseline": "T13 reference",
+        }.get(solver_mode, solver_mode)
         if self.chambers_enabled_var.get():
             mode += " + inlet/outlet chambers"
         self.context_var.set(f"Active mode: {mode}")
@@ -1764,18 +1845,26 @@ class ScientificApp(PythonHoleInterpolationApp):
         if operation not in {"mesh", "fiss"}:
             raise ValueError(f"Unknown validation operation: {operation}")
         try:
+            python_only = (
+                operation == "mesh"
+                and self.solver_mode_var.get() == "python_only"
+            )
             template_raw = (
                 self.dgibi_var.get().strip()
                 if operation == "mesh"
                 else self.fiss_dgibi_var.get().strip()
             )
-            if not template_raw:
+            if not template_raw and not python_only:
                 raise ValueError("Select the DGIBI template for this operation.")
-            template = Path(template_raw).expanduser()
-            if not template.is_file():
+            template = Path(template_raw).expanduser() if template_raw else None
+            if not python_only and (template is None or not template.is_file()):
                 raise FileNotFoundError(f"Missing DGIBI template: {template}")
             workdir = self._preflight_workdir()
-            castem_exe = baseline.resolve_castem_exe(self.castem_version_var.get())
+            castem_exe = (
+                None
+                if python_only
+                else baseline.resolve_castem_exe(self.castem_version_var.get())
+            )
             surface_source = self._surface_source_from_ui()
             surface_grid = build_surface_grid(surface_source)
             x, y, zmin, zmax = (
@@ -1787,6 +1876,11 @@ class ScientificApp(PythonHoleInterpolationApp):
             params = self._read_params()
             if operation == "mesh":
                 self._validate_params(params)
+                if python_only and float((zmax - zmin).min()) <= 0.0:
+                    raise ValueError(
+                        "Python-only HEXA8 meshing requires strictly positive "
+                        "zmax-zmin at every surface point."
+                    )
             else:
                 baseline.App._validate_params(self, params)
                 if any(hole.shape != "circle" for hole in params.hole_shapes):
@@ -1798,7 +1892,12 @@ class ScientificApp(PythonHoleInterpolationApp):
                 f"X range: {x.min():.5g} to {x.max():.5g}",
                 f"Y range: {y.min():.5g} to {y.max():.5g}",
                 f"Opening: {(zmax - zmin).min():.3g} to {(zmax - zmin).max():.3g}",
-                f"Cast3M launcher: {castem_exe.name}",
+                (
+                    "Backend dependencies: Python/NumPy only; no mesh DGIBI, "
+                    "Cast3M, or Gmsh"
+                    if python_only
+                    else f"Cast3M launcher: {castem_exe.name}"
+                ),
             ]
             if surface_source.normalized_mode == "fractal":
                 details.append(
@@ -1815,7 +1914,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             if operation == "mesh" and params.holes_enabled:
                 if not params.holes:
                     raise ValueError("Enable holes only after adding at least one shape.")
-                if self.solver_mode_var.get() == "python":
+                if self.solver_mode_var.get() in {"python", "python_only"}:
                     rings = detect_hole_rings(
                         x,
                         y,
@@ -1834,13 +1933,24 @@ class ScientificApp(PythonHoleInterpolationApp):
                 else:
                     if any(hole.shape != "circle" for hole in params.hole_shapes):
                         raise ValueError(
-                            "Rectangle, triangle, and regular-polygon holes require the Bulk Python mode."
+                            "Rectangle, triangle, and regular-polygon holes "
+                            "require a Python mesh mode."
                         )
                     details.append(f"Reference holes: {len(params.holes)}")
             elif operation == "mesh":
                 details.append("No holes enabled")
             if operation == "mesh":
-                details.append("Solver mode: " + ("Bulk Python inflated holes" if self.solver_mode_var.get() == "python" else "Original T13 baseline"))
+                details.append(
+                    "Solver mode: "
+                    + {
+                        "python_only": "Python-only source-free HEXA8",
+                        "python": "Bulk Python holes + Cast3M volume",
+                        "baseline": "Original T13 baseline",
+                    }.get(
+                        self.solver_mode_var.get(),
+                        self.solver_mode_var.get(),
+                    )
+                )
                 chambers = chambers_from_params(params)
                 if chambers.enabled:
                     details.append(
@@ -1853,11 +1963,20 @@ class ScientificApp(PythonHoleInterpolationApp):
                         f"{chambers.outlet_length_elements}"
                     )
                     details.append(
-                        f"Mesh source: {Path(self.dgibi_var.get()).name} "
-                        "(native opti_chamb activated)"
+                        "Chamber implementation: source-free Python topology"
+                        if python_only
+                        else (
+                            f"Mesh source: {Path(self.dgibi_var.get()).name} "
+                            "(native opti_chamb activated)"
+                        )
                     )
                 else:
                     details.append("Chambers: disabled")
+                if python_only:
+                    details.append(
+                        "Visualization: python_mesh_preview.png is written "
+                        "automatically; Gmsh is not launched."
+                    )
                 stale_count = len(existing_mesh_outputs(workdir)) if workdir.is_dir() else 0
                 if stale_count:
                     details.append(f"Prior mesh artifacts: {stale_count} (archived automatically before run)")
@@ -2007,20 +2126,20 @@ class ScientificApp(PythonHoleInterpolationApp):
 
     def _run_from_workbench(self, *, skip_characterization: bool = False) -> None:
         if self._active_operation is not None:
-            messagebox.showwarning("Solver busy", "Wait for the active Cast3M operation to finish.")
+            messagebox.showwarning("Solver busy", "Wait for the active mesh operation to finish.")
             return
         if self.characterization_enabled_var.get() and not skip_characterization:
             if self._show_characterization_tab():
                 self.characterization_panel.start(continue_after=True)
             return
         if not self._validate_inputs(operation="mesh"):
-            messagebox.showerror("Validation", "Correct the configuration issues before launching Cast3M.")
+            messagebox.showerror("Validation", "Correct the configuration issues before launching the mesh backend.")
             return
         self._active_mesh_params = self._read_params()
         self._active_merge_requested = bool(self.do_merge_var.get())
         self._active_open_gmsh_requested = bool(self.opti_visu_var.get())
         self._begin_operation("mesh")
-        self._set_status("Preparing Cast3M run", "running")
+        self._set_status("Preparing mesh run", "running")
         self.run_summary_var.set("The solver is being prepared. Follow detailed output in the live log.")
         try:
             self._run()
@@ -2028,7 +2147,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             self._log(f"Mesh preparation failed: {exc}\n")
             messagebox.showerror("Mesh preparation", str(exc))
         if not self._process_started and self._active_operation == "mesh":
-            self._finish_operation(False, "Mesh preparation failed", "No Cast3M process was started. Review the validation message and log.")
+            self._finish_operation(False, "Mesh preparation failed", "No mesh operation was started. Review the validation message and log.")
 
     def _run_fiss_from_workbench(self) -> None:
         if self._active_operation is not None:
@@ -2078,8 +2197,147 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.run_summary_var.set(summary)
 
     def _run(self) -> None:
-        self._materialize_surface_inputs()
+        surface_grid = self._materialize_surface_inputs()
+        if self.solver_mode_var.get() == "python_only":
+            self._run_python_only(surface_grid)
+            return None
         return super()._run()
+
+    def _run_python_only(self, surface_grid: SurfaceGrid) -> None:
+        """Run the source-free mesher without starting an external process."""
+
+        params = self._active_mesh_params or self._read_params()
+        workdir = self._preflight_workdir()
+        csv_x = Path(self.csv_x_var.get().strip())
+        csv_y = Path(self.csv_y_var.get().strip())
+        csv_zmin = Path(self.csv_zmin_var.get().strip())
+        csv_zmax = Path(self.csv_zmax_var.get().strip())
+        csv_names = self._expected_csv_names(params)
+        merge_requested = bool(self._active_merge_requested)
+        started = time.perf_counter()
+        self.progress.configure(mode="indeterminate")
+        self.progress.start(10)
+        self._set_status("Python-only mesh generation in progress", "running")
+        self._process_started = True
+
+        def thread_log(message: str) -> None:
+            self.after(0, lambda value=message: self._log(value))
+
+        def finish_success(
+            final_bdf: Path,
+            preview_path: Path,
+            elapsed_seconds: float,
+        ) -> None:
+            self._finish_operation(
+                True,
+                "Python-only mesh verified",
+                (
+                    f"Fresh source-free outputs verified in {elapsed_seconds:.3f} s. "
+                    f"Primary result: {final_bdf.name}; preview: {preview_path.name}"
+                ),
+            )
+
+        def finish_failure(error: Exception) -> None:
+            self._log(f"Python-only mesh generation failed: {error}\n")
+            self._finish_operation(False, "Python-only mesh failed", str(error))
+            messagebox.showerror("Python-only mesh", str(error))
+
+        def worker() -> None:
+            try:
+                workdir.mkdir(parents=True, exist_ok=True)
+                archive_existing_mesh_outputs(workdir, thread_log)
+                for source, destination in (
+                    (csv_x, workdir / csv_names["xrange"]),
+                    (csv_y, workdir / csv_names["yrange"]),
+                    (csv_zmax, workdir / csv_names["zfit_zmax"]),
+                    (csv_zmin, workdir / csv_names["zfit_zmin"]),
+                ):
+                    baseline.safe_copy(source, destination)
+
+                result = write_python_mesh_outputs(
+                    workdir,
+                    surface_grid.x,
+                    surface_grid.y,
+                    surface_grid.zmin,
+                    surface_grid.zmax,
+                    params,
+                    export_med=bool(params.opti_med),
+                    log=thread_log,
+                )
+                stl_exports = ()
+                if params.opti_stl:
+                    stl_exports = export_boundary_bdfs_to_stl(
+                        workdir,
+                        hole_count=len(params.holes) if params.holes_enabled else 0,
+                        include_chambers=chambers_from_params(params).enabled,
+                        log=thread_log,
+                    )
+                missing = missing_mesh_outputs(workdir, params)
+                if missing:
+                    raise RuntimeError(
+                        "Fresh Python-only outputs are missing: "
+                        + ", ".join(missing)
+                    )
+
+                if merge_requested:
+                    combined = baseline.merge_bdfs(workdir, thread_log)
+                    if combined is None:
+                        raise RuntimeError("The requested BDF merge produced no file.")
+                    final_bdf = workdir / (
+                        f"combined_ti{params.re_ti}_crpa{params.re_crpa}_"
+                        f"smfa{params.re_smfa_int}_numsp{params.re_numspa}_"
+                        f"opmin{params.re_opmin_int}.bdf"
+                    )
+                    if final_bdf.exists() and final_bdf != combined:
+                        final_bdf.unlink()
+                    if final_bdf != combined:
+                        combined.replace(final_bdf)
+                else:
+                    final_bdf = result.volume_bdf
+
+                elapsed_seconds = time.perf_counter() - started
+                report = {
+                    "backend": "python_only",
+                    "requires_mesh_dgibi": False,
+                    "requires_cast3m": False,
+                    "requires_gmsh": False,
+                    "elapsed_seconds": round(elapsed_seconds, 6),
+                    "mesh_write_seconds": round(result.elapsed_seconds, 6),
+                    "counts": result.mesh.counts,
+                    "boundary_quads": {
+                        name: len(quads)
+                        for name, quads in result.mesh.boundaries.items()
+                    },
+                    "grading": result.mesh.grading,
+                    "quality": result.quality,
+                    "chambers": chambers_from_params(params).report(),
+                    "final_bdf": final_bdf.name,
+                    "preview_png": result.preview_path.name,
+                    "med": result.med_path.name if result.med_path else None,
+                    "stl_files": [entry.target.name for entry in stl_exports],
+                }
+                (workdir / "python-mesh-report.json").write_text(
+                    json.dumps(report, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            except Exception as exc:
+                self.after(0, lambda error=exc: finish_failure(error))
+                return
+            self.after(
+                0,
+                lambda: finish_success(
+                    final_bdf,
+                    result.preview_path,
+                    elapsed_seconds,
+                ),
+            )
+
+        threading.Thread(
+            target=worker,
+            name="python-only-mesh",
+            daemon=True,
+        ).start()
+        return None
 
     def _run_fiss(self) -> None:
         self._materialize_surface_inputs()

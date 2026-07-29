@@ -192,6 +192,33 @@ six-surface partition, monotonic grading, and center/corner Jacobian checks.
 Complete machine-readable evidence is in
 [`validation-summary.json`](../examples/chambers/validation-summary.json).
 
+## Source-free equivalence verification
+
+The same chamber configuration was generated independently with
+`mode = python_only`, without a DGIBI path and without resolving Cast3M or
+Gmsh. A numbering-independent one-to-one coordinate mapping matched all
+830,579 referenced nodes within an absolute tolerance of $10^{-9}$; the
+maximum absolute coordinate difference was $5.0000004\times10^{-10}$.
+
+Orientation-independent connectivity comparison matched all 798,400 HEXA8,
+both 68,600-element chamber volumes, and all 24 named `CQUAD4` boundary sets.
+An additional winding check matched every boundary quad while allowing only
+cyclic node rotations, not reversed normals.
+All eight Gauss-point Jacobians of every Python HEXA8 were positive; the
+minimum scaled Jacobian was 0.4115766.
+
+On the same host and example, the Cast3M mesh phase took 147.958791 seconds
+and the final source-free mesh phase took 12.002355 seconds, a measured 12.33×
+mesh-phase speed-up. The Python-only complete post-processing run took
+27.527274 seconds. The older Cast3M report did not capture an equivalent
+end-to-end time, so only mesh phases are compared; wall-clock results remain
+host-, load-, and filesystem-cache-dependent.
+
+The reproducible configuration, validator, methodology, and machine-readable
+results are documented in
+[`python-only-meshing.md`](python-only-meshing.md) and
+[`validation-summary.json`](../examples/python-only-chambers/validation-summary.json).
+
 ## Known signal and validation boundary
 
 The optimized Cast3M log contains `IEEE_INVALID_FLAG`; the unchanged reference run contains the same signal, so it is not attributed to the bulk import. This comparison does not prove numerical accuracy, FISS equivalence, mesh-quality equivalence, or suitability for a particular downstream CFD solver. A solver-specific mesh check remains required before production CFD use.

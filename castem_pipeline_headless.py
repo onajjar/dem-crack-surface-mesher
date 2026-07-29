@@ -37,6 +37,7 @@ from python_hole_interpolation import (
     normalize_hole_geometry,
     parse_hole_spec,
 )
+from python_volume_mesher import write_python_mesh_outputs
 from stl_export import (
     active_native_stl_sort_lines,
     comment_native_stl_export,
@@ -59,7 +60,7 @@ SUPPORTED_OPERATIONS = {
     "characterize",
     "characterize_and_mesh",
 }
-SUPPORTED_MESH_MODES = {"python", "reference"}
+SUPPORTED_MESH_MODES = {"python", "python_only", "reference"}
 SUPPORTED_FISS_MODELS = {
     "POISEU_BLASIUS",
     "POISEU_COLEBROOK",
@@ -83,8 +84,8 @@ class HeadlessSetup:
     mesh_mode: str
     merge_bdfs: bool
     open_gmsh: bool
-    mesh_template: Path
-    fiss_template: Path
+    mesh_template: Path | None
+    fiss_template: Path | None
     surface_source: SurfaceSource
     csv_x: Path
     csv_y: Path
@@ -102,6 +103,12 @@ class HeadlessSetup:
 def _path(base: Path, value: str) -> Path:
     candidate = Path(value.strip()).expanduser()
     return (candidate if candidate.is_absolute() else base / candidate).resolve()
+
+
+def _optional_path(base: Path, value: str | None) -> Path | None:
+    if value is None or not value.strip():
+        return None
+    return _path(base, value)
 
 
 def _number(section, key: str) -> float:
@@ -522,8 +529,8 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         mesh_mode=mesh.get("mode", "python").strip().lower(),
         merge_bdfs=mesh.getboolean("merge_bdfs", fallback=True),
         open_gmsh=mesh.getboolean("open_gmsh", fallback=False),
-        mesh_template=_path(base, files.get("mesh_template")),
-        fiss_template=_path(base, files.get("fiss_template")),
+        mesh_template=_optional_path(base, files.get("mesh_template", fallback=None)),
+        fiss_template=_optional_path(base, files.get("fiss_template", fallback=None)),
         surface_source=surface_source,
         csv_x=csv_x,
         csv_y=csv_y,
@@ -568,19 +575,39 @@ def validate_setup(
             "or characterize_and_mesh."
         )
     if setup.mesh_mode not in SUPPORTED_MESH_MODES:
-        raise ValueError("mesh mode must be python or reference.")
+        raise ValueError("mesh mode must be python_only, python, or reference.")
     setup.chambers.validated()
     if (
         setup.chambers.enabled
         and _operation_uses_mesh(setup.operation)
-        and setup.mesh_mode != "python"
+        and setup.mesh_mode not in {"python", "python_only"}
     ):
-        raise ValueError("Enabled chambers require mesh mode = python.")
+        raise ValueError(
+            "Enabled chambers require mesh mode = python_only or python."
+        )
     surface_grid = surface_grid or build_surface_grid(setup.surface_source)
-    if _operation_uses_mesh(setup.operation) and not setup.mesh_template.is_file():
-        raise FileNotFoundError(f"Mesh DGIBI template does not exist: {setup.mesh_template}")
-    if _operation_uses_fiss(setup.operation) and not setup.fiss_template.is_file():
+    if (
+        _operation_uses_mesh(setup.operation)
+        and setup.mesh_mode != "python_only"
+        and (setup.mesh_template is None or not setup.mesh_template.is_file())
+    ):
+        raise FileNotFoundError(
+            f"Mesh DGIBI template does not exist: {setup.mesh_template}"
+        )
+    if (
+        _operation_uses_fiss(setup.operation)
+        and (setup.fiss_template is None or not setup.fiss_template.is_file())
+    ):
         raise FileNotFoundError(f"FISS DGIBI template does not exist: {setup.fiss_template}")
+    if (
+        setup.mesh_mode == "python_only"
+        and _operation_uses_mesh(setup.operation)
+        and setup.open_gmsh
+    ):
+        raise ValueError(
+            "python_only does not invoke Gmsh. Set open_gmsh = false; "
+            "python_mesh_preview.png is generated automatically."
+        )
 
     p = setup.params
     if p.re_smfa <= 0 or p.re_opmin < 0 or p.re_tol <= 0:
@@ -600,7 +627,10 @@ def validate_setup(
     if p.holes_enabled and setup.mesh_mode == "reference" and any(
         hole.shape != "circle" for hole in geometries
     ):
-        raise ValueError("Rectangle, triangle, and regular-polygon holes require mesh mode = python.")
+        raise ValueError(
+            "Rectangle, triangle, and regular-polygon holes require "
+            "mesh mode = python_only or python."
+        )
     if (
         p.holes_enabled
         and _operation_uses_fiss(setup.operation)
@@ -611,7 +641,7 @@ def validate_setup(
     points_per_hole: tuple[int, ...] = ()
     if (
         p.holes_enabled
-        and setup.mesh_mode == "python"
+        and setup.mesh_mode in {"python", "python_only"}
         and _operation_uses_mesh(setup.operation)
     ):
         rings = detect_hole_rings(
@@ -630,7 +660,11 @@ def validate_setup(
     if setup.operation == "characterize" and not setup.characterization_enabled:
         raise ValueError("Characterize operation requires characterization to be enabled.")
     if check_castem and (
-        _operation_uses_mesh(setup.operation) or _operation_uses_fiss(setup.operation)
+        (
+            _operation_uses_mesh(setup.operation)
+            and setup.mesh_mode != "python_only"
+        )
+        or _operation_uses_fiss(setup.operation)
     ):
         baseline.resolve_castem_exe(setup.castem_version)
     return points_per_hole
@@ -726,9 +760,10 @@ def _patch_mesh_program(template: str, params: baseline.CastemMainParams) -> str
 
 def run_mesh(
     setup: HeadlessSetup,
-    executable: Path,
+    executable: Path | None,
     surface_grid: SurfaceGrid | None = None,
 ) -> dict[str, object]:
+    total_started = time.perf_counter()
     workdir = setup.workdir
     workdir.mkdir(parents=True, exist_ok=True)
     surface_grid = _materialize_surface_inputs(setup, surface_grid)
@@ -739,37 +774,66 @@ def run_mesh(
         archive_existing_mesh_outputs(workdir, lambda message: print(message, end=""))
     _copy_csv_inputs(setup, workdir)
 
-    template = setup.mesh_template.read_text(encoding="utf-8", errors="ignore")
+    python_result = None
     hole_meshes = None
-    if setup.mesh_mode == "python" and setup.params.holes_enabled:
-        program, hole_meshes = build_python_holes_dgibi(
-            template,
+    dgibi: Path | None = None
+    if setup.mesh_mode == "python_only":
+        python_result = write_python_mesh_outputs(
+            workdir,
+            surface_grid.x,
+            surface_grid.y,
+            surface_grid.zmin,
+            surface_grid.zmax,
             setup.params,
-            setup.csv_x,
-            setup.csv_y,
-            setup.csv_zmin,
-            setup.csv_zmax,
-            _patch_mesh_program,
-            hole_mesh_directory=workdir,
+            export_med=bool(setup.params.opti_med),
+            log=lambda message: print(message, end=""),
         )
-        if hole_meshes is None or not generated_program_uses_python_holes(program):
-            raise RuntimeError("The conformal Python-hole DGIBI was not generated correctly.")
-        mode_suffix = (
-            "_chambers_python_holes"
-            if setup.chambers.enabled
-            else "_python_holes"
-        )
+        return_code = 0
+        elapsed = python_result.elapsed_seconds
     else:
-        program = _patch_mesh_program(template, setup.params)
-        mode_suffix = "_chambers" if setup.chambers.enabled else "_reference"
+        if executable is None:
+            raise RuntimeError("A Cast3M executable is required for this mesh mode.")
+        if setup.mesh_template is None:
+            raise RuntimeError("A mesh DGIBI template is required for this mesh mode.")
+        template = setup.mesh_template.read_text(encoding="utf-8", errors="ignore")
+        if setup.mesh_mode == "python" and setup.params.holes_enabled:
+            program, hole_meshes = build_python_holes_dgibi(
+                template,
+                setup.params,
+                setup.csv_x,
+                setup.csv_y,
+                setup.csv_zmin,
+                setup.csv_zmax,
+                _patch_mesh_program,
+                hole_mesh_directory=workdir,
+            )
+            if hole_meshes is None or not generated_program_uses_python_holes(program):
+                raise RuntimeError(
+                    "The conformal Python-hole DGIBI was not generated correctly."
+                )
+            mode_suffix = (
+                "_chambers_python_holes"
+                if setup.chambers.enabled
+                else "_python_holes"
+            )
+        else:
+            program = _patch_mesh_program(template, setup.params)
+            mode_suffix = "_chambers" if setup.chambers.enabled else "_reference"
+
+        p = setup.params
+        dgibi = workdir / (
+            f"{setup.mesh_template.stem}{mode_suffix}_ti{p.re_ti}_crpa{p.re_crpa}_"
+            f"smfa{p.re_smfa_int}_numsp{p.re_numspa}_opmin{p.re_opmin_int}.dgibi"
+        )
+        dgibi.write_text(program, encoding="utf-8")
+        return_code, elapsed = _run_castem(
+            executable,
+            dgibi,
+            workdir,
+            workdir / "castem-console.log",
+        )
 
     p = setup.params
-    dgibi = workdir / (
-        f"{setup.mesh_template.stem}{mode_suffix}_ti{p.re_ti}_crpa{p.re_crpa}_"
-        f"smfa{p.re_smfa_int}_numsp{p.re_numspa}_opmin{p.re_opmin_int}.dgibi"
-    )
-    dgibi.write_text(program, encoding="utf-8")
-    return_code, elapsed = _run_castem(executable, dgibi, workdir, workdir / "castem-console.log")
     missing = missing_mesh_outputs(workdir, p) if return_code == 0 else ()
 
     final_bdf: Path | None = None
@@ -798,21 +862,54 @@ def run_mesh(
         gmsh = baseline.resolve_gmsh_exe()
         subprocess.Popen([str(gmsh), str(final_bdf)], cwd=str(workdir))
 
+    points_per_hole = (
+        python_result.mesh.topology.points_per_hole
+        if python_result is not None
+        else hole_meshes.points_per_hole
+        if hole_meshes is not None
+        else ()
+    )
+    python_details = (
+        {
+            "backend": "numpy_hexa8",
+            "requires_cast3m": False,
+            "requires_gmsh": False,
+            "mesh_source_required": False,
+            "preview_png": python_result.preview_path.name,
+            "counts": python_result.mesh.counts,
+            "grading": python_result.mesh.grading,
+            "quality": python_result.quality,
+            "boundary_quads": {
+                name: len(quads)
+                for name, quads in python_result.mesh.boundaries.items()
+            },
+        }
+        if python_result is not None
+        else None
+    )
     return {
         "return_code": return_code,
         "elapsed_seconds": round(elapsed, 6),
+        "total_elapsed_seconds": round(time.perf_counter() - total_started, 6),
         "mode": setup.mesh_mode,
         "chambers": setup.chambers.report(),
         "surface_mode": setup.surface_source.normalized_mode,
         "surface_grid_points": [surface_grid.shape[1], surface_grid.shape[0]],
-        "generated_dgibi": dgibi.name,
-        "hole_wall_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
-        "square_interface_edges_per_hole": list(hole_meshes.points_per_hole) if hole_meshes else [],
-        "interface_counts_match": True if hole_meshes is not None else None,
+        "generated_dgibi": dgibi.name if dgibi is not None else None,
+        "hole_wall_edges_per_hole": list(points_per_hole),
+        "square_interface_edges_per_hole": list(points_per_hole),
+        "interface_counts_match": True if points_per_hole else None,
         "missing_outputs": list(missing),
         "final_bdf": final_bdf.name if final_bdf else None,
         "stl_export": export_report(stl_exports) if p.opti_stl else None,
-        "native_cast3m_stl_export": "commented_out" if p.opti_stl else "not_requested",
+        "native_cast3m_stl_export": (
+            "not_applicable_python_only"
+            if python_result is not None
+            else "commented_out"
+            if p.opti_stl
+            else "not_requested"
+        ),
+        "python_only": python_details,
         "success": return_code == 0 and not missing and final_bdf is not None,
     }
 
@@ -837,6 +934,8 @@ def run_fiss(
     _materialize_surface_inputs(setup, surface_grid)
     calculation = _next_calculation_directory(setup.workdir / setup.fiss.model)
     _copy_csv_inputs(setup, calculation)
+    if setup.fiss_template is None:
+        raise RuntimeError("A FISS DGIBI template is required for a FISS run.")
     template = setup.fiss_template.read_text(encoding="utf-8", errors="ignore")
     program = baseline.patch_dgibi_main_program(template, setup.params)
     program = baseline.App._patch_fiss_vars(None, program, setup.fiss)
@@ -1000,12 +1099,15 @@ def main(argv: list[str] | None = None) -> int:
             }
 
         executable = None
-        if _operation_uses_mesh(setup.operation) or _operation_uses_fiss(
-            setup.operation
+        if (
+            _operation_uses_fiss(setup.operation)
+            or (
+                _operation_uses_mesh(setup.operation)
+                and setup.mesh_mode != "python_only"
+            )
         ):
             executable = baseline.resolve_castem_exe(setup.castem_version)
         if _operation_uses_mesh(setup.operation):
-            assert executable is not None
             summary["mesh"] = run_mesh(setup, executable, surface_grid)
         if _operation_uses_fiss(setup.operation):
             assert executable is not None

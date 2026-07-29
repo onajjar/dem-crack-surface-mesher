@@ -1,8 +1,10 @@
-"""Configuration and scalar patching for native Cast3M chamber geometry.
+"""Shared chamber configuration and Cast3M scalar patching.
 
 The chamber construction and export algorithm lives in the single maintained
-``source_codes/castem_tool.dgibi`` file. This module only validates interface
-values and writes them into the generated run copy.
+``source_codes/castem_tool.dgibi`` file for Cast3M runs. The source-free
+backend consumes the same validated values directly. This module owns no mesh
+construction; it validates the interface, declares output names, and can patch
+the generated Cast3M run copy.
 """
 
 from __future__ import annotations

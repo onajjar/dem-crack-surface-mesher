@@ -90,6 +90,8 @@ result.h
 results.h
 *.trace
 *.ps
+python_mesh_preview.png
+python-mesh-report.json
 
 # Deliberately reviewed, small baseline example artifacts
 !examples/output/combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf

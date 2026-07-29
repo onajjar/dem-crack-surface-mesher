@@ -1,0 +1,530 @@
+{
+  "success": true,
+  "comparison_basis": {
+    "node_numbering_independent": true,
+    "topology_comparison_orientation_independent": true,
+    "boundary_winding_compared_separately": true,
+    "boundary_winding_rule": "cyclic rotations allowed; reversals rejected",
+    "coordinate_tolerance": 1e-09,
+    "coordinate_matching": "one-to-one nearest-neighbour bijection",
+    "connectivity_fingerprints": "two independent uint64 values"
+  },
+  "coordinates": {
+    "reference_referenced_nodes": 830579,
+    "python_referenced_nodes": 830579,
+    "count_match": true,
+    "nearest_mapping_is_bijective": true,
+    "unique_reference_nodes_matched": 830579,
+    "coordinate_set_match": true,
+    "maximum_euclidean_difference": 8.66025443390325e-10,
+    "maximum_absolute_difference": 5.000000413701855e-10
+  },
+  "volume": {
+    "card": "CHEXA",
+    "reference_elements": 798400,
+    "python_elements": 798400,
+    "count_match": true,
+    "topology_match": true,
+    "orientation_match": null,
+    "reversed_orientation_match": null,
+    "orientation_counts": null
+  },
+  "chamber_volumes": {
+    "castem_mesh_v_inlet.bdf": {
+      "card": "CHEXA",
+      "reference_elements": 68600,
+      "python_elements": 68600,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": null,
+      "reversed_orientation_match": null,
+      "orientation_counts": null
+    },
+    "castem_mesh_v_outlet.bdf": {
+      "card": "CHEXA",
+      "reference_elements": 68600,
+      "python_elements": 68600,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": null,
+      "reversed_orientation_match": null,
+      "orientation_counts": null
+    }
+  },
+  "surface_file_sets_match": true,
+  "surfaces": {
+    "castem_mesh_surf_all.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 63880,
+      "python_elements": 63880,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 63880,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_all.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 17080,
+      "python_elements": 17080,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 17080,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_bottom.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 980,
+      "python_elements": 980,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 980,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_interface.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 6860,
+      "python_elements": 6860,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 6860,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_outer.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 6860,
+      "python_elements": 6860,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 6860,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_top.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 980,
+      "python_elements": 980,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 980,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_xmax.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 700,
+      "python_elements": 700,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 700,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_inlet_xmin.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 700,
+      "python_elements": 700,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 700,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_max.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 11020,
+      "python_elements": 11020,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 11020,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_mean.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 11020,
+      "python_elements": 11020,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 11020,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_min.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 11020,
+      "python_elements": 11020,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 11020,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_all.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 17080,
+      "python_elements": 17080,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 17080,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_bottom.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 980,
+      "python_elements": 980,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 980,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_interface.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 6860,
+      "python_elements": 6860,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 6860,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_outer.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 6860,
+      "python_elements": 6860,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 6860,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_top.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 980,
+      "python_elements": 980,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 980,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_xmax.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 700,
+      "python_elements": 700,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 700,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_outlet_xmin.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 700,
+      "python_elements": 700,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 700,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_trou_1.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 3840,
+      "python_elements": 3840,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 3840,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_trou_2.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 3840,
+      "python_elements": 3840,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 3840,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_xmax.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 5880,
+      "python_elements": 5880,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 5880,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_xmin.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 5880,
+      "python_elements": 5880,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 5880,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_ymax.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 5880,
+      "python_elements": 5880,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 5880,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    },
+    "castem_mesh_surf_ymin.bdf": {
+      "card": "CQUAD4",
+      "reference_elements": 5880,
+      "python_elements": 5880,
+      "count_match": true,
+      "topology_match": true,
+      "orientation_match": true,
+      "reversed_orientation_match": false,
+      "orientation_counts": {
+        "same": 5880,
+        "reversed": 0,
+        "unclassified": 0
+      }
+    }
+  },
+  "all_surface_topologies_match": true,
+  "all_surface_orientations_match": true,
+  "combined_surface_orientation_groups": {
+    "castem_mesh_surf_inlet_bottom.bdf": {
+      "included_elements": 980,
+      "same": 980,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_inlet_interface.bdf": {
+      "included_elements": 980,
+      "same": 980,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_inlet_outer.bdf": {
+      "included_elements": 6860,
+      "same": 6860,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_inlet_top.bdf": {
+      "included_elements": 980,
+      "same": 980,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_inlet_xmax.bdf": {
+      "included_elements": 700,
+      "same": 700,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_inlet_xmin.bdf": {
+      "included_elements": 700,
+      "same": 700,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_max.bdf": {
+      "included_elements": 11020,
+      "same": 11020,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_min.bdf": {
+      "included_elements": 11020,
+      "same": 11020,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_outlet_bottom.bdf": {
+      "included_elements": 980,
+      "same": 980,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_outlet_interface.bdf": {
+      "included_elements": 980,
+      "same": 980,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_outlet_outer.bdf": {
+      "included_elements": 6860,
+      "same": 6860,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_outlet_top.bdf": {
+      "included_elements": 980,
+      "same": 980,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_outlet_xmax.bdf": {
+      "included_elements": 700,
+      "same": 700,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_outlet_xmin.bdf": {
+      "included_elements": 700,
+      "same": 700,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_trou_1.bdf": {
+      "included_elements": 3840,
+      "same": 3840,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_trou_2.bdf": {
+      "included_elements": 3840,
+      "same": 3840,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_xmax.bdf": {
+      "included_elements": 5880,
+      "same": 5880,
+      "reversed": 0,
+      "unclassified": 0
+    },
+    "castem_mesh_surf_xmin.bdf": {
+      "included_elements": 5880,
+      "same": 5880,
+      "reversed": 0,
+      "unclassified": 0
+    }
+  },
+  "quality": {
+    "evaluated_hexa8": 798400,
+    "gauss_points_per_element": 8,
+    "minimum_jacobian_determinant": 8.192744620352942e-15,
+    "maximum_jacobian_determinant": 5.655697680365855e-06,
+    "minimum_scaled_jacobian": 0.4115765578310503,
+    "nonpositive_jacobians": 0,
+    "valid": true
+  },
+  "counts": {
+    "points": 830579,
+    "hexa8": 798400,
+    "surface_quads": 11020,
+    "crack_hexa8": 661200,
+    "inlet_hexa8": 68600,
+    "outlet_hexa8": 68600,
+    "exterior_quads": 63880
+  },
+  "timing": {
+    "reference_cast3m_mesh_seconds": 147.958791,
+    "python_only_mesh_seconds": 12.002355,
+    "python_only_total_seconds": 27.527274,
+    "mesh_phase_speedup": 12.327479982053521,
+    "note": "The speedup compares the recorded mesh-generation phases. Only the newer Python report records complete post-processing time."
+  }
+}

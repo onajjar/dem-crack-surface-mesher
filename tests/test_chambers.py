@@ -192,7 +192,7 @@ def test_interface_chamber_example_loads_the_validated_values() -> None:
     app._load_chamber_example()
 
     assert app.chambers_enabled_var.get() is True
-    assert app.solver_mode_var.get() == "python"
+    assert app.solver_mode_var.get() == "python_only"
     assert app.nelem_x_var.get() == app.nelem_y_var.get() == "2"
     assert app.nelem_z_var.get() == "30"
     assert app.re_fact_z_var.get() == "1.025"

@@ -5,6 +5,8 @@
 The repository maintains one Cast3M source for crack-volume meshing:
 `source_codes/castem_tool.dgibi`. Ordinary meshes, meshes with Python-generated
 hole fills, and meshes with inlet/outlet chambers all use this same file.
+The independent `python_only` backend uses no Cast3M source and therefore does
+not create a second DGIBI file.
 
 `source_codes/fuite_fissure.dgibi` is intentionally separate because it runs
 the optional FISS flow calculation rather than the mesh converter.
@@ -35,9 +37,9 @@ The source always exports `vo_export`: it refers to `vo_cr` when chambers are
 disabled and `vo_all` when they are enabled. MED output and the optional
 Cast3M visualization use the same selected volume.
 
-## Python boundary
+## Python boundary in Cast3M mode
 
-Python does not contain or inject Cast3M chamber geometry. The
+Python does not contain or inject Cast3M program text for chamber geometry. The
 `chamber_geometry.py` module only:
 
 1. validates dimensions, element counts, and grading ratios;
@@ -48,6 +50,13 @@ Python does not contain or inject Cast3M chamber geometry. The
 The separate Python hole optimizer may still replace the historical
 hole-interpolation block in the generated run copy. That optimization is
 independent of the chamber geometry already present in the Cast3M source.
+
+Source-free `python_only` is a separate backend:
+`python_volume_mesher.py` consumes the same validated chamber values and
+constructs equivalent HEXA8 topology without reading, patching, or executing
+the DGIBI file. This separation preserves the single-source rule for every
+Cast3M run while allowing meshing without Cast3M. See
+[`python-only-meshing.md`](python-only-meshing.md).
 
 ## Reproducible commands
 
@@ -75,6 +84,13 @@ python.exe .\castem_pipeline_gui_scientific.py --headless `
 Both INI files point to `source_codes/castem_tool.dgibi`. Chamber behavior is
 controlled by `[chambers] enabled`, which maps directly to `opti_chamb`.
 
+The source-free case intentionally omits the template:
+
+```powershell
+python.exe .\castem_pipeline_gui_scientific.py --headless `
+  .\examples\python-only-chambers\run.ini
+```
+
 ## Integrity and verification
 
 The mesh source was intentionally extended to satisfy the native-source
@@ -92,6 +108,7 @@ The chamber tests assert that:
 
 - the repository has one `castem_tool*.dgibi` file;
 - Cast3M owns the chamber `VOLU` construction and guarded exports;
-- Python contains no chamber construction/export program strings;
+- Python does not inject chamber construction/export program strings into
+  Cast3M;
 - enabled and disabled configurations patch `opti_chamb` to `1` and `0`; and
 - every named chamber boundary remains part of the expected output manifest.

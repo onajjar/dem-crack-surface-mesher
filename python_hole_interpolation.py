@@ -347,9 +347,12 @@ def _edge_subdivision_count(
     for start_row, start_column in start_locations:
         for end_row, end_column in end_locations:
             if start_row == end_row and start_column != end_column:
-                same_row.append(abs(end_column - start_column) * nelem_x)
+                # CR_SURF creates its source-cell side lines along table rows
+                # with nelem_x, then uses REGL with nelem_y between those
+                # lines.  A same-row edge is therefore subdivided by nelem_y.
+                same_row.append(abs(end_column - start_column) * nelem_y)
             if start_column == end_column and start_row != end_row:
-                same_column.append(abs(end_row - start_row) * nelem_y)
+                same_column.append(abs(end_row - start_row) * nelem_x)
     if same_row or same_column:
         return min((*same_row, *same_column))
 
@@ -357,7 +360,7 @@ def _edge_subdivision_count(
     # geometric fallback keeps mildly curvilinear/duplicated coordinate grids
     # usable while retaining the axis-specific Cast3M subdivision intent.
     delta = np.abs(end - start)
-    return nelem_x if delta[0] >= delta[1] else nelem_y
+    return nelem_y if delta[0] >= delta[1] else nelem_x
 
 
 def _subdivide_ordered_contour(

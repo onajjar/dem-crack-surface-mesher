@@ -30,6 +30,7 @@ MESH_OUTPUT_PATTERNS = (
     "castem_mesh_*.stl",
     "combined*.bdf",
     "python_hole_fill_*.bdf",
+    "python_mesh_preview.png",
 )
 
 

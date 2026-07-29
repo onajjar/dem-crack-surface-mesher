@@ -3,8 +3,10 @@
 `castem_pipeline_gui_scientific.py` is the single launcher for the enhanced
 workflow. It adds a clearer scientific interface, accelerated bulk-hole
 implementation, and optional inlet/outlet chambers without editing the
-immutable T13 GUI. The chamber algorithm is integrated in the single
-authoritative Cast3M mesh source behind `opti_chamb`.
+immutable T13 GUI. It now also includes a complete source-free Python HEXA8
+backend. The existing Cast3M chamber algorithm remains integrated in the
+single authoritative Cast3M mesh source behind `opti_chamb`; Python-only mode
+constructs an independently validated equivalent without reading that source.
 
 Run it without arguments for the interactive workbench, or pass `--headless CONFIG` to execute the same scientific pipeline from an INI file without creating a Tk window.
 
@@ -12,9 +14,9 @@ The animated walkthrough in the main README and both workbench screenshots can b
 
 ## Workflow
 
-1. Open the workbench and select **Load documented example**, **Chamber
-   example**, **DEAP fitting example**, **Fractal example**, or **Planar
-   example**; alternatively select
+1. Open the workbench and select **Load documented example**, **Python-only
+   chamber example**, **DEAP fitting example**, **Fractal example**, or
+   **Planar example**; alternatively select
    the DGIBI template, a dedicated working directory, and define the source
    manually. The DEAP action loads the bundled `1_simple` raw-HDF5 case and
    its validated fit parameters.
@@ -32,16 +34,27 @@ The animated walkthrough in the main README and both workbench screenshots can b
 6. In **Mesh & holes**, choose one mode:
    - **Original T13 hole workflow — reference** preserves the original Cast3M construction, interpolation, and displacement behavior.
    - **Bulk Python hole mesh — fast + inflated** vectorizes the common interpolation path, writes complete lower/upper/mean `CQUAD4` fill meshes, and lets Cast3M read them with `LIRE 'NAS'`.
+   - **Python-only HEXA8 — no DGIBI, Cast3M, or Gmsh** builds the complete
+     volume and every named boundary directly in Python.
 7. Optionally enable the inlet/outlet chambers in the same tab. Set one shared
    height, separate lengths, separate height/length cell counts, and separate
    grading ratios for each end.
 8. Set `num_el_fill` for the radial cell count and `re_fact_hole` for the outermost-to-hole-adjacent width ratio.
-9. In **Run & results**, validate again and launch Cast3M. The live solver log and run state are streamed without blocking the interface.
-10. Use **Open generated mesh in Gmsh** to open the exact combined BDF for the current naming parameters, the newest combined BDF, or the volume BDF without rerunning Cast3M.
+9. In **Run & results**, validate again and launch the selected backend. Both
+   Cast3M and Python-only work run without blocking the interface.
+10. In Cast3M mode, use **Open generated mesh in Gmsh** for the exact combined
+    or volume BDF. Python-only mode disables that control and writes
+    `python_mesh_preview.png` automatically.
 
-The no-hole path remains the preserved baseline regardless of the selected hole mode. The previous `castem_pipeline_gui_python_holes.py` entry point is retained only as a compatibility wrapper and redirects to this workbench.
+The previous `castem_pipeline_gui_python_holes.py` entry point is retained only
+as a compatibility wrapper and redirects to this workbench.
 
-Changing a tracked path or parameter marks the validation state as stale. Mesh and FISS launches are mutually exclusive, and both buttons remain disabled until the active process finishes. Before a mesh run, prior fixed-name solver artifacts in the selected directory are moved to `_previous_mesh_runs`; after return code `0`, the workbench checks the expected volume and surface files before declaring the run verified.
+Changing a tracked path or parameter marks the validation state as stale. Mesh
+and FISS launches are mutually exclusive, and both buttons remain disabled
+until the active process finishes. Before a mesh run, prior fixed-name
+artifacts in the selected directory are moved to `_previous_mesh_runs`; after
+completion, the workbench checks the expected volume and surface files before
+declaring the run verified.
 
 ## Advanced characterization
 
@@ -90,12 +103,12 @@ maps every calculation, output, example, and synthetic-only input.
 
 ![Read-only results folder inside the selected working directory](assets/advanced-crack-characterization-results.png)
 
-When **Export STL surfaces** is selected, the generated DGIBI source comments
-out the native Cast3M STL block. After Cast3M has successfully written the
-boundary BDF files, Python exports the lower, upper, mean, side, and hole
-surfaces as high-precision ASCII STL. It reports and omits only exactly
-zero-area BDF triangles, avoiding Cast3M error 808 and binary-STL precision
-loss.
+When **Export STL surfaces** is selected, the generated DGIBI source in
+Cast3M mode comments out the native STL block. After the selected backend has
+successfully written the boundary BDF files, Python exports the lower, upper,
+mean, side, and hole surfaces as high-precision ASCII STL. It reports and
+omits only exactly zero-area BDF triangles, avoiding Cast3M error 808 and
+binary-STL precision loss.
 
 Chamber mode extends the same conversion to every named inlet and outlet
 boundary.
@@ -104,12 +117,12 @@ boundary.
 
 The chamber checkbox and all eleven values are embedded in **Mesh & holes**;
 no second window or second Python launcher is used. Disabled chamber fields are
-retained but inactive. Both ordinary and chamber meshes use the one maintained
-mesh source, `source_codes/castem_tool.dgibi`. Enabling the option requires
-bulk Python mode and patches `opti_chamb=1` plus the eleven scalar chamber
-values. The Cast3M source itself owns the guarded chamber geometry and named
-exports. Disabling the option patches `opti_chamb=0`, so Cast3M follows the
-ordinary crack-only branch.
+retained but inactive. In bulk-Python Cast3M mode, enabling the option patches
+`opti_chamb=1` and the eleven scalar chamber values in the one maintained
+`source_codes/castem_tool.dgibi`; that source owns the guarded geometry and
+named exports. In Python-only mode, the same controls feed the source-free
+topology builder, and neither the template nor Cast3M is resolved. Disabling
+the option produces an ordinary crack-only volume in both modes.
 
 `Hch` is the common inlet/outlet height. `Lin` and `Lout` are the lengths in
 the negative and positive global-Y directions. `Nhin`/`Nhout` are total
@@ -118,12 +131,14 @@ height counts and must be even; `Nlin`/`Nlout` are length counts.
 one are uniform; larger ratios keep the smallest cells next to the crack and
 grow them toward the remote boundaries.
 
-The **Chamber example** button fills the previously validated values
+The **Python-only chamber example** button fills the previously validated values
 (`Hch=Lin=Lout=0.20`, ten cells and ratio five in each chamber direction,
 `2 x 2 x 30` crack refinement, and 15 hole radial cells). It uses the same
 documented CSV quartet and two circular holes. See the
-[headless counterpart](../examples/chambers/run.ini) and
-[validation evidence](../examples/chambers/README.md).
+[source-free headless counterpart](../examples/python-only-chambers/run.ini),
+[exact comparison](../examples/python-only-chambers/validation-summary.json),
+and [algorithm report](python-only-meshing.md). The retained Cast3M chamber
+case remains in [`examples/chambers`](../examples/chambers/README.md).
 
 ![Embedded inlet and outlet chamber controls](assets/scientific-workbench-chambers.png)
 
@@ -136,11 +151,15 @@ fields supply time step, component, span, grid resolution, and opening
 threshold. Select the crack-plane orientation and displacement magnification;
 provide a six-value bounding box only when `input.boundary` is absent. The fit
 writes its four matrices and `deap-fit-report.json` under
-`_generated_surface_inputs` before entering the same Cast3M path.
+`_generated_surface_inputs` before entering the selected mesh backend.
 
 The fractal mode implements an isotropic Gaussian self-affine surface through spectral filtering. Enter either the Hurst exponent `H` or the graph dimension `D`; the interface displays the coupled value using `D = 3 - H`. Grid point counts, physical X/Y dimensions, RMS height, mean aperture, and an integer seed complete the definition. The walls share the same rough mean surface and remain separated by a constant aperture, preventing intersections.
 
-Constant mode creates two planar grids. It supports a lower surface fixed at `z = 0`, as in the documented example, but requires a strictly higher upper surface for non-zero volume. During execution all generated modes write four runtime CSV matrices and then use the same hole, Cast3M, merge, FISS, and Gmsh paths as imported CSV data.
+Constant mode creates two planar grids. It supports a lower surface fixed at
+`z = 0`, as in the documented example, but requires a strictly higher upper
+surface for non-zero volume. During execution all generated modes write four
+runtime CSV matrices and then use the same selected hole/mesh backend as
+imported CSV data. FISS remains a separate Cast3M path.
 
 ![Dynamic fractal-source controls in the real workbench](assets/scientific-surface-fractal.png)
 
@@ -152,7 +171,11 @@ The bulk mode constructs every radial ring explicitly before writing the BDF. Th
 
 Angular subdivisions follow `nelem_x` and `nelem_y` edge by edge. For example, refinement 2 produces 64 square-interface edges and 64 circular edges per hole; it does not leave a 32-to-64 hanging-node transition.
 
-Each row offers `circle`, `rectangle`, `triangle`, or `regular_polygon`. Its visible fields change to radius; width/height/rotation; side length/rotation; or sides/circumradius/rotation. **Load all shape examples** populates one validated example of each. Polygonal shapes require bulk Python mode; reference mode and FISS remain circle-only.
+Each row offers `circle`, `rectangle`, `triangle`, or `regular_polygon`. Its
+visible fields change to radius; width/height/rotation; side length/rotation;
+or sides/circumradius/rotation. **Load all shape examples** populates one
+validated example of each. Polygonal shapes require bulk-Python Cast3M mode or
+Python-only mode; reference mode and FISS remain circle-only.
 
 See [Bulk inflated hole meshing](python-hole-interpolation.md) for the algorithm and [Provisional verification](provisional-verification.md) for the real integration, orientation, and timing evidence.
 

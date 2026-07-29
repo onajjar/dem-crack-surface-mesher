@@ -147,6 +147,24 @@ It derives the validated no-displacement chamber run from the same single
 parameter in `headless-run-report.json`. See the [chamber
 guide](chambers/README.md) for the reviewed mesh and grading checks.
 
+## Run the source-free chamber example
+
+The equivalent Python-only case requires no DGIBI path, Cast3M executable, or
+Gmsh executable:
+
+```powershell
+python.exe .\castem_pipeline_gui_scientific.py --headless `
+  .\examples\python-only-chambers\run.ini --validate-only
+python.exe .\castem_pipeline_gui_scientific.py --headless `
+  .\examples\python-only-chambers\run.ini
+```
+
+It preserves the `2 x 2 x 30` crack controls, two conformal holes, all chamber
+counts and grading ratios, BDF/STL/merge exports, and creates an automatic PNG
+preview. The [example report](python-only-chambers/README.md) links the exact
+numbering-independent comparison with the reviewed Cast3M mesh and the
+measured timing.
+
 ## Run a raw DEAP application
 
 Each [`deap`](deap/README.md) case keeps its discrete-simulation HDF5 files in

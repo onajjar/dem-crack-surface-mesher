@@ -276,16 +276,33 @@ def export_boundary_bdfs_to_stl(
         )
 
     element_sets = [(source, target, _surface_elements(source)) for source, target in pairs]
-    required = {
+    all_required = {
         node
         for _source, _target, elements in element_sets
         for element in elements
         for node in element
     }
-    points = _selected_grid_points(pairs[0][0], required)
+    try:
+        shared_points = _selected_grid_points(pairs[0][0], all_required)
+    except ValueError:
+        # Cast3M repeats its global GRID table in every boundary BDF, whereas
+        # the source-free Python backend writes compact standalone boundaries.
+        # Preserve the single-read Cast3M path and fall back to each compact
+        # file's own complete coordinate table.
+        shared_points = None
+        logger(
+            "Python BDF-to-STL: compact boundary GRID tables detected; "
+            "reading coordinates from each source BDF.\n"
+        )
 
     results: list[SurfaceExport] = []
     for source, target, elements in element_sets:
+        required = {node for element in elements for node in element}
+        points = (
+            shared_points
+            if shared_points is not None
+            else _selected_grid_points(source, required)
+        )
         triangles, skipped = _write_ascii_stl(target, elements, points)
         result = SurfaceExport(source, target, triangles, skipped)
         results.append(result)

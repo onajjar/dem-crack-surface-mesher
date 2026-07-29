@@ -150,12 +150,40 @@ The two-hole run carried the same `IEEE_INVALID_FLAG` notice and the same valida
 
 `castem_pipeline_gui_scientific.py` is the single launcher for the enhanced
 workflow. It keeps the historical T13 GUI unchanged while offering the
-original reference mode, the fast bulk Python hole mode, and optional
-inlet/outlet chambers from one interface and one Cast3M mesh source.
+original reference mode, the fast bulk Python-hole + Cast3M mode, and a
+source-free Python-only HEXA8 mode. Optional inlet/outlet chambers are
+available from the same interface.
 
 ```powershell
 python castem_pipeline_gui_scientific.py
 ```
+
+Select **Python-only HEXA8 — no DGIBI, Cast3M, or Gmsh** to construct the
+complete volume directly in NumPy. This mode preserves the structured
+`elements_x`, `elements_y`, and `elements_z` controls, Cast3M-equivalent
+endpoint-density grading through Z, conformal inflated holes, all chamber
+dimensions/counts/ratios, named BDF boundaries, safe STL conversion, optional
+MED output, and BDF merging. It always writes `python_mesh_preview.png` instead
+of requiring an external viewer.
+
+The documented source-free chamber case runs without either source-file entry:
+
+```powershell
+python.exe .\castem_pipeline_gui_scientific.py --headless `
+  .\examples\python-only-chambers\run.ini --validate-only
+python.exe .\castem_pipeline_gui_scientific.py --headless `
+  .\examples\python-only-chambers\run.ini
+```
+
+Numbering-independent validation against the reviewed Cast3M chamber mesh
+found the same 830,579 referenced coordinates within `5.0e-10`, the same
+798,400 HEXA8 connectivities, both 68,600-element chamber volumes, and all 24
+named boundary topologies and CQUAD4 windings. All HEXA8 elements passed
+eight-point Jacobian checks (minimum scaled Jacobian `0.4115766`). The recorded
+mesh phase was
+`12.002 s` in Python versus `147.959 s` in Cast3M, a `12.33×` speed-up. See the
+[method and validation guide](docs/python-only-meshing.md) and the committed
+[validation summary](examples/python-only-chambers/validation-summary.json).
 
 For enabled holes, Python detects each outer contour, subdivides every fill-boundary edge with the matching `nelem_x`/`nelem_y` background count, projects the refined rays onto the selected circle or polygonal wall, constructs all radial layers with vectorized interpolation, and writes complete lower/upper/mean `CQUAD4` fill meshes to three small NASTRAN BDF files. Cast3M bulk-loads them with `LIRE 'NAS'`; the generated DGIBI contains no per-point `POIN` statements and does not call the expensive `REGL`, `INT_COMP`, or `DISPLACE` hole path. Reused working directories are isolated by archiving prior fixed-name mesh artifacts, and the GUI verifies the complete expected output manifest before reporting success.
 
@@ -168,15 +196,14 @@ python scripts\run_python_holes_example.py --clean
 ```
 
 Enable **inlet and outlet chambers** in the same Mesh & holes tab, or use the
-one-click **Chamber example** preset. Meshing has one maintained Cast3M source:
-`source_codes/castem_tool.dgibi`. That file contains the complete chamber
-geometry and conditional exports behind the native Cast3M integer option
-`opti_chamb` (`0` disabled, `1` enabled). Python only copies the user-entered
-toggle and scalar parameters into the generated run file. The run uses the
-bulk Python hole surfaces and writes separate inlet/outlet volumes and boundary
-BDFs. The shared height is split above and below the crack; inlet/outlet
-lengths, height/length cell counts, and four grading ratios remain independently
-configurable.
+one-click **Python-only chamber example** preset. In both Cast3M modes,
+`source_codes/castem_tool.dgibi` remains the one maintained mesh source and
+owns its guarded `opti_chamb` construction. In Python-only mode,
+`python_volume_mesher.py` independently constructs the equivalent topology and
+does not read that source. Both implementations write separate inlet/outlet
+volumes and named boundary BDFs. The shared height is split above and below the
+crack; inlet/outlet lengths, height/length cell counts, and four grading ratios
+remain independently configurable.
 
 ![Embedded inlet and outlet chamber controls](docs/assets/scientific-workbench-chambers.png)
 
@@ -283,6 +310,8 @@ python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini 
 python castem_pipeline_gui_scientific.py --headless examples\scientific-run.ini
 python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini --validate-only
 python castem_pipeline_gui_scientific.py --headless examples\chambers\run.ini
+python castem_pipeline_gui_scientific.py --headless examples\python-only-chambers\run.ini --validate-only
+python castem_pipeline_gui_scientific.py --headless examples\python-only-chambers\run.ini
 python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode deap --validate-only
 python castem_pipeline_gui_scientific.py --headless examples\deap\1_simple\run.ini --surface-mode csv --validate-only
 ```
@@ -291,8 +320,11 @@ The committed configurations list every surface, path, mesh, hole, chamber,
 export, merge, Gmsh, and FISS option. The five `[naming]` values are manual inputs only
 for DEAP fitting; CSV mode derives them from all four canonical filenames, and
 generated surface modes retain the established defaults. Paths are resolved
-relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`; set
-`open_gmsh = true` only when a Gmsh window is wanted. See the
+relative to the INI file. Set `operation` to `mesh`, `fiss`, or `both`. For
+`mesh mode = python_only`, `mesh_template` may be omitted and
+`open_gmsh = false` is required because an internal PNG preview is generated.
+The `python` and `reference` modes retain their Cast3M source/executable
+requirements. See the
 [headless runner guide](docs/headless-runner.md).
 
 Use `operation = characterize` to calculate and export characteristics without
@@ -304,15 +336,18 @@ stage and then mesh the unchanged `SurfaceGrid`. The `[characterization]` and
 
 | Component | Requirement | Purpose |
 |---|---|---|
-| Operating system | Windows | The baseline invokes `cmd.exe` and a Cast3M `.bat` launcher. |
+| Operating system | Windows for Cast3M/FISS; Python-only meshing is platform-independent | Legacy backends invoke `cmd.exe` and a Cast3M `.bat` launcher. |
 | Python | 3.10 or newer, with Tkinter | The source uses Python 3.10 type syntax and a Tk desktop GUI. |
-| Python packages | NumPy, SciPy, Matplotlib | Core arrays, quadratic LOESS neighborhoods, and GUI/plotting support. |
+| Python packages | NumPy, SciPy, Matplotlib, meshio | Core arrays, validation, plotting, and optional Python-only MED export. |
 | HDF5 support | h5py | Required for raw DEAP fitting and TXT-to-HDF5 FISS post-processing. |
-| Visual recreation | Pillow, meshio, PyVista/VTK | Optional; needed only to recapture documentation assets. |
-| Cast3M | A compatible local installation | Required for mesh generation and `FISS`; not bundled here. |
-| Gmsh | Optional local installation | Used only when opening a generated mesh for visualization. |
+| Visual recreation | Pillow, PyVista/VTK | Optional; needed only to recapture selected documentation assets. |
+| Cast3M | A compatible local installation | Required only for `python`/`reference` meshing and `FISS`; not needed by `python_only`. |
+| Gmsh | Optional local installation | Used only for Cast3M-mode viewing; not needed by `python_only`. |
 
-The audited development host used Python 3.13.5, Tk 8.6, NumPy 2.1.3, Matplotlib 3.10.0, h5py 3.12.1, Cast3M 25, and Gmsh 4.15.2. These versions describe the validated host, not a claim of exclusive compatibility.
+The audited development host used Python 3.13.5, Tk 8.6, NumPy 2.1.3,
+Matplotlib 3.10.0, h5py 3.12.1, meshio 5.3.5, Cast3M 25, and Gmsh 4.15.2.
+These versions describe the validated host, not a claim of exclusive
+compatibility.
 
 ## Installation
 
@@ -358,22 +393,25 @@ The immutable `castem_pipeline_gui_t13.py` remains available when an exact histo
 
 Then:
 
-1. Choose **Load documented example**, **Chamber example**, or **DEAP fitting example**, or select
-   `source_codes\castem_tool.dgibi` as the mesh template. The DEAP action loads
-   the bundled `1_simple` raw-HDF5 fitting case.
+1. Choose **Load documented example**, **Python-only chamber example**, or
+   **DEAP fitting example**. Select `source_codes\castem_tool.dgibi` only for
+   a Cast3M backend; the Python-only backend does not read a DGIBI source. The
+   DEAP action loads the bundled `1_simple` raw-HDF5 fitting case.
 2. Choose a fresh working directory. Generated meshes can be large and existing names may be replaced.
 3. Select **CSV files**, **Fit DEAP results (Python)**, **Synthetic fractal**, or **Constant Z planes**. For DEAP fitting, put `deap_post.h5`, `deap_output.h5`, and normally `input.boundary` in the working directory; for CSV mode, select the four existing matrices.
 4. For DEAP fitting, enter `re_ti`, `re_crpa`, `re_smfa`, `re_numspa`, and
    `re_opmin`. In CSV mode these read-only values are decoded from the four
    filenames and cross-checked automatically.
-5. Review mesh density, holes, chambers, inflation, export, merge, and Gmsh
-   options. Chamber mode uses **Bulk Python hole mesh — fast + inflated** and
-   activates the native Cast3M `opti_chamb` branch automatically.
+5. Review mesh density, holes, chambers, inflation, export, merge, and backend.
+   **Python-only HEXA8** applies the same controls without Cast3M or Gmsh and
+   writes its own preview. **Bulk Python hole mesh** keeps the established
+   Cast3M volume path and activates `opti_chamb` for chambers.
 6. Validate inputs, select **Run converter**, and monitor the streamed log.
 
 See [examples/README.md](examples/README.md) for the shared input/output policy,
 [examples/chambers/README.md](examples/chambers/README.md) for the chamber
-workflow, [examples/deap/README.md](examples/deap/README.md) for the four
+workflow, [examples/python-only-chambers/README.md](examples/python-only-chambers/README.md)
+for the source-free equivalent, [examples/deap/README.md](examples/deap/README.md) for the four
 raw-DEAP applications and fit/CSV switch,
 [examples/surfaces/README.md](examples/surfaces/README.md) for generated
 sources, and [examples/multiple-holes/README.md](examples/multiple-holes/README.md)
@@ -418,7 +456,8 @@ Here `smfa_int = round(re_smfa * 100)` and `opmin_int = round(re_opmin * 1e6)` i
 
 ## Mesh outputs
 
-With the supplied mesh template, a successful run writes:
+With a Cast3M backend or the source-free Python-only backend, a successful run
+writes the same named mesh family:
 
 | Output | Description |
 |---|---|
@@ -459,7 +498,8 @@ The template builds lines through the crack, derives local opening and extent, a
 ├── castem_pipeline_gui_python_holes.py  # compatibility redirect/backend
 ├── castem_pipeline_headless.py          # compatibility headless backend/entry point
 ├── python_hole_interpolation.py         # bulk inflated fill generation
-├── chamber_geometry.py                  # chamber validation and scalar patching
+├── python_volume_mesher.py              # source-free HEXA8 backend and exports
+├── chamber_geometry.py                  # shared chamber values and validation
 ├── surface_generation.py                # CSV, self-affine, and planar surface sources
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
@@ -469,6 +509,7 @@ The template builds lines through the crack, derives local opening and extent, a
 │   ├── output/                  # verified no-hole run artifacts
 │   ├── scientific-run.ini       # complete headless configuration
 │   ├── chambers/                # GUI/headless chamber example and validation
+│   ├── python-only-chambers/    # source-free equivalent and exact comparison
 │   ├── shaped-holes/            # circle/rectangle/triangle/polygon gallery
 │   ├── surfaces/                # fractal-H, fractal-D, and constant examples
 │   └── multiple-holes/          # verified two-hole configuration/output
@@ -477,6 +518,7 @@ The template builds lines through the crack, derives local opening and extent, a
 │   ├── headless-runner.md
 │   ├── provisional-verification.md
 │   ├── python-hole-interpolation.md
+│   ├── python-only-meshing.md
 │   ├── scientific-workbench.md
 │   ├── single-mesh-source.md
 │   ├── source-audit.md
@@ -525,17 +567,24 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 
 ## Limitations and known baseline behavior
 
-- The immutable T13 implementation remains an intentionally unrefactored Windows baseline. The scientific workbench and INI runner are additive Windows launchers, not a cross-platform packaging layer.
+- The immutable T13 implementation remains an intentionally unrefactored
+  Windows baseline. The source-free mesher is ordinary Python and is not tied
+  to Cast3M's Windows launcher; the overall workbench still exposes legacy
+  Windows-only Cast3M and FISS paths.
 - The scientific bulk-hole path is additive. Its common rectilinear interpolation is vectorized; the robust bilinear-inversion fallback for curvilinear structured grids still searches cells per query point. Its `CQUAD4` fill is not numerically or node-for-node equivalent to the preserved Cast3M planar-arc/displacement construction.
 - Generalized shapes are convex and center-star-shaped: circles, rectangles, equilateral triangles, and regular polygons. Arbitrary concave polygons, free-form splines, and user-supplied vertex lists are not yet supported.
-- Non-circular holes require the scientific Python mode. The preserved T13 reference mode and preserved FISS path remain circle-only.
+- Non-circular holes require bulk-Python Cast3M mode or Python-only mode. The
+  preserved T13 reference mode and preserved FISS path remain circle-only.
 - Chambers attach only at global `Ymin` and `Ymax`. Their total height cell
-  counts must be even, grading ratios must be at least one, and chamber mode
-  requires the bulk Python mesh path.
-- Cast3M and Gmsh are external applications and are not installed by `requirements.txt`.
+  counts must be even and grading ratios must be at least one. They are
+  available in Cast3M bulk-Python mode and in source-free Python-only mode.
+- Cast3M and Gmsh are external applications and are not installed by
+  `requirements.txt`; neither is resolved or started in Python-only mode.
 - The scientific workbench validates matrix shape, finiteness, coordinate compatibility, and non-negative opening before execution; these structural checks do not establish physical consistency.
 - The fractal generator is an isotropic Gaussian spectral model with one power-law exponent. It does not yet model anisotropy, roll-off wavelengths, non-Gaussian height distributions, or independently rough opposing walls; its two walls are parallel with constant aperture.
-- Reported HEXA8 Jacobian checks cover element centers and eight natural corners. They do not replace all-integration-point quality metrics, skewness/orthogonality checks, or validation in the target CFD solver.
+- Python-only HEXA8 Jacobian checks cover all eight 2 × 2 × 2 Gauss points.
+  They do not replace skewness/orthogonality checks or validation in the
+  target CFD solver.
 - The integrated BDF merger imports `CQUAD4` boundary cards, assigns one `PSHELL` per surface file, and excludes the mean surface. It is not a general-purpose BDF merger.
 - **FISS model parameters:** the patcher replaces only the first matching assignment in the template's Main Program. Because the supplied FISS template repeats material variables in multiple model blocks, some entered overrides can affect an earlier inactive block while the selected model retains a hard-coded value. This behavior is preserved and must be verified in the generated `.dgibi` before relying on a study.
 - **Open completed mesh in Gmsh** controls only the external Gmsh viewer. Generated mesh DGIBI files always set `opti_visu=0`, so Cast3M does not open its internal `TRAC` visualization.

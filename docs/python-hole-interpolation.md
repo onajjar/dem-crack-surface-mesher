@@ -4,7 +4,10 @@ The scientific launcher uses a Python-generated surface mesh for circle,
 rectangle, equilateral-triangle, and regular-polygon fills. The historical T13
 GUI remains unchanged. Ordinary and chamber meshing both use the one maintained
 `source_codes/castem_tool.dgibi` template; that Cast3M file contains the native
-`opti_chamb` branch and all chamber geometry.
+`opti_chamb` branch and all chamber geometry when a Cast3M backend is selected.
+The source-free backend reuses the same conformal hole-fill functions but
+constructs the volume and chambers independently in
+`python_volume_mesher.py`.
 
 ## Why this path exists
 
@@ -23,13 +26,20 @@ For every configured hole, the implementation:
 5. Evaluates `zmin`, `zmax`, and their mean at all ring nodes. The common rectilinear-grid path uses vectorized cell lookup and bilinear interpolation; structured curvilinear grids use the more conservative cell-search fallback.
 6. Builds all `CQUAD4` connectivity and validates finite coordinates, connectivity bounds, non-zero area, and consistent orientation.
 7. Writes complete `python_hole_fill_min.bdf`, `python_hole_fill_max.bdf`, and `python_hole_fill_mean.bdf` files.
-8. Replaces only the derived run program's expensive hole-correction block with three `LIRE 'NAS'` imports and merges the imported meshes into the corresponding Cast3M surfaces.
-9. Archives fixed-name artifacts from a prior run before launching Cast3M, then verifies the complete expected output manifest before the GUI reports success.
+8. In Cast3M bulk mode, replaces only the derived run program's expensive
+   hole-correction block with three `LIRE 'NAS'` imports and merges the
+   imported meshes into the corresponding Cast3M surfaces. In Python-only
+   mode, passes the same topology directly to the HEXA8 builder.
+9. Archives fixed-name artifacts from a prior run before launching the selected
+   backend, then verifies the complete expected output manifest before the GUI
+   reports success.
 
 The hole optimizer edits only the generated working-directory copy: it replaces
 the legacy hole interpolation/displacement block with the bulk readers above.
-It does not generate or inject chamber geometry; the native Cast3M chamber
-branch remains in place and is controlled only by its scalar toggle.
+It does not generate or inject Cast3M chamber program text; the native Cast3M
+branch remains in place and is controlled only by its scalar toggle. The
+separate Python-only volume backend can consume the same topology and chamber
+parameters without modifying a DGIBI source.
 
 ## Conformal angular subdivision
 
