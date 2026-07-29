@@ -1,0 +1,372 @@
+{
+  "title": "DEAP Python surface reconstruction validation",
+  "question": "Does the standalone Python pipeline reproduce the archived MATLAB LOESS surfaces?",
+  "overall_assessment": "ready_to_integrate",
+  "passed": true,
+  "acceptance_criterion": {
+    "description": "Every x/y grid and z face value must match its archived MATLAB CSV within the absolute tolerance; outputs must be finite and openings nonnegative.",
+    "absolute_tolerance_m": 1e-12
+  },
+  "runtime": {
+    "python": "3.13.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "numpy": "2.1.3",
+    "scipy": "1.15.3",
+    "h5py": "3.12.1"
+  },
+  "cases": {
+    "1_simple": {
+      "passed": true,
+      "elapsed_seconds": 0.11829020001459867,
+      "configuration": {
+        "case_dir": "original_input\\1_simple",
+        "time_step": 10,
+        "component": 1,
+        "span": 0.6,
+        "grid_resolution": 20,
+        "opening_threshold_m": 1e-05,
+        "orientation": "XY",
+        "bounding_box_m": [
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ]
+      },
+      "comparisons": {
+        "xrange": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 4.996003610813204e-16,
+          "mean_error": -4.4755865680201624e-17,
+          "rmse": 2.5781049201542203e-16,
+          "within_absolute_tolerance": true
+        },
+        "yrange": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 4.996003610813204e-16,
+          "mean_error": -4.4755865680201624e-17,
+          "rmse": 2.5781049201542203e-16,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmin": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 1.6653345369377348e-15,
+          "mean_error": 4.649058915617843e-17,
+          "rmse": 5.025598998198545e-16,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmax": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 1.6653345369377348e-15,
+          "mean_error": 5.0792703376600914e-17,
+          "rmse": 4.975607890211133e-16,
+          "within_absolute_tolerance": true
+        }
+      },
+      "physical_checks": {
+        "all_outputs_finite": true,
+        "nonnegative_opening": true,
+        "minimum_opening_m": 0.0,
+        "maximum_opening_m": 0.0010000222052336527,
+        "component_nodes": 105,
+        "eligible_components": 1
+      },
+      "source_sha256": {
+        "deap_post.h5": "db93d3dc8595f6825f15662e52178e081aa7e84d147dc67463a3119b010f9e46",
+        "deap_output.h5": "7ab7c458db7bd23e8f6e32c29923178f55444169a0a38ed50fde60309d9f3efa",
+        "mesh_combination\\xrange_ti10_crpa1_smfa60_numsp20_opmin10000.csv": "7dc7d802cf56ca9352f2206d1de6e3e02e6aee6ccd7de33d024d768895a77991",
+        "mesh_combination\\yrange_ti10_crpa1_smfa60_numsp20_opmin10000.csv": "af114b3709a261235e9e9aa7ac09772d4844725e919408ca6d75125a90aa0375",
+        "mesh_combination\\zfit_zmin_ti10_crpa1_smfa60_numsp20_opmin10000.csv": "599c253db09184ac9f36ba9669e3327de65c86a4d5b5d88d83fd55266975d271",
+        "mesh_combination\\zfit_zmax_ti10_crpa1_smfa60_numsp20_opmin10000.csv": "56939c70bc3962c3684416fb5408ab873af3dba1dd8130e80056b4bda5a5f841"
+      }
+    },
+    "2_large": {
+      "passed": true,
+      "elapsed_seconds": 0.1603359000000637,
+      "configuration": {
+        "case_dir": "original_input\\2_large",
+        "time_step": 100,
+        "component": 1,
+        "span": 0.1,
+        "grid_resolution": 20,
+        "opening_threshold_m": 1e-05,
+        "orientation": "ZX",
+        "bounding_box_m": [
+          0.0,
+          0.05,
+          0.0,
+          0.05,
+          0.0,
+          0.05
+        ]
+      },
+      "comparisons": {
+        "xrange": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 4.85722573273506e-17,
+          "mean_error": -1.6046192152785466e-18,
+          "rmse": 2.418446553368389e-17,
+          "within_absolute_tolerance": true
+        },
+        "yrange": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 4.85722573273506e-17,
+          "mean_error": -1.6046192152785466e-18,
+          "rmse": 2.418446553368389e-17,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmin": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 2.0122792321330962e-16,
+          "mean_error": 3.5561831257524543e-19,
+          "rmse": 4.680443391148255e-17,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmax": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 1.5265566588595902e-16,
+          "mean_error": 2.688821387764051e-18,
+          "rmse": 4.3752188449258036e-17,
+          "within_absolute_tolerance": true
+        }
+      },
+      "physical_checks": {
+        "all_outputs_finite": true,
+        "nonnegative_opening": true,
+        "minimum_opening_m": 4.3646052435890315e-05,
+        "maximum_opening_m": 0.00010480355170474492,
+        "component_nodes": 847,
+        "eligible_components": 1
+      },
+      "source_sha256": {
+        "deap_post.h5": "d4997ce91632a887a094948d92b4e3aa1dee48e6d27ff630d4aecb116bbdae1d",
+        "deap_output.h5": "1eb2ba45d984475c3c51968a98f4cebb0214241733473014865a652b755e4cdd",
+        "mesh_combination\\xrange_ti100_crpa1_smfa10_numsp20_opmin10000.csv": "d36a7f933d0496bdc09ed33d91fa8e3d810d62202f38307588e5d5805b1089e2",
+        "mesh_combination\\yrange_ti100_crpa1_smfa10_numsp20_opmin10000.csv": "e513ff2c2b5064f8979fe2484e5c05c1d9881f2b3d389fa713f08aee0a9a252a",
+        "mesh_combination\\zfit_zmin_ti100_crpa1_smfa10_numsp20_opmin10000.csv": "a465b59eac45617d5975891e47445247f01f575de6b033d42a6d387c5787e4ce",
+        "mesh_combination\\zfit_zmax_ti100_crpa1_smfa10_numsp20_opmin10000.csv": "406ae819dc72dbc3ad26ee03826f694c8951fd38dce74b4b9a95c2499dec107c"
+      }
+    },
+    "3_rebar": {
+      "passed": true,
+      "elapsed_seconds": 0.1441235999809578,
+      "configuration": {
+        "case_dir": "original_input\\3_rebar",
+        "time_step": 50,
+        "component": 1,
+        "span": 0.05,
+        "grid_resolution": 20,
+        "opening_threshold_m": 2e-05,
+        "orientation": "YZ",
+        "bounding_box_m": [
+          0.0,
+          0.05,
+          0.0,
+          0.05,
+          0.0,
+          0.05
+        ]
+      },
+      "comparisons": {
+        "xrange": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 4.85722573273506e-17,
+          "mean_error": -1.6046192152785466e-18,
+          "rmse": 2.418446553368389e-17,
+          "within_absolute_tolerance": true
+        },
+        "yrange": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 4.85722573273506e-17,
+          "mean_error": -1.6046192152785466e-18,
+          "rmse": 2.418446553368389e-17,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmin": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 3.5388358909926865e-16,
+          "mean_error": -1.2646134139870924e-17,
+          "rmse": 8.832690008235816e-17,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmax": {
+          "shape": [
+            20,
+            20
+          ],
+          "finite_values": 400,
+          "value_count": 400,
+          "max_abs_error": 3.885780586188048e-16,
+          "mean_error": -1.1882855810441128e-17,
+          "rmse": 8.365612909654091e-17,
+          "within_absolute_tolerance": true
+        }
+      },
+      "physical_checks": {
+        "all_outputs_finite": true,
+        "nonnegative_opening": true,
+        "minimum_opening_m": 4.981690528791521e-06,
+        "maximum_opening_m": 5.1695998629433526e-05,
+        "component_nodes": 687,
+        "eligible_components": 1
+      },
+      "source_sha256": {
+        "deap_post.h5": "88d1a1e26b0fe5a467bb6b1e6610a87c6edf3204d44db6214ee21aebfc4128b2",
+        "deap_output.h5": "2f2a5044f983d256d6dda600f156b763a12658c3f2e5a7708575f7033a228955",
+        "mesh_combination\\xrange_ti50_crpa1_smfa5_numsp20_opmin20000.csv": "d36a7f933d0496bdc09ed33d91fa8e3d810d62202f38307588e5d5805b1089e2",
+        "mesh_combination\\yrange_ti50_crpa1_smfa5_numsp20_opmin20000.csv": "e513ff2c2b5064f8979fe2484e5c05c1d9881f2b3d389fa713f08aee0a9a252a",
+        "mesh_combination\\zfit_zmin_ti50_crpa1_smfa5_numsp20_opmin20000.csv": "117b927fab6f531533a5c51e0c3a0428aa0ab71ed434bdf7135319cf4ee49830",
+        "mesh_combination\\zfit_zmax_ti50_crpa1_smfa5_numsp20_opmin20000.csv": "4c33dd8b605c5cad00dec82873ca4c0e0f1074019c560b55ce69bd9f549035ec"
+      }
+    },
+    "4_brazilian": {
+      "passed": true,
+      "elapsed_seconds": 1.5180115999828558,
+      "configuration": {
+        "case_dir": "original_input\\4_brazilian",
+        "time_step": 85,
+        "component": 1,
+        "span": 0.05,
+        "grid_resolution": 50,
+        "opening_threshold_m": 1e-06,
+        "orientation": "YZ",
+        "bounding_box_m": [
+          -0.055,
+          0.055,
+          -0.055,
+          0.055,
+          0.0,
+          0.05
+        ]
+      },
+      "comparisons": {
+        "xrange": {
+          "shape": [
+            50,
+            110
+          ],
+          "finite_values": 5500,
+          "value_count": 5500,
+          "max_abs_error": 5.204170427930421e-17,
+          "mean_error": -1.8924256101565167e-18,
+          "rmse": 2.5885219789359336e-17,
+          "within_absolute_tolerance": true
+        },
+        "yrange": {
+          "shape": [
+            50,
+            110
+          ],
+          "finite_values": 5500,
+          "value_count": 5500,
+          "max_abs_error": 4.85722573273506e-17,
+          "mean_error": -1.470178145890344e-18,
+          "rmse": 2.4924334160336572e-17,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmin": {
+          "shape": [
+            50,
+            110
+          ],
+          "finite_values": 5500,
+          "value_count": 5500,
+          "max_abs_error": 4.548444954011188e-15,
+          "mean_error": 7.491870642932992e-18,
+          "rmse": 2.398591668609107e-16,
+          "within_absolute_tolerance": true
+        },
+        "zfit_zmax": {
+          "shape": [
+            50,
+            110
+          ],
+          "finite_values": 5500,
+          "value_count": 5500,
+          "max_abs_error": 3.606056425686788e-15,
+          "mean_error": 6.348012921760555e-18,
+          "rmse": 2.374402306269602e-16,
+          "within_absolute_tolerance": true
+        }
+      },
+      "physical_checks": {
+        "all_outputs_finite": true,
+        "nonnegative_opening": true,
+        "minimum_opening_m": 0.0,
+        "maximum_opening_m": 6.763333408818517e-05,
+        "component_nodes": 2051,
+        "eligible_components": 20
+      },
+      "source_sha256": {
+        "deap_post.h5": "5de74ed4781eb7b51a398e9d0c42b49f376af76d2d2453b4aac9dcf19c901201",
+        "deap_output.h5": "e941af4d6d7e0a2a304e81042a793b29bc94a203863d868ad724f24eab43d376",
+        "mesh_combination\\xrange_ti85_crpa1_smfa5_numsp50_opmin1000.csv": "502560c0b90e93d022bda04d2aeabc1b123cff5ea96e37e0f28ed76a655dd8ed",
+        "mesh_combination\\yrange_ti85_crpa1_smfa5_numsp50_opmin1000.csv": "40aa9fd7c6bb69b721c0c175f12cbe3abd940f3ac196f923e68685901c0f50d5",
+        "mesh_combination\\zfit_zmin_ti85_crpa1_smfa5_numsp50_opmin1000.csv": "89f2de386e510a44f05db2947f48345dc24356fc8139d701d58d0a1c5a6c36ae",
+        "mesh_combination\\zfit_zmax_ti85_crpa1_smfa5_numsp50_opmin1000.csv": "bb1e6740385815a8ddaf03217b1972ab13ca74fb02f7eb77dab86e10205a75ac"
+      }
+    }
+  },
+  "limitations": [
+    "Validation covers the four archived parameter sets and largest connected component (component 1).",
+    "The comparison references are the existing MATLAB-derived CSV files; MATLAB is not called by this validator.",
+    "Cast3M/Gmsh integration is intentionally outside this standalone phase."
+  ]
+}

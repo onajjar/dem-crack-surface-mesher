@@ -1,0 +1,2702 @@
+"""Scientific workbench UI for crack reconstruction, meshing, and FISS.
+
+This is the single supported launcher for the enhanced workflow. It reuses the
+baseline FISS workflow without modifying immutable baseline sources. Users can
+choose the Cast3M reference paths or a source-free NumPy HEXA8 backend that
+does not require a DGIBI mesh source, Cast3M, or Gmsh.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+import os
+import subprocess
+import sys
+import threading
+import time
+import tkinter as tk
+import webbrowser
+from configparser import ConfigParser
+from dataclasses import dataclass
+from pathlib import Path
+from tkinter import messagebox, ttk
+
+import castem_pipeline_gui_t13 as baseline
+from castem_pipeline_gui_python_holes import (
+    PythonHoleInterpolationApp,
+    archive_existing_mesh_outputs,
+    existing_mesh_outputs,
+    missing_mesh_outputs,
+)
+from chamber_geometry import (
+    ChamberParameters,
+    chambers_from_params,
+)
+from characterization_gui import CharacterizationPanel
+from dataset_naming import parse_csv_set_metadata
+from python_hole_interpolation import (
+    HoleGeometry,
+    detect_hole_rings,
+    hole_boundary_vertices,
+    normalize_hole_geometry,
+    radial_layer_fractions,
+)
+from python_volume_mesher import write_python_mesh_outputs
+from stl_export import export_boundary_bdfs_to_stl
+from surface_generation import SurfaceGrid, SurfaceSource, build_surface_grid, write_surface_grid
+
+ROOT = Path(__file__).resolve().parent
+DEFAULT_MESH_TEMPLATE = ROOT / "source_codes" / "castem_tool.dgibi"
+DEFAULT_FISS_TEMPLATE = ROOT / "source_codes" / "fuite_fissure.dgibi"
+DOCUMENTED_INPUT = ROOT / "examples" / "input"
+DOCUMENTED_CONFIG = ROOT / "examples" / "multiple-holes" / "parameters.json"
+DEAP_EXAMPLE_CONFIG = ROOT / "examples" / "deap" / "1_simple" / "run.ini"
+COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
+ARTICLE_URL = "https://doi.org/10.1016/j.nucengdes.2025.114718"
+DEFAULT_SOLVER_MODE = "python_only"
+SHAPE_GALLERY = (
+    HoleGeometry("circle", -0.25, 0.25, radius=0.045),
+    HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
+    HoleGeometry("triangle", -0.25, -0.23, side_length=0.10, rotation_degrees=-10.0),
+    HoleGeometry("regular_polygon", 0.23, -0.23, radius=0.055, sides=6, rotation_degrees=30.0),
+)
+
+
+@dataclass
+class HoleShapeRow:
+    shape: tk.StringVar
+    cx: tk.StringVar
+    cy: tk.StringVar
+    primary: tk.StringVar
+    secondary: tk.StringVar
+    rotation: tk.StringVar
+    proxy_radius: tk.StringVar
+    shape_widget: ttk.Combobox
+    cx_entry: ttk.Entry
+    cy_entry: ttk.Entry
+    primary_label: ttk.Label
+    primary_entry: ttk.Entry
+    secondary_label: ttk.Label
+    secondary_entry: ttk.Entry
+    rotation_label: ttk.Label
+    rotation_entry: ttk.Entry
+    widgets: tuple[tk.Widget, ...]
+
+
+class ScientificApp(PythonHoleInterpolationApp):
+    """A task-oriented Tk workbench built on the established solver backend."""
+
+    COLORS = {
+        "navy": "#0f2742",
+        "blue": "#1668a8",
+        "teal": "#0f766e",
+        "teal_dark": "#0b5b55",
+        "amber": "#b45309",
+        "surface": "#f4f7fb",
+        "card": "#ffffff",
+        "ink": "#10233f",
+        "muted": "#5d6d82",
+        "line": "#d8e1ec",
+        "success": "#087e6b",
+        "danger": "#b42318",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.dgibi_var.set(str(DEFAULT_MESH_TEMPLATE))
+        self.fiss_dgibi_var.set(str(DEFAULT_FISS_TEMPLATE))
+        self.title("Cast3M Crack Meshing Workbench")
+        self.geometry("1440x900")
+        self.minsize(1120, 720)
+        # A scientific workbench should not open a separate viewer unexpectedly.
+        self.opti_visu_var.set(False)
+        self._set_status("Ready for input", "neutral")
+
+    # ------------------------------------------------------------------
+    # Theme and layout
+    # ------------------------------------------------------------------
+
+    def _configure_theme(self) -> None:
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        c = self.COLORS
+        self.configure(background=c["surface"])
+        style.configure("Scientific.TFrame", background=c["surface"])
+        style.configure("Card.TFrame", background=c["card"])
+        style.configure("Header.TFrame", background=c["navy"])
+        style.configure("Scientific.TLabel", background=c["surface"], foreground=c["ink"], font=("Segoe UI", 10))
+        style.configure("Card.TLabel", background=c["card"], foreground=c["ink"], font=("Segoe UI", 10))
+        style.configure("Muted.TLabel", background=c["surface"], foreground=c["muted"], font=("Segoe UI", 9))
+        style.configure("Citation.TLabel", background=c["surface"], foreground=c["muted"], font=("Segoe UI", 8))
+        style.configure("CitationLink.TLabel", background=c["surface"], foreground=c["blue"], font=("Segoe UI", 8, "underline"))
+        style.configure("CardMuted.TLabel", background=c["card"], foreground=c["muted"], font=("Segoe UI", 9))
+        style.configure("Hero.TLabel", background=c["navy"], foreground="#ffffff", font=("Segoe UI Semibold", 21))
+        style.configure("HeroSub.TLabel", background=c["navy"], foreground="#d7e7f7", font=("Segoe UI", 10))
+        style.configure("Status.TLabel", background=c["navy"], foreground="#ffffff", font=("Segoe UI Semibold", 10))
+        style.configure("Section.TLabelframe", background=c["card"], bordercolor=c["line"], relief="solid")
+        style.configure("Section.TLabelframe.Label", background=c["card"], foreground=c["navy"], font=("Segoe UI Semibold", 10))
+        style.configure("Scientific.TEntry", fieldbackground="#ffffff", foreground=c["ink"], padding=6)
+        style.configure("Scientific.TCombobox", fieldbackground="#ffffff", foreground=c["ink"], padding=5)
+        style.configure("Card.TCheckbutton", background=c["card"], foreground=c["ink"], font=("Segoe UI", 9))
+        style.map("Card.TCheckbutton", background=[("active", c["card"])])
+        style.configure("Primary.TButton", background=c["teal"], foreground="#ffffff", borderwidth=0, padding=(14, 8), font=("Segoe UI Semibold", 10))
+        style.map("Primary.TButton", background=[("active", c["teal_dark"]), ("disabled", "#95bcb8")])
+        style.configure("Accent.TButton", background=c["blue"], foreground="#ffffff", borderwidth=0, padding=(12, 7), font=("Segoe UI Semibold", 9))
+        style.map("Accent.TButton", background=[("active", "#125587")])
+        style.configure("Quiet.TButton", background=c["card"], foreground=c["blue"], bordercolor=c["line"], padding=(10, 6))
+        style.map("Quiet.TButton", background=[("active", "#e8f1f8")])
+        style.configure("Scientific.TNotebook", background=c["surface"], borderwidth=0)
+        style.configure("Scientific.TNotebook.Tab", background="#e7edf5", foreground=c["muted"], padding=(17, 9), font=("Segoe UI Semibold", 10))
+        style.map("Scientific.TNotebook.Tab", background=[("selected", c["card"]), ("active", "#dce8f3")], foreground=[("selected", c["navy"])])
+        style.configure("Scientific.Horizontal.TProgressbar", troughcolor="#e5edf4", background=c["teal"], bordercolor="#e5edf4", lightcolor=c["teal"], darkcolor=c["teal"])
+
+    def _build_ui(self, parent) -> None:  # called by baseline.App.__init__
+        self._configure_theme()
+        self._suspend_dirty = True
+        self._active_operation: str | None = None
+        self._process_started = False
+        self._active_mesh_params = None
+        self._validated_surface_source: SurfaceSource | None = None
+        self._validated_surface_grid: SurfaceGrid | None = None
+        self.status_var = tk.StringVar(value="Initializing")
+        self.status_tone = "neutral"
+        self.solver_mode_var = tk.StringVar(value=DEFAULT_SOLVER_MODE)
+        self.context_var = tk.StringVar(value="Active mode: Python-only HEXA8")
+        self.input_summary_var = tk.StringVar(value="Select or generate a structured crack surface, then validate the configuration.")
+        self.method_summary_var = tk.StringVar()
+        self.run_summary_var = tk.StringVar(value="No run has been started in this session.")
+        self.surface_mode_var = tk.StringVar(value="CSV files")
+        self.deap_orientation_var = tk.StringVar(value="ZX")
+        self.deap_magnification_var = tk.StringVar(value="1.0")
+        self.deap_bounding_box_var = tk.StringVar(value="")
+        self.fractal_parameter_var = tk.StringVar(value="Hurst exponent H")
+        self.fractal_value_var = tk.StringVar(value="0.8")
+        self.fractal_value_y_var = tk.StringVar(value="0.8")
+        self.fractal_relation_var = tk.StringVar(value="Dx = 2.2; Dy = 2.2")
+        self.surface_points_x_var = tk.StringVar(value="50")
+        self.surface_points_y_var = tk.StringVar(value="50")
+        self.surface_size_x_var = tk.StringVar(value="1.2")
+        self.surface_size_y_var = tk.StringVar(value="0.9")
+        self.surface_center_x_var = tk.StringVar(value="0.0")
+        self.surface_center_y_var = tk.StringVar(value="0.0")
+        self.fractal_rms_height_var = tk.StringVar(value="5e-5")
+        self.fractal_upper_rms_height_var = tk.StringVar(value="5e-5")
+        self.fractal_aperture_var = tk.StringVar(value="2e-4")
+        self.fractal_minimum_aperture_var = tk.StringVar(value="1e-12")
+        self.fractal_wall_correlation_var = tk.StringVar(value="1.0")
+        self.fractal_rolloff_x_var = tk.StringVar(value="")
+        self.fractal_rolloff_y_var = tk.StringVar(value="")
+        self.fractal_distribution_var = tk.StringVar(value="Gaussian")
+        self.fractal_lognormal_shape_var = tk.StringVar(value="0.75")
+        self.fractal_seed_var = tk.StringVar(value="20260721")
+        self.constant_zmin_var = tk.StringVar(value="0.0")
+        self.constant_zmax_var = tk.StringVar(value="2e-4")
+        self.characterization_enabled_var = tk.BooleanVar(value=False)
+        self.chambers_enabled_var = tk.BooleanVar(value=False)
+        self.chamber_height_var = tk.StringVar(value="0.20")
+        self.chamber_inlet_length_var = tk.StringVar(value="0.20")
+        self.chamber_outlet_length_var = tk.StringVar(value="0.20")
+        self.chamber_inlet_height_elements_var = tk.StringVar(value="10")
+        self.chamber_outlet_height_elements_var = tk.StringVar(value="10")
+        self.chamber_inlet_length_elements_var = tk.StringVar(value="10")
+        self.chamber_outlet_length_elements_var = tk.StringVar(value="10")
+        self.chamber_inlet_height_ratio_var = tk.StringVar(value="5.0")
+        self.chamber_outlet_height_ratio_var = tk.StringVar(value="5.0")
+        self.chamber_inlet_length_ratio_var = tk.StringVar(value="5.0")
+        self.chamber_outlet_length_ratio_var = tk.StringVar(value="5.0")
+
+        shell = ttk.Frame(parent, style="Scientific.TFrame")
+        shell.pack(fill="both", expand=True)
+
+        header = ttk.Frame(shell, style="Header.TFrame", padding=(24, 17))
+        header.pack(fill="x")
+        header.columnconfigure(0, weight=1)
+        ttk.Label(header, text="Crack Meshing Workbench", style="Hero.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            header,
+            text="CSV, Python-fitted DEAP, or synthetic surfaces → Python or Cast3M volume mesh → CFD-ready BDF",
+            style="HeroSub.TLabel",
+        ).grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.status_label = ttk.Label(header, textvariable=self.status_var, style="Status.TLabel", padding=(12, 6))
+        self.status_label.grid(row=0, column=1, rowspan=2, sticky="e")
+
+        toolbar = ttk.Frame(shell, style="Scientific.TFrame", padding=(20, 12, 20, 0))
+        toolbar.pack(fill="x")
+        ttk.Button(toolbar, text="Load documented example", style="Accent.TButton", command=self._load_documented_example).pack(side="left")
+        ttk.Button(
+            toolbar,
+            text="Python-only chamber example",
+            style="Quiet.TButton",
+            command=self._load_chamber_example,
+        ).pack(side="left", padx=(8, 0))
+        ttk.Button(
+            toolbar,
+            text="DEAP fitting example",
+            style="Quiet.TButton",
+            command=self._load_deap_example,
+        ).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Load all shape examples", style="Quiet.TButton", command=self._load_shape_gallery).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Fractal example", style="Quiet.TButton", command=self._load_fractal_example).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Planar example", style="Quiet.TButton", command=self._load_constant_example).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Validate inputs", style="Quiet.TButton", command=self._validate_inputs).pack(side="left", padx=(8, 0))
+        ttk.Label(toolbar, textvariable=self.context_var, style="Muted.TLabel").pack(side="right")
+
+        self.notebook = ttk.Notebook(shell, style="Scientific.TNotebook")
+        self.notebook.pack(fill="both", expand=True, padx=20, pady=(10, 5))
+        self.input_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
+        self.mesh_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
+        self.characterization_tab = ttk.Frame(
+            self.notebook,
+            style="Scientific.TFrame",
+            padding=14,
+        )
+        self.run_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
+        self.fiss_tab = ttk.Frame(self.notebook, style="Scientific.TFrame", padding=14)
+        self.notebook.add(self.input_tab, text="1  Geometry & inputs")
+        self.notebook.add(self.mesh_tab, text="2  Mesh & holes")
+        self.notebook.add(self.characterization_tab, text="3  Characterization")
+        self.notebook.add(self.run_tab, text="4  Run & results")
+        self.notebook.add(self.fiss_tab, text="FISS flow")
+
+        self._build_input_tab()
+        self._build_mesh_tab()
+        self._build_characterization_tab()
+        self._build_run_tab()
+        self._build_fiss_tab()
+
+        citation = ttk.Frame(shell, style="Scientific.TFrame")
+        citation.pack(fill="x", padx=20, pady=(0, 10))
+        ttk.Label(
+            citation,
+            text=(
+                "Scientific reference: Najjar et al. (2026), "
+                "Nuclear Engineering and Design 448, 114718 —"
+            ),
+            style="Citation.TLabel",
+        ).pack(side="left")
+        article_link = ttk.Label(
+            citation,
+            text="doi:10.1016/j.nucengdes.2025.114718",
+            style="CitationLink.TLabel",
+            cursor="hand2",
+        )
+        article_link.pack(side="left", padx=(4, 0))
+        article_link.bind("<Button-1>", self._open_article)
+
+        self._update_method_summary()
+        self._install_change_tracking()
+        self._suspend_dirty = False
+
+    @staticmethod
+    def _open_article(_event=None) -> None:
+        """Open the crack-reconstruction article in the default browser."""
+
+        webbrowser.open_new_tab(ARTICLE_URL)
+
+    def _card(self, parent, title: str, *, padding: int = 14) -> ttk.LabelFrame:
+        return ttk.LabelFrame(parent, text=title, style="Section.TLabelframe", padding=padding)
+
+    def _field(self, parent, row: int, column: int, label: str, variable, *, width: int = 14, note: str | None = None):
+        ttk.Label(parent, text=label, style="Card.TLabel").grid(row=row, column=column, sticky="w", padx=(0, 7), pady=5)
+        entry = ttk.Entry(parent, textvariable=variable, width=width, style="Scientific.TEntry")
+        entry.grid(row=row, column=column + 1, sticky="we", pady=5)
+        if note:
+            ttk.Label(parent, text=note, style="CardMuted.TLabel").grid(row=row + 1, column=column, columnspan=2, sticky="w")
+        return entry
+
+    def _path_row(
+        self,
+        parent,
+        row: int,
+        label: str,
+        variable,
+        browse_command,
+    ) -> tuple[ttk.Entry, ttk.Button]:
+        ttk.Label(parent, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", padx=(0, 9), pady=6)
+        entry = ttk.Entry(
+            parent,
+            textvariable=variable,
+            style="Scientific.TEntry",
+        )
+        entry.grid(row=row, column=1, sticky="we", pady=6)
+        browse_button = ttk.Button(
+            parent,
+            text="Browse",
+            style="Quiet.TButton",
+            command=browse_command,
+        )
+        browse_button.grid(row=row, column=2, padx=(8, 0), pady=6)
+        return entry, browse_button
+
+    def _build_input_tab(self) -> None:
+        tab = self.input_tab
+        tab.columnconfigure(0, weight=4)
+        tab.columnconfigure(1, weight=2)
+        tab.rowconfigure(1, weight=1)
+
+        setup = self._card(tab, "Run context")
+        setup.grid(row=0, column=0, sticky="ew", padx=(0, 10), pady=(0, 10))
+        setup.columnconfigure(1, weight=1)
+        dgibi_entry, dgibi_browse_button = self._path_row(
+            setup,
+            0,
+            "Cast3M DGIBI template (unused by Python-only)",
+            self.dgibi_var,
+            self._browse_dgibi,
+        )
+        self._path_row(setup, 1, "Working directory", self.workdir_var, self._browse_workdir)
+        castem_version_entry = self._field(
+            setup,
+            2,
+            0,
+            "Cast3M launcher version (unused by Python-only)",
+            self.castem_version_var,
+            width=11,
+        )
+        self._castem_mesh_widgets = (
+            dgibi_entry,
+            dgibi_browse_button,
+            castem_version_entry,
+        )
+        metadata = ttk.LabelFrame(
+            setup,
+            text="Dataset naming metadata — editable for DEAP fitting; derived for CSV",
+            style="Section.TLabelframe",
+            padding=10,
+        )
+        metadata.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        for column in (1, 3, 5):
+            metadata.columnconfigure(column, weight=1)
+        self._csv_metadata_entries = (
+            self._field(metadata, 0, 0, "Loading time step (re_ti)", self.re_ti_var, width=9),
+            self._field(metadata, 0, 2, "Chosen crack path (re_crpa)", self.re_crpa_var, width=9),
+            self._field(metadata, 0, 4, "Fitting smoothness (re_smfa)", self.re_smfa_var, width=9),
+            self._field(metadata, 1, 0, "Fitting grid points (re_numspa)", self.re_numspa_var, width=9),
+            self._field(metadata, 1, 2, "Crack opening threshold (re_opmin)", self.re_opmin_var, width=9),
+        )
+        self._csv_metadata_variables = (
+            self.re_ti_var,
+            self.re_crpa_var,
+            self.re_smfa_var,
+            self.re_numspa_var,
+            self.re_opmin_var,
+        )
+        self._csv_metadata_defaults = tuple(
+            variable.get() for variable in self._csv_metadata_variables
+        )
+
+        grids = self._card(tab, "Crack surface source")
+        grids.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
+        grids.columnconfigure(1, weight=1)
+        ttk.Label(grids, text="Source type", style="Card.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 9), pady=(0, 8))
+        self.surface_mode_combo = ttk.Combobox(
+            grids,
+            textvariable=self.surface_mode_var,
+            values=(
+                "CSV files",
+                "Fit DEAP results (Python)",
+                "Synthetic fractal",
+                "Constant Z planes",
+            ),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=25,
+        )
+        self.surface_mode_combo.grid(row=0, column=1, sticky="w", pady=(0, 8))
+        self.surface_mode_combo.bind("<<ComboboxSelected>>", self._on_surface_mode_change)
+
+        self.surface_frames: dict[str, ttk.Frame] = {}
+        csv_frame = ttk.Frame(grids, style="Card.TFrame")
+        csv_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        csv_frame.columnconfigure(1, weight=1)
+        self._path_row(csv_frame, 0, "X coordinate grid — xrange", self.csv_x_var, self._browse_csv_x)
+        self._path_row(csv_frame, 1, "Y coordinate grid — yrange", self.csv_y_var, self._browse_csv_y)
+        self._path_row(csv_frame, 2, "Upper surface — zfit_zmax", self.csv_zmax_var, self._browse_csv_zmax)
+        self._path_row(csv_frame, 3, "Lower surface — zfit_zmin", self.csv_zmin_var, self._browse_csv_zmin)
+        ttk.Label(
+            csv_frame,
+            text="Four equally sized, headerless comma-delimited numeric matrices.",
+            style="CardMuted.TLabel",
+        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self.surface_frames["csv"] = csv_frame
+
+        deap_frame = ttk.Frame(grids, style="Card.TFrame")
+        deap_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        for column in (1, 3):
+            deap_frame.columnconfigure(column, weight=1)
+        ttk.Label(deap_frame, text="Crack-plane orientation", style="Card.TLabel").grid(
+            row=0, column=0, sticky="w", padx=(0, 7), pady=5
+        )
+        ttk.Combobox(
+            deap_frame,
+            textvariable=self.deap_orientation_var,
+            values=("ZX", "XY", "YZ"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=10,
+        ).grid(row=0, column=1, sticky="w", pady=5)
+        self._field(
+            deap_frame,
+            0,
+            2,
+            "Displacement magnification",
+            self.deap_magnification_var,
+            width=12,
+        )
+        self._field(
+            deap_frame,
+            1,
+            0,
+            "Bounding box (optional)",
+            self.deap_bounding_box_var,
+            width=45,
+        )
+        ttk.Label(
+            deap_frame,
+            text=(
+                "Reads deap_post.h5 and deap_output.h5 from the working directory. "
+                "The naming metadata above supplies time step, component, LOESS span, "
+                "grid resolution, and opening threshold. Use six bounding-box values "
+                "only when input.boundary is absent."
+            ),
+            style="CardMuted.TLabel",
+            wraplength=760,
+            justify="left",
+        ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        self.surface_frames["deap"] = deap_frame
+
+        fractal_frame = ttk.Frame(grids, style="Card.TFrame")
+        fractal_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        for column in (1, 3, 5):
+            fractal_frame.columnconfigure(column, weight=1)
+        ttk.Label(fractal_frame, text="Exponent input", style="Card.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 7), pady=4)
+        self.fractal_parameter_combo = ttk.Combobox(
+            fractal_frame,
+            textvariable=self.fractal_parameter_var,
+            values=("Hurst exponent H", "Fractal dimension D"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=20,
+        )
+        self.fractal_parameter_combo.grid(row=0, column=1, sticky="we", pady=4)
+        self.fractal_parameter_combo.bind("<<ComboboxSelected>>", self._on_fractal_parameter_change)
+        self._field(fractal_frame, 0, 2, "X exponent", self.fractal_value_var, width=12)
+        self._field(
+            fractal_frame,
+            0,
+            4,
+            "Y exponent",
+            self.fractal_value_y_var,
+            width=12,
+        )
+        ttk.Label(
+            fractal_frame,
+            textvariable=self.fractal_relation_var,
+            style="CardMuted.TLabel",
+        ).grid(row=1, column=0, columnspan=6, sticky="w", pady=(0, 4))
+        self._field(fractal_frame, 2, 0, "Grid points X", self.surface_points_x_var, width=10)
+        self._field(fractal_frame, 2, 2, "Grid points Y", self.surface_points_y_var, width=10)
+        self._field(fractal_frame, 2, 4, "Random seed", self.fractal_seed_var, width=12)
+        self._field(fractal_frame, 3, 0, "Crack size X", self.surface_size_x_var, width=12)
+        self._field(fractal_frame, 3, 2, "Crack size Y", self.surface_size_y_var, width=12)
+        self._field(fractal_frame, 3, 4, "Mean aperture", self.fractal_aperture_var, width=12)
+        self._field(fractal_frame, 4, 0, "Center X", self.surface_center_x_var, width=12)
+        self._field(fractal_frame, 4, 2, "Center Y", self.surface_center_y_var, width=12)
+        self._field(
+            fractal_frame,
+            4,
+            4,
+            "Minimum aperture",
+            self.fractal_minimum_aperture_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            5,
+            0,
+            "Lower-wall RMS",
+            self.fractal_rms_height_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            5,
+            2,
+            "Upper-wall RMS",
+            self.fractal_upper_rms_height_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            5,
+            4,
+            "Wall correlation",
+            self.fractal_wall_correlation_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            6,
+            0,
+            "Roll-off wavelength X",
+            self.fractal_rolloff_x_var,
+            width=12,
+        )
+        self._field(
+            fractal_frame,
+            6,
+            2,
+            "Roll-off wavelength Y",
+            self.fractal_rolloff_y_var,
+            width=12,
+        )
+        ttk.Label(
+            fractal_frame,
+            text="Height distribution",
+            style="Card.TLabel",
+        ).grid(row=6, column=4, sticky="w", padx=(0, 7), pady=4)
+        self.fractal_distribution_combo = ttk.Combobox(
+            fractal_frame,
+            textvariable=self.fractal_distribution_var,
+            values=("Gaussian", "Uniform", "Laplace", "Lognormal"),
+            state="readonly",
+            style="Scientific.TCombobox",
+            width=12,
+        )
+        self.fractal_distribution_combo.grid(row=6, column=5, sticky="we", pady=4)
+        self.fractal_distribution_combo.bind(
+            "<<ComboboxSelected>>",
+            self._on_fractal_distribution_change,
+        )
+        self.fractal_lognormal_shape_entry = self._field(
+            fractal_frame,
+            7,
+            0,
+            "Lognormal shape",
+            self.fractal_lognormal_shape_var,
+            width=12,
+        )
+        ttk.Label(
+            fractal_frame,
+            text=(
+                "Directional spectral synthesis supports roll-off and non-Gaussian "
+                "marginals. Correlation 1 with equal RMS values gives parallel walls; "
+                "correlation 0 gives independent roughness. Both roll-off fields are "
+                "blank to disable roll-off."
+            ),
+            style="CardMuted.TLabel",
+            wraplength=850,
+            justify="left",
+        ).grid(row=8, column=0, columnspan=6, sticky="w", pady=(8, 0))
+        self.surface_frames["fractal"] = fractal_frame
+        self._refresh_fractal_distribution_controls()
+
+        constant_frame = ttk.Frame(grids, style="Card.TFrame")
+        constant_frame.grid(row=1, column=0, columnspan=3, sticky="nsew")
+        for column in (1, 3):
+            constant_frame.columnconfigure(column, weight=1)
+        self._field(constant_frame, 0, 0, "Grid points X", self.surface_points_x_var, width=12)
+        self._field(constant_frame, 0, 2, "Grid points Y", self.surface_points_y_var, width=12)
+        self._field(constant_frame, 1, 0, "Crack size X", self.surface_size_x_var, width=12)
+        self._field(constant_frame, 1, 2, "Crack size Y", self.surface_size_y_var, width=12)
+        self._field(constant_frame, 2, 0, "Center X", self.surface_center_x_var, width=12)
+        self._field(constant_frame, 2, 2, "Center Y", self.surface_center_y_var, width=12)
+        self._field(constant_frame, 3, 0, "Constant lower Z", self.constant_zmin_var, width=12)
+        self._field(constant_frame, 3, 2, "Constant upper Z", self.constant_zmax_var, width=12)
+        ttk.Label(
+            constant_frame,
+            text="Both planes have no fluctuations. Upper Z must exceed lower Z to create a non-zero Cast3M volume.",
+            style="CardMuted.TLabel",
+        ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        self.surface_frames["constant"] = constant_frame
+        self._refresh_surface_mode()
+
+        quality = self._card(tab, "Input quality")
+        quality.grid(row=0, column=1, rowspan=2, sticky="nsew")
+        quality.columnconfigure(0, weight=1)
+        ttk.Label(quality, text="Pre-flight summary", style="Card.TLabel", font=("Segoe UI Semibold", 11)).grid(row=0, column=0, sticky="w")
+        ttk.Separator(quality, orient="horizontal").grid(row=1, column=0, sticky="ew", pady=10)
+        ttk.Label(quality, textvariable=self.input_summary_var, style="CardMuted.TLabel", wraplength=300, justify="left").grid(row=2, column=0, sticky="nw")
+        ttk.Button(quality, text="Validate inputs", style="Accent.TButton", command=self._validate_inputs).grid(row=3, column=0, sticky="ew", pady=(18, 8))
+        ttk.Button(quality, text="Preview surface & holes", style="Quiet.TButton", command=self._preview_geometry).grid(row=4, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(
+            quality,
+            text="Pre-flight reads inputs and resolves the selected Cast3M launcher; it does not run Cast3M or change files.",
+            style="CardMuted.TLabel",
+            wraplength=300,
+            justify="left",
+        ).grid(row=5, column=0, sticky="sw")
+
+    @staticmethod
+    def _surface_mode_key(value: str) -> str:
+        return {
+            "CSV files": "csv",
+            "Fit DEAP results (Python)": "deap",
+            "Synthetic fractal": "fractal",
+            "Constant Z planes": "constant",
+        }.get(value.strip(), value.strip().lower())
+
+    def _refresh_surface_mode(self) -> None:
+        if not hasattr(self, "surface_frames"):
+            return
+        selected = self._surface_mode_key(self.surface_mode_var.get())
+        for mode, frame in self.surface_frames.items():
+            if mode == selected:
+                frame.grid()
+            else:
+                frame.grid_remove()
+        metadata_state = "normal" if selected == "deap" else "disabled"
+        if selected == "csv":
+            self._sync_csv_metadata(require_complete=False)
+        elif selected != "deap":
+            for variable, default in zip(
+                self._csv_metadata_variables, self._csv_metadata_defaults
+            ):
+                variable.set(default)
+        for entry in self._csv_metadata_entries:
+            entry.configure(state=metadata_state)
+        self._update_fractal_relation()
+
+    def _csv_surface_paths(self) -> tuple[Path, Path, Path, Path]:
+        return (
+            Path(self.csv_x_var.get().strip()).expanduser(),
+            Path(self.csv_y_var.get().strip()).expanduser(),
+            Path(self.csv_zmin_var.get().strip()).expanduser(),
+            Path(self.csv_zmax_var.get().strip()).expanduser(),
+        )
+
+    def _sync_csv_metadata(self, *, require_complete: bool) -> None:
+        if self._surface_mode_key(self.surface_mode_var.get()) != "csv":
+            return
+        raw_paths = (
+            self.csv_x_var.get().strip(),
+            self.csv_y_var.get().strip(),
+            self.csv_zmin_var.get().strip(),
+            self.csv_zmax_var.get().strip(),
+        )
+        if not all(raw_paths):
+            if require_complete:
+                raise ValueError(
+                    "Select all four CSV files before deriving dataset metadata."
+                )
+            return
+        metadata = parse_csv_set_metadata(raw_paths)
+        suspended = self._suspend_dirty
+        self._suspend_dirty = True
+        try:
+            for variable, value in zip(
+                self._csv_metadata_variables, metadata.ui_values, strict=True
+            ):
+                variable.set(value)
+        finally:
+            self._suspend_dirty = suspended
+
+    def _on_csv_path_change(self, *_args) -> None:
+        if self._suspend_dirty:
+            return
+        try:
+            self._sync_csv_metadata(require_complete=False)
+        except ValueError:
+            # Validation presents the precise filename or consistency error.
+            pass
+
+    def _on_surface_mode_change(self, _event=None) -> None:
+        self._refresh_surface_mode()
+        self._mark_dirty()
+
+    def _on_fractal_parameter_change(self, _event=None) -> None:
+        for variable in (self.fractal_value_var, self.fractal_value_y_var):
+            try:
+                variable.set(f"{3.0 - baseline.parse_float(variable.get()):.12g}")
+            except (TypeError, ValueError):
+                pass
+        self._update_fractal_relation()
+        self._mark_dirty()
+
+    def _update_fractal_relation(self, *_args) -> None:
+        try:
+            value_x = baseline.parse_float(self.fractal_value_var.get())
+            value_y = baseline.parse_float(self.fractal_value_y_var.get())
+            if self.fractal_parameter_var.get() == "Hurst exponent H":
+                if not 0.0 < value_x < 1.0 or not 0.0 < value_y < 1.0:
+                    raise ValueError
+                self.fractal_relation_var.set(
+                    f"Dx = {3.0 - value_x:.6g}; Dy = {3.0 - value_y:.6g}"
+                )
+            else:
+                if not 2.0 < value_x < 3.0 or not 2.0 < value_y < 3.0:
+                    raise ValueError
+                self.fractal_relation_var.set(
+                    f"Hx = {3.0 - value_x:.6g}; Hy = {3.0 - value_y:.6g}"
+                )
+        except (TypeError, ValueError):
+            self.fractal_relation_var.set(
+                "Use 0 < Hx, Hy < 1 or 2 < Dx, Dy < 3"
+            )
+
+    def _on_fractal_distribution_change(self, _event=None) -> None:
+        self._refresh_fractal_distribution_controls()
+        self._mark_dirty()
+
+    def _refresh_fractal_distribution_controls(self) -> None:
+        if not hasattr(self, "fractal_lognormal_shape_entry"):
+            return
+        state = (
+            "normal"
+            if self.fractal_distribution_var.get().strip().lower() == "lognormal"
+            else "disabled"
+        )
+        self.fractal_lognormal_shape_entry.configure(state=state)
+
+    def _surface_source_from_ui(self) -> SurfaceSource:
+        mode = self._surface_mode_key(self.surface_mode_var.get())
+        if mode == "csv":
+            self._sync_csv_metadata(require_complete=True)
+            return SurfaceSource(
+                mode="csv",
+                csv_x=Path(self.csv_x_var.get().strip()).expanduser(),
+                csv_y=Path(self.csv_y_var.get().strip()).expanduser(),
+                csv_zmin=Path(self.csv_zmin_var.get().strip()).expanduser(),
+                csv_zmax=Path(self.csv_zmax_var.get().strip()).expanduser(),
+            )
+        if mode == "deap":
+            bounding_box_raw = self.deap_bounding_box_var.get().strip()
+            bounding_box = None
+            if bounding_box_raw:
+                parts = [
+                    part
+                    for part in bounding_box_raw.replace(",", " ").split()
+                    if part
+                ]
+                if len(parts) != 6:
+                    raise ValueError(
+                        "DEAP bounding box requires Xmin Xmax Ymin Ymax Zmin Zmax."
+                    )
+                bounding_box = tuple(baseline.parse_float(part) for part in parts)
+            return SurfaceSource(
+                mode="deap",
+                deap_results_dir=self._preflight_workdir(),
+                deap_time_step=int(self.re_ti_var.get().strip()),
+                deap_component=int(self.re_crpa_var.get().strip()),
+                deap_span=baseline.parse_float(self.re_smfa_var.get()),
+                deap_grid_resolution=int(self.re_numspa_var.get().strip()),
+                deap_opening_threshold=baseline.parse_float(self.re_opmin_var.get()),
+                deap_orientation=self.deap_orientation_var.get().strip().upper(),
+                deap_magnification=baseline.parse_float(
+                    self.deap_magnification_var.get()
+                ),
+                deap_bounding_box=bounding_box,
+            )
+        common = {
+            "mode": mode,
+            "points_x": int(self.surface_points_x_var.get().strip()),
+            "points_y": int(self.surface_points_y_var.get().strip()),
+            "size_x": baseline.parse_float(self.surface_size_x_var.get()),
+            "size_y": baseline.parse_float(self.surface_size_y_var.get()),
+            "center_x": baseline.parse_float(self.surface_center_x_var.get()),
+            "center_y": baseline.parse_float(self.surface_center_y_var.get()),
+        }
+        if mode == "fractal":
+            value_x = baseline.parse_float(self.fractal_value_var.get())
+            value_y = baseline.parse_float(self.fractal_value_y_var.get())
+            uses_hurst = self.fractal_parameter_var.get() == "Hurst exponent H"
+
+            def optional_number(variable: tk.StringVar) -> float | None:
+                raw = variable.get().strip()
+                return baseline.parse_float(raw) if raw else None
+
+            return SurfaceSource(
+                **common,
+                hurst_exponent=None,
+                fractal_dimension=None,
+                hurst_exponent_x=value_x if uses_hurst else 3.0 - value_x,
+                hurst_exponent_y=value_y if uses_hurst else 3.0 - value_y,
+                rms_height=baseline.parse_float(self.fractal_rms_height_var.get()),
+                lower_wall_rms=baseline.parse_float(
+                    self.fractal_rms_height_var.get()
+                ),
+                upper_wall_rms=baseline.parse_float(
+                    self.fractal_upper_rms_height_var.get()
+                ),
+                mean_aperture=baseline.parse_float(self.fractal_aperture_var.get()),
+                minimum_aperture=baseline.parse_float(
+                    self.fractal_minimum_aperture_var.get()
+                ),
+                wall_correlation=baseline.parse_float(
+                    self.fractal_wall_correlation_var.get()
+                ),
+                rolloff_wavelength_x=optional_number(self.fractal_rolloff_x_var),
+                rolloff_wavelength_y=optional_number(self.fractal_rolloff_y_var),
+                height_distribution=self.fractal_distribution_var.get(),
+                lognormal_shape=baseline.parse_float(
+                    self.fractal_lognormal_shape_var.get()
+                ),
+                random_seed=int(self.fractal_seed_var.get().strip()),
+            )
+        return SurfaceSource(
+            **common,
+            hurst_exponent=None,
+            constant_zmin=baseline.parse_float(self.constant_zmin_var.get()),
+            constant_zmax=baseline.parse_float(self.constant_zmax_var.get()),
+        )
+
+    def _surface_grid_from_ui(self) -> SurfaceGrid:
+        source = self._surface_source_from_ui()
+        if source == self._validated_surface_source and self._validated_surface_grid is not None:
+            return self._validated_surface_grid
+        return build_surface_grid(source)
+
+    def _materialize_surface_inputs(self) -> SurfaceGrid:
+        """Write synthetic arrays to an isolated folder for the unchanged backend."""
+
+        source = self._surface_source_from_ui()
+        grid = (
+            self._validated_surface_grid
+            if source == self._validated_surface_source
+            and self._validated_surface_grid is not None
+            else build_surface_grid(source)
+        )
+        if source.normalized_mode == "csv":
+            return grid
+        workdir = self._preflight_workdir()
+        files = write_surface_grid(grid, workdir / "_generated_surface_inputs")
+        if source.normalized_mode == "deap":
+            report = {
+                "surface_mode": "deap",
+                "fit": grid.metadata,
+                "generated_files": [
+                    files.x.name,
+                    files.y.name,
+                    files.zmin.name,
+                    files.zmax.name,
+                ],
+            }
+            (files.x.parent / "deap-fit-report.json").write_text(
+                json.dumps(report, indent=2) + "\n", encoding="utf-8"
+            )
+        suspended = self._suspend_dirty
+        self._suspend_dirty = True
+        try:
+            self.csv_x_var.set(str(files.x))
+            self.csv_y_var.set(str(files.y))
+            self.csv_zmin_var.set(str(files.zmin))
+            self.csv_zmax_var.set(str(files.zmax))
+        finally:
+            self._suspend_dirty = suspended
+        self._log(
+            f"Generated {source.normalized_mode} surface CSV contract: "
+            f"{grid.shape[1]} x {grid.shape[0]} points in {files.x.parent}\n"
+        )
+        return grid
+
+    def _build_mesh_tab(self) -> None:
+        tab = self.mesh_tab
+        tab.columnconfigure(0, weight=1)
+        tab.columnconfigure(1, weight=1)
+        tab.rowconfigure(2, weight=1)
+
+        mesh = self._card(tab, "Volume discretization")
+        mesh.grid(row=0, column=0, sticky="ew", padx=(0, 9), pady=(0, 10))
+        for column in (1, 3):
+            mesh.columnconfigure(column, weight=1)
+        self._field(mesh, 0, 0, "Elements in X", self.nelem_x_var)
+        self._field(mesh, 0, 2, "Elements in Y", self.nelem_y_var)
+        self._field(mesh, 1, 0, "Elements through Z", self.nelem_z_var)
+        self._field(mesh, 1, 2, "Z inflation factor", self.re_fact_z_var)
+        self._field(mesh, 2, 0, "Geometric tolerance", self.re_tol_var, width=15)
+
+        exports = self._card(tab, "Outputs and solver mode")
+        exports.grid(row=0, column=1, sticky="ew", pady=(0, 10))
+        ttk.Checkbutton(exports, text="Merge BDF boundary and volume cards", variable=self.do_merge_var).grid(row=0, column=0, sticky="w", pady=3)
+        self.gmsh_checkbox = ttk.Checkbutton(
+            exports,
+            text="Open completed mesh in Gmsh (Cast3M modes only)",
+            variable=self.opti_visu_var,
+        )
+        self.gmsh_checkbox.grid(row=1, column=0, sticky="w", pady=3)
+        ttk.Checkbutton(exports, text="Export MED volume mesh", variable=self.opti_med_var).grid(row=2, column=0, sticky="w", pady=3)
+        ttk.Checkbutton(
+            exports,
+            text="Export STL surfaces (safe Python BDF conversion)",
+            variable=self.opti_stl_var,
+        ).grid(row=3, column=0, sticky="w", pady=3)
+        ttk.Separator(exports, orient="horizontal").grid(row=4, column=0, sticky="ew", pady=10)
+        ttk.Radiobutton(exports, text="Original T13 workflow — reference", value="baseline", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=5, column=0, sticky="w", pady=3)
+        ttk.Radiobutton(exports, text="Bulk Python holes + Cast3M volume", value="python", variable=self.solver_mode_var, command=self._on_solver_mode_change).grid(row=6, column=0, sticky="w", pady=3)
+        ttk.Radiobutton(
+            exports,
+            text="Python-only HEXA8 — no DGIBI, Cast3M, or Gmsh",
+            value="python_only",
+            variable=self.solver_mode_var,
+            command=self._on_solver_mode_change,
+        ).grid(row=7, column=0, sticky="w", pady=3)
+
+        chambers = self._card(tab, "Optional inlet and outlet chambers")
+        chambers.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        for column in (1, 3, 5):
+            chambers.columnconfigure(column, weight=1)
+        ttk.Checkbutton(
+            chambers,
+            text="Enable chambers at Ymin and Ymax",
+            variable=self.chambers_enabled_var,
+            command=self._on_chambers_toggle,
+            style="Card.TCheckbutton",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
+        ttk.Label(
+            chambers,
+            text=(
+                "The shared height is split equally above and below the crack. "
+                "Ratios >= 1 grade smaller cells toward the crack."
+            ),
+            style="CardMuted.TLabel",
+        ).grid(row=0, column=2, columnspan=4, sticky="e", pady=(0, 6))
+        self.chamber_entries = (
+            self._field(
+                chambers,
+                1,
+                0,
+                "Shared height (Hch)",
+                self.chamber_height_var,
+            ),
+            self._field(
+                chambers,
+                1,
+                2,
+                "Inlet length (Lin)",
+                self.chamber_inlet_length_var,
+            ),
+            self._field(
+                chambers,
+                1,
+                4,
+                "Outlet length (Lout)",
+                self.chamber_outlet_length_var,
+            ),
+            self._field(
+                chambers,
+                2,
+                0,
+                "Inlet height cells (Nhin)",
+                self.chamber_inlet_height_elements_var,
+            ),
+            self._field(
+                chambers,
+                2,
+                2,
+                "Outlet height cells (Nhout)",
+                self.chamber_outlet_height_elements_var,
+            ),
+            self._field(
+                chambers,
+                2,
+                4,
+                "Inlet length cells (Nlin)",
+                self.chamber_inlet_length_elements_var,
+            ),
+            self._field(
+                chambers,
+                3,
+                0,
+                "Outlet length cells (Nlout)",
+                self.chamber_outlet_length_elements_var,
+            ),
+            self._field(
+                chambers,
+                3,
+                2,
+                "Inlet height ratio (Rhin)",
+                self.chamber_inlet_height_ratio_var,
+            ),
+            self._field(
+                chambers,
+                3,
+                4,
+                "Outlet height ratio (Rhout)",
+                self.chamber_outlet_height_ratio_var,
+            ),
+            self._field(
+                chambers,
+                4,
+                0,
+                "Inlet length ratio (Rlin)",
+                self.chamber_inlet_length_ratio_var,
+            ),
+            self._field(
+                chambers,
+                4,
+                2,
+                "Outlet length ratio (Rlout)",
+                self.chamber_outlet_length_ratio_var,
+            ),
+        )
+        ttk.Label(
+            chambers,
+            text="Native Cast3M option: opti_chamb in the single mesh source.",
+            style="CardMuted.TLabel",
+        ).grid(row=4, column=4, columnspan=2, sticky="w", padx=(8, 0))
+
+        holes = self._card(tab, "Hole shapes / internal boundaries")
+        holes.grid(row=2, column=0, columnspan=2, sticky="nsew")
+        holes.columnconfigure(7, weight=1)
+        ttk.Checkbutton(holes, text="Enable holes", variable=self.holes_enabled_var, command=self._on_holes_toggle).grid(row=0, column=0, sticky="w", pady=(0, 7))
+        ttk.Button(holes, text="Add hole", style="Quiet.TButton", command=self._add_hole_row).grid(row=0, column=1, padx=(8, 0), pady=(0, 7))
+        ttk.Button(holes, text="Remove last", style="Quiet.TButton", command=self._remove_hole_row).grid(row=0, column=2, padx=(8, 0), pady=(0, 7))
+        ttk.Label(holes, textvariable=self.method_summary_var, style="CardMuted.TLabel", wraplength=620, justify="left").grid(row=0, column=3, columnspan=5, sticky="e", padx=(20, 0), pady=(0, 7))
+        ttk.Separator(holes, orient="horizontal").grid(row=1, column=0, columnspan=8, sticky="ew", pady=(0, 10))
+        self._field(holes, 2, 0, "Radial fill cells", self.num_el_fill_var)
+        self._field(holes, 2, 2, "Outer / inner cell ratio", self.re_fact_hole_var)
+        ttk.Label(
+            holes,
+            text="Inflation definition: Δr outer / Δr hole = ratio. Hole coordinates use the CSV coordinate units.",
+            style="CardMuted.TLabel",
+        ).grid(row=3, column=0, columnspan=7, sticky="w", pady=(4, 0))
+        ttk.Label(holes, text="Hole", style="CardMuted.TLabel").grid(row=4, column=0, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Shape", style="CardMuted.TLabel").grid(row=4, column=1, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Center X", style="CardMuted.TLabel").grid(row=4, column=2, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Center Y", style="CardMuted.TLabel").grid(row=4, column=3, sticky="w", pady=(10, 2))
+        ttk.Label(holes, text="Shape parameters", style="CardMuted.TLabel").grid(row=4, column=4, columnspan=3, sticky="w", pady=(10, 2))
+        profile = ttk.Frame(holes, style="Card.TFrame")
+        profile.grid(row=2, column=7, rowspan=8, sticky="ne", padx=(22, 6), pady=(0, 4))
+        ttk.Label(profile, text="Normalized inflation profile", style="Card.TLabel", font=("Segoe UI Semibold", 10)).pack(anchor="w")
+        self.inflation_canvas = tk.Canvas(
+            profile,
+            width=330,
+            height=176,
+            background=self.COLORS["card"],
+            highlightthickness=0,
+        )
+        self.inflation_canvas.pack(anchor="w", pady=(3, 0))
+        self.num_el_fill_var.trace_add("write", lambda *_args: self.after_idle(self._draw_inflation_preview))
+        self.re_fact_hole_var.trace_add("write", lambda *_args: self.after_idle(self._draw_inflation_preview))
+        self.holes_container = holes
+        self.holes_rows_start = 5
+        self.hole_shape_rows: list[HoleShapeRow] = []
+        self.hole_row_widgets = []
+        self._toggle_chambers()
+        self._toggle_holes()
+        self._draw_inflation_preview()
+
+    def _draw_inflation_preview(self) -> None:
+        """Render the configured radial grading as a normalized ring schematic."""
+
+        if not hasattr(self, "inflation_canvas"):
+            return
+        canvas = self.inflation_canvas
+        canvas.delete("all")
+        try:
+            count = int(self.num_el_fill_var.get())
+            factor = float(self.re_fact_hole_var.get())
+            fractions = radial_layer_fractions(count, factor)
+        except (TypeError, ValueError):
+            canvas.create_text(
+                165,
+                78,
+                text="Enter radial cells ≥ 1\nand a ratio > 0",
+                fill=self.COLORS["danger"],
+                font=("Segoe UI", 10),
+                justify="center",
+            )
+            return
+
+        center_x, center_y = 112, 80
+        outer_radius, hole_radius = 68.0, 27.0
+        ring_radii = outer_radius - fractions * (outer_radius - hole_radius)
+        canvas.create_oval(
+            center_x - outer_radius,
+            center_y - outer_radius,
+            center_x + outer_radius,
+            center_y + outer_radius,
+            fill="#eaf4f3",
+            outline="",
+        )
+        for index, radius in enumerate(ring_radii):
+            width = 2 if index in (0, len(ring_radii) - 1) else 1
+            color = self.COLORS["teal_dark"] if index == len(ring_radii) - 1 else self.COLORS["teal"]
+            canvas.create_oval(
+                center_x - radius,
+                center_y - radius,
+                center_x + radius,
+                center_y + radius,
+                outline=color,
+                width=width,
+            )
+        canvas.create_oval(
+            center_x - hole_radius,
+            center_y - hole_radius,
+            center_x + hole_radius,
+            center_y + hole_radius,
+            fill="#ffffff",
+            outline=self.COLORS["amber"],
+            width=2,
+        )
+        canvas.create_text(center_x, center_y, text="HOLE", fill=self.COLORS["amber"], font=("Segoe UI Semibold", 8))
+        canvas.create_line(196, 36, 218, 36, fill=self.COLORS["teal"], width=2)
+        canvas.create_text(224, 36, text="radial cell edges", anchor="w", fill=self.COLORS["muted"], font=("Segoe UI", 9))
+        canvas.create_line(196, 62, 218, 62, fill=self.COLORS["amber"], width=2)
+        canvas.create_text(224, 62, text="hole wall", anchor="w", fill=self.COLORS["muted"], font=("Segoe UI", 9))
+        canvas.create_text(
+            165,
+            163,
+            text=f"{count} cells  •  Δr outer / Δr hole = {factor:g}",
+            fill=self.COLORS["ink"],
+            font=("Segoe UI Semibold", 9),
+        )
+
+    def _build_characterization_tab(self) -> None:
+        """Embed the optional characterization stage in the Workbench."""
+
+        self.characterization_panel = CharacterizationPanel(
+            self.characterization_tab,
+            surface_source=self._surface_source_from_ui,
+            output_directory_provider=self._characterization_output_directory,
+            on_complete=self._on_characterization_complete,
+            continue_to_mesh=self._continue_mesh_after_characterization,
+        )
+        self.characterization_panel.pack(fill="both", expand=True)
+        self.workdir_var.trace_add(
+            "write",
+            self.characterization_panel.refresh_output_directory,
+        )
+
+    def _build_run_tab(self) -> None:
+        tab = self.run_tab
+        tab.columnconfigure(0, weight=2)
+        tab.columnconfigure(1, weight=3)
+        tab.rowconfigure(1, weight=1)
+
+        action = self._card(tab, "Execution")
+        action.grid(row=0, column=0, sticky="new", padx=(0, 10), pady=(0, 10))
+        action.columnconfigure(0, weight=1)
+        ttk.Label(action, text="Review the pre-flight summary before generating the mesh.", style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=0, column=0, sticky="w")
+        ttk.Button(action, text="Validate configuration", style="Accent.TButton", command=self._validate_inputs).grid(row=1, column=0, sticky="ew", pady=(15, 8))
+        ttk.Checkbutton(
+            action,
+            text="Perform advanced crack characterization before meshing",
+            variable=self.characterization_enabled_var,
+        ).grid(row=2, column=0, sticky="w", pady=(2, 6))
+        self.characterization_button = ttk.Button(
+            action,
+            text="Open characterization tab",
+            style="Quiet.TButton",
+            command=self._show_characterization_tab,
+        )
+        self.characterization_button.grid(row=3, column=0, sticky="ew", pady=3)
+        self.mesh_run_button = ttk.Button(action, text="Run mesh converter", style="Primary.TButton", command=self._run_from_workbench)
+        self.mesh_run_button.grid(row=4, column=0, sticky="ew", pady=3)
+        ttk.Button(action, text="Open working directory", style="Quiet.TButton", command=self._open_workdir).grid(row=5, column=0, sticky="ew", pady=(8, 3))
+        self.gmsh_open_button = ttk.Button(action, text="Open generated mesh in Gmsh", style="Quiet.TButton", command=self._open_mesh_in_gmsh)
+        self.gmsh_open_button.grid(row=6, column=0, sticky="ew", pady=3)
+        ttk.Button(action, text="Open mesh comparison", style="Quiet.TButton", command=self._open_mesh_comparison).grid(row=7, column=0, sticky="ew", pady=3)
+        ttk.Label(action, textvariable=self.run_summary_var, style="CardMuted.TLabel", wraplength=320, justify="left").grid(row=8, column=0, sticky="w", pady=(16, 0))
+
+        progress = self._card(tab, "Run state")
+        progress.grid(row=0, column=1, sticky="new", pady=(0, 10))
+        progress.columnconfigure(0, weight=1)
+        self.progress_var = tk.IntVar(value=0)
+        self.progress = ttk.Progressbar(progress, style="Scientific.Horizontal.TProgressbar", mode="determinate", variable=self.progress_var, maximum=100)
+        self.progress.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(progress, textvariable=self.status_var, style="Card.TLabel", font=("Segoe UI Semibold", 11)).grid(row=1, column=0, sticky="w")
+        ttk.Label(progress, text="Solver output is streamed below. The GUI remains responsive while the selected mesher runs.", style="CardMuted.TLabel", wraplength=620, justify="left").grid(row=2, column=0, sticky="w", pady=(5, 0))
+
+        log_card = self._card(tab, "Live solver log")
+        log_card.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        log_card.rowconfigure(0, weight=1)
+        log_card.columnconfigure(0, weight=1)
+        self.log = tk.Text(
+            log_card,
+            wrap="word",
+            height=22,
+            background="#0b1726",
+            foreground="#d7e7f7",
+            insertbackground="#ffffff",
+            relief="flat",
+            font=("Cascadia Mono", 9),
+            padx=10,
+            pady=10,
+        )
+        scroll = ttk.Scrollbar(log_card, orient="vertical", command=self.log.yview)
+        self.log.configure(yscrollcommand=scroll.set)
+        self.log.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
+        ttk.Button(log_card, text="Clear log", style="Quiet.TButton", command=self._clear_log).grid(row=1, column=0, sticky="e", pady=(8, 0))
+        self._log("Scientific workbench ready. Load inputs or use the documented example.\n")
+
+    def _build_fiss_tab(self) -> None:
+        tab = self.fiss_tab
+        tab.columnconfigure(0, weight=1)
+        tab.columnconfigure(1, weight=1)
+
+        context = self._card(tab, "FISS flow calculation")
+        context.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        context.columnconfigure(1, weight=1)
+        self._path_row(context, 0, "FISS DGIBI template", self.fiss_dgibi_var, self._browse_fiss_dgibi)
+        ttk.Label(context, text="FISS uses the selected CSV or generated surface through the same canonical four-grid contract.", style="CardMuted.TLabel").grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
+
+        model = self._card(tab, "Flow model")
+        model.grid(row=1, column=0, sticky="new", padx=(0, 9))
+        model.columnconfigure(0, weight=1)
+        model_names = (
+            "POISEU_BLASIUS", "POISEU_COLEBROOK", "POISEU_GELAIN_2008", "POISEU_GELAIN_2012",
+            "POISEU_RIZKALLA", "FROTTEMENT1", "FROTTEMENT2", "FROTTEMENT3", "FROTTEMENT4",
+        )
+        combo = ttk.Combobox(model, textvariable=self.fiss_model_var, values=model_names, state="readonly", style="Scientific.TCombobox")
+        combo.grid(row=0, column=0, sticky="ew", pady=(0, 9))
+        combo.bind("<<ComboboxSelected>>", lambda _event: self._refresh_fiss_model_inputs())
+        self.frm_fiss_dyn = ttk.LabelFrame(model, text="Model-specific parameters", style="Section.TLabelframe", padding=10)
+        self.frm_fiss_dyn.grid(row=1, column=0, sticky="ew")
+
+        boundary = self._card(tab, "Gas and boundary conditions")
+        boundary.grid(row=1, column=1, sticky="new")
+        for column in (1, 3):
+            boundary.columnconfigure(column, weight=1)
+        ttk.Label(boundary, text="Gas", style="Card.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Radiobutton(boundary, text="Perfect (PARF)", value="PARF", variable=self.fiss_gas_var).grid(row=0, column=1, sticky="w")
+        ttk.Radiobutton(boundary, text="Real (REEL)", value="REEL", variable=self.fiss_gas_var).grid(row=0, column=2, sticky="w")
+        ttk.Label(boundary, text="Condensation", style="Card.TLabel").grid(row=1, column=0, sticky="w", pady=(8, 0))
+        ttk.Radiobutton(boundary, text="MASS", value="MASS", variable=self.fiss_cond_var).grid(row=1, column=1, sticky="w", pady=(8, 0))
+        ttk.Radiobutton(boundary, text="FILM", value="FILM", variable=self.fiss_cond_var).grid(row=1, column=2, sticky="w", pady=(8, 0))
+        self._field(boundary, 2, 0, "Downstream P (Pa)", self.fiss_p_aval_var)
+        self._field(boundary, 2, 2, "Wall temperature (°C)", self.fiss_temp_wall_var)
+        self._field(boundary, 3, 0, "Steam pressure (Pa)", self.fiss_psteam_var)
+        self._field(boundary, 3, 2, "Line subdivisions", self.fiss_num_elem_y_var)
+        ttk.Separator(boundary, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
+        ttk.Label(boundary, text="Pressure", style="Card.TLabel").grid(row=5, column=0, sticky="w")
+        ttk.Radiobutton(boundary, text="Single", value="single", variable=self.fiss_p_mode_var, command=self._refresh_fiss_bc_inputs).grid(row=5, column=1, sticky="w")
+        ttk.Radiobutton(boundary, text="Range", value="range", variable=self.fiss_p_mode_var, command=self._refresh_fiss_bc_inputs).grid(row=5, column=2, sticky="w")
+        p_in = self._field(boundary, 6, 0, "P in (Pa)", self.fiss_p_in_var)
+        p_ini = self._field(boundary, 7, 0, "P start (Pa)", self.fiss_p_ini_var)
+        p_fin = self._field(boundary, 7, 2, "P end (Pa)", self.fiss_p_fin_var)
+        p_step = self._field(boundary, 8, 0, "P step (Pa)", self.fiss_p_step_var)
+        ttk.Label(boundary, text="Temperature", style="Card.TLabel").grid(row=9, column=0, sticky="w", pady=(10, 0))
+        ttk.Radiobutton(boundary, text="Single", value="single", variable=self.fiss_t_mode_var, command=self._refresh_fiss_bc_inputs).grid(row=9, column=1, sticky="w", pady=(10, 0))
+        ttk.Radiobutton(boundary, text="Range", value="range", variable=self.fiss_t_mode_var, command=self._refresh_fiss_bc_inputs).grid(row=9, column=2, sticky="w", pady=(10, 0))
+        t_in = self._field(boundary, 10, 0, "T in (°C)", self.fiss_t_in_var)
+        t_ini = self._field(boundary, 11, 0, "T start (°C)", self.fiss_t_ini_var)
+        t_fin = self._field(boundary, 11, 2, "T end (°C)", self.fiss_t_fin_var)
+        t_step = self._field(boundary, 12, 0, "T step (°C)", self.fiss_t_step_var)
+        self._p_entries = {"P_in": p_in, "P_ini": p_ini, "P_fin": p_fin, "P_step": p_step}
+        self._t_entries = {"T_in": t_in, "T_ini": t_ini, "T_fin": t_fin, "T_step": t_step}
+        buttons = ttk.Frame(tab, style="Scientific.TFrame")
+        buttons.grid(row=2, column=0, columnspan=2, sticky="w", pady=(14, 0))
+        self.fiss_run_button = ttk.Button(buttons, text="Run FISS calculation", style="Primary.TButton", command=self._run_fiss_from_workbench)
+        self.fiss_run_button.pack(side="left")
+        ttk.Button(buttons, text="Post-process results", style="Quiet.TButton", command=self._postprocess_picker).pack(side="left", padx=(8, 0))
+        self._refresh_fiss_model_inputs()
+        self._refresh_fiss_bc_inputs()
+
+    # ------------------------------------------------------------------
+    # User actions and status
+    # ------------------------------------------------------------------
+
+    def _install_change_tracking(self) -> None:
+        variables = (
+            self.dgibi_var,
+            self.workdir_var,
+            self.castem_version_var,
+            self.csv_x_var,
+            self.csv_y_var,
+            self.csv_zmax_var,
+            self.csv_zmin_var,
+            self.surface_mode_var,
+            self.deap_orientation_var,
+            self.deap_magnification_var,
+            self.deap_bounding_box_var,
+            self.fractal_parameter_var,
+            self.fractal_value_var,
+            self.fractal_value_y_var,
+            self.surface_points_x_var,
+            self.surface_points_y_var,
+            self.surface_size_x_var,
+            self.surface_size_y_var,
+            self.surface_center_x_var,
+            self.surface_center_y_var,
+            self.fractal_rms_height_var,
+            self.fractal_upper_rms_height_var,
+            self.fractal_aperture_var,
+            self.fractal_minimum_aperture_var,
+            self.fractal_wall_correlation_var,
+            self.fractal_rolloff_x_var,
+            self.fractal_rolloff_y_var,
+            self.fractal_distribution_var,
+            self.fractal_lognormal_shape_var,
+            self.fractal_seed_var,
+            self.constant_zmin_var,
+            self.constant_zmax_var,
+            self.characterization_enabled_var,
+            self.chambers_enabled_var,
+            self.chamber_height_var,
+            self.chamber_inlet_length_var,
+            self.chamber_outlet_length_var,
+            self.chamber_inlet_height_elements_var,
+            self.chamber_outlet_height_elements_var,
+            self.chamber_inlet_length_elements_var,
+            self.chamber_outlet_length_elements_var,
+            self.chamber_inlet_height_ratio_var,
+            self.chamber_outlet_height_ratio_var,
+            self.chamber_inlet_length_ratio_var,
+            self.chamber_outlet_length_ratio_var,
+            self.re_ti_var,
+            self.re_crpa_var,
+            self.re_smfa_var,
+            self.re_numspa_var,
+            self.re_opmin_var,
+            self.nelem_x_var,
+            self.nelem_y_var,
+            self.nelem_z_var,
+            self.re_tol_var,
+            self.re_fact_z_var,
+            self.num_el_fill_var,
+            self.re_fact_hole_var,
+            self.opti_visu_var,
+            self.opti_med_var,
+            self.opti_stl_var,
+            self.holes_enabled_var,
+            self.do_merge_var,
+            self.solver_mode_var,
+            self.fiss_dgibi_var,
+            self.fiss_model_var,
+            self.fiss_rugo_var,
+            self.fiss_rec_var,
+            self.fiss_fk_var,
+            self.fiss_fa_var,
+            self.fiss_fb_var,
+            self.fiss_fc_var,
+            self.fiss_fd_var,
+            self.fiss_fk_k_var,
+            self.fiss_gas_var,
+            self.fiss_cond_var,
+            self.fiss_temp_wall_var,
+            self.fiss_p_aval_var,
+            self.fiss_psteam_var,
+            self.fiss_p_mode_var,
+            self.fiss_p_in_var,
+            self.fiss_p_ini_var,
+            self.fiss_p_fin_var,
+            self.fiss_p_step_var,
+            self.fiss_t_mode_var,
+            self.fiss_t_in_var,
+            self.fiss_t_ini_var,
+            self.fiss_t_fin_var,
+            self.fiss_t_step_var,
+            self.fiss_num_elem_y_var,
+        )
+        for variable in variables:
+            variable.trace_add("write", self._mark_dirty)
+        for variable in (
+            self.csv_x_var,
+            self.csv_y_var,
+            self.csv_zmin_var,
+            self.csv_zmax_var,
+        ):
+            variable.trace_add("write", self._on_csv_path_change)
+        self.fractal_value_var.trace_add("write", self._update_fractal_relation)
+        self.fractal_value_y_var.trace_add("write", self._update_fractal_relation)
+
+    def _mark_dirty(self, *_args) -> None:
+        if self._suspend_dirty or self._active_operation is not None:
+            return
+        self._validated_surface_source = None
+        self._validated_surface_grid = None
+        self._set_status("Modified — validation required", "neutral")
+
+    def _add_hole_row(self) -> None:
+        row_index = self.holes_rows_start + len(self.hole_shape_rows)
+        shape = tk.StringVar(value="Circle")
+        cx = tk.StringVar(value="0.0")
+        cy = tk.StringVar(value="0.0")
+        primary = tk.StringVar(value="0.07")
+        secondary = tk.StringVar(value="0.07")
+        rotation = tk.StringVar(value="0.0")
+        proxy_radius = tk.StringVar(value="0.07")
+
+        number = ttk.Label(self.holes_container, text=f"H{len(self.hole_shape_rows) + 1}")
+        shape_widget = ttk.Combobox(
+            self.holes_container,
+            textvariable=shape,
+            values=("Circle", "Rectangle", "Equilateral triangle", "Regular polygon"),
+            state="readonly",
+            width=17,
+            style="Scientific.TCombobox",
+        )
+        cx_entry = ttk.Entry(self.holes_container, textvariable=cx, width=10, style="Scientific.TEntry")
+        cy_entry = ttk.Entry(self.holes_container, textvariable=cy, width=10, style="Scientific.TEntry")
+
+        primary_frame = ttk.Frame(self.holes_container, style="Card.TFrame")
+        primary_label = ttk.Label(primary_frame, text="Radius", style="CardMuted.TLabel")
+        primary_entry = ttk.Entry(primary_frame, textvariable=primary, width=11, style="Scientific.TEntry")
+        primary_label.pack(anchor="w")
+        primary_entry.pack(anchor="w")
+
+        secondary_frame = ttk.Frame(self.holes_container, style="Card.TFrame")
+        secondary_label = ttk.Label(secondary_frame, text="—", style="CardMuted.TLabel")
+        secondary_entry = ttk.Entry(secondary_frame, textvariable=secondary, width=10, style="Scientific.TEntry")
+        secondary_label.pack(anchor="w")
+        secondary_entry.pack(anchor="w")
+
+        rotation_frame = ttk.Frame(self.holes_container, style="Card.TFrame")
+        rotation_label = ttk.Label(rotation_frame, text="Rotation (°)", style="CardMuted.TLabel")
+        rotation_entry = ttk.Entry(rotation_frame, textvariable=rotation, width=10, style="Scientific.TEntry")
+        rotation_label.pack(anchor="w")
+        rotation_entry.pack(anchor="w")
+
+        number.grid(row=row_index, column=0, sticky="w", padx=(7, 4), pady=5)
+        shape_widget.grid(row=row_index, column=1, sticky="w", padx=4, pady=5)
+        cx_entry.grid(row=row_index, column=2, sticky="w", padx=4, pady=5)
+        cy_entry.grid(row=row_index, column=3, sticky="w", padx=4, pady=5)
+        primary_frame.grid(row=row_index, column=4, sticky="w", padx=4, pady=3)
+        secondary_frame.grid(row=row_index, column=5, sticky="w", padx=4, pady=3)
+        rotation_frame.grid(row=row_index, column=6, sticky="w", padx=4, pady=3)
+
+        row = HoleShapeRow(
+            shape=shape,
+            cx=cx,
+            cy=cy,
+            primary=primary,
+            secondary=secondary,
+            rotation=rotation,
+            proxy_radius=proxy_radius,
+            shape_widget=shape_widget,
+            cx_entry=cx_entry,
+            cy_entry=cy_entry,
+            primary_label=primary_label,
+            primary_entry=primary_entry,
+            secondary_label=secondary_label,
+            secondary_entry=secondary_entry,
+            rotation_label=rotation_label,
+            rotation_entry=rotation_entry,
+            widgets=(
+                number,
+                shape_widget,
+                cx_entry,
+                cy_entry,
+                primary_frame,
+                secondary_frame,
+                rotation_frame,
+            ),
+        )
+        self.hole_shape_rows.append(row)
+        # The baseline parameter patcher still receives conservative circular
+        # selectors; the bulk Python mesh contains the actual selected shape.
+        self.hole_rows.append((cx, cy, proxy_radius))
+        for variable in (shape, cx, cy, primary, secondary, rotation):
+            variable.trace_add("write", self._mark_dirty)
+            variable.trace_add("write", lambda *_args, current=row: self._sync_hole_proxy(current))
+        shape.trace_add("write", lambda *_args, current=row: self._refresh_hole_shape_row(current))
+        self._refresh_hole_shape_row(row)
+        self._mark_dirty()
+
+    def _remove_hole_row(self) -> None:
+        if not self.hole_shape_rows:
+            return
+        row = self.hole_shape_rows.pop()
+        self.hole_rows.pop()
+        for widget in row.widgets:
+            widget.destroy()
+        self._mark_dirty()
+
+    def _hole_geometry_from_row(self, row: HoleShapeRow, index: int) -> HoleGeometry:
+        shape = self._shape_key(row.shape.get())
+        cx = baseline.parse_float(row.cx.get())
+        cy = baseline.parse_float(row.cy.get())
+        primary = baseline.parse_float(row.primary.get())
+        rotation = baseline.parse_float(row.rotation.get())
+        if shape == "circle":
+            geometry = HoleGeometry(shape, cx, cy, radius=primary)
+        elif shape == "rectangle":
+            geometry = HoleGeometry(
+                shape,
+                cx,
+                cy,
+                width=primary,
+                height=baseline.parse_float(row.secondary.get()),
+                rotation_degrees=rotation,
+            )
+        elif shape == "triangle":
+            geometry = HoleGeometry(
+                shape,
+                cx,
+                cy,
+                side_length=primary,
+                rotation_degrees=rotation,
+            )
+        elif shape == "regular_polygon":
+            geometry = HoleGeometry(
+                shape,
+                cx,
+                cy,
+                radius=primary,
+                sides=int(row.secondary.get().strip()),
+                rotation_degrees=rotation,
+            )
+        else:
+            raise ValueError(f"Hole {index}: unsupported shape '{shape}'.")
+        return normalize_hole_geometry(geometry, index)
+
+    @staticmethod
+    def _shape_key(value: str) -> str:
+        key = value.strip().lower().replace("-", "_").replace(" ", "_")
+        return "triangle" if key == "equilateral_triangle" else key
+
+    def _sync_hole_proxy(self, row: HoleShapeRow) -> None:
+        try:
+            index = self.hole_shape_rows.index(row) + 1
+            radius = self._hole_geometry_from_row(row, index).selection_radius
+            row.proxy_radius.set(f"{radius:.12g}")
+        except (TypeError, ValueError):
+            row.proxy_radius.set("0")
+
+    def _refresh_hole_shape_row(self, row: HoleShapeRow) -> None:
+        shape = self._shape_key(row.shape.get())
+        labels = {
+            "circle": ("Radius", "—", False, False),
+            "rectangle": ("Width", "Height", True, True),
+            "triangle": ("Side length", "—", False, True),
+            "regular_polygon": ("Circumradius", "Sides", True, True),
+        }
+        primary_label, secondary_label, uses_secondary, uses_rotation = labels.get(
+            shape, ("Size", "—", False, False)
+        )
+        row.primary_label.configure(text=primary_label)
+        row.secondary_label.configure(text=secondary_label)
+        enabled = self.holes_enabled_var.get()
+        row.shape_widget.configure(state="readonly" if enabled else "disabled")
+        row.cx_entry.configure(state="normal" if enabled else "disabled")
+        row.cy_entry.configure(state="normal" if enabled else "disabled")
+        row.primary_entry.configure(state="normal" if enabled else "disabled")
+        row.secondary_entry.configure(
+            state="normal" if enabled and uses_secondary else "disabled"
+        )
+        row.rotation_entry.configure(
+            state="normal" if enabled and uses_rotation else "disabled"
+        )
+        self._sync_hole_proxy(row)
+
+    def _read_params(self) -> baseline.CastemMainParams:
+        params = super()._read_params()
+        # This UI option controls only the external Gmsh viewer. Cast3M's
+        # internal OPTI VISU/TRAC path stays disabled in every generated file.
+        params.opti_visu = 0
+        geometries: list[HoleGeometry] = []
+        if params.holes_enabled:
+            geometries = [
+                self._hole_geometry_from_row(row, index)
+                for index, row in enumerate(self.hole_shape_rows, start=1)
+            ]
+            params.holes = [
+                baseline.Hole(hole.cx, hole.cy, hole.selection_radius)
+                for hole in geometries
+            ]
+        params.hole_shapes = geometries
+        params.chambers = ChamberParameters(
+            enabled=self.chambers_enabled_var.get(),
+            height=baseline.parse_float(self.chamber_height_var.get()),
+            inlet_length=baseline.parse_float(self.chamber_inlet_length_var.get()),
+            outlet_length=baseline.parse_float(self.chamber_outlet_length_var.get()),
+            inlet_height_elements=int(
+                self.chamber_inlet_height_elements_var.get().strip()
+            ),
+            outlet_height_elements=int(
+                self.chamber_outlet_height_elements_var.get().strip()
+            ),
+            inlet_length_elements=int(
+                self.chamber_inlet_length_elements_var.get().strip()
+            ),
+            outlet_length_elements=int(
+                self.chamber_outlet_length_elements_var.get().strip()
+            ),
+            inlet_height_ratio=baseline.parse_float(
+                self.chamber_inlet_height_ratio_var.get()
+            ),
+            outlet_height_ratio=baseline.parse_float(
+                self.chamber_outlet_height_ratio_var.get()
+            ),
+            inlet_length_ratio=baseline.parse_float(
+                self.chamber_inlet_length_ratio_var.get()
+            ),
+            outlet_length_ratio=baseline.parse_float(
+                self.chamber_outlet_length_ratio_var.get()
+            ),
+        )
+        return params
+
+    def _validate_params(self, params: baseline.CastemMainParams) -> None:
+        super()._validate_params(params)
+        if (
+            params.holes_enabled
+            and self.solver_mode_var.get() in {"python", "python_only"}
+        ):
+            if params.num_el_fill < 1:
+                raise ValueError("Hole radial cells must be >= 1.")
+            if (
+                not math.isfinite(params.re_fact_hole)
+                or params.re_fact_hole <= 0.0
+            ):
+                raise ValueError(
+                    "Hole outer/inner ratio must be finite and > 0."
+                )
+        chambers = chambers_from_params(params)
+        chambers.validated()
+        if (
+            chambers.enabled
+            and self.solver_mode_var.get() not in {"python", "python_only"}
+        ):
+            raise ValueError(
+                "Enabled chambers require the Python-only or "
+                "Bulk Python + Cast3M mesh mode."
+            )
+
+    def _set_hole_row_geometry(self, row: HoleShapeRow, geometry: HoleGeometry) -> None:
+        geometry = normalize_hole_geometry(geometry)
+        display_names = {
+            "circle": "Circle",
+            "rectangle": "Rectangle",
+            "triangle": "Equilateral triangle",
+            "regular_polygon": "Regular polygon",
+        }
+        row.shape.set(display_names[geometry.shape])
+        row.cx.set(f"{geometry.cx:.12g}")
+        row.cy.set(f"{geometry.cy:.12g}")
+        row.rotation.set(f"{geometry.rotation_degrees:.12g}")
+        if geometry.shape in {"circle", "regular_polygon"}:
+            row.primary.set(f"{float(geometry.radius):.12g}")
+        elif geometry.shape == "rectangle":
+            row.primary.set(f"{float(geometry.width):.12g}")
+            row.secondary.set(f"{float(geometry.height):.12g}")
+        else:
+            row.primary.set(f"{float(geometry.side_length):.12g}")
+        if geometry.shape == "regular_polygon":
+            row.secondary.set(str(geometry.sides))
+        self._refresh_hole_shape_row(row)
+
+    def _load_documented_example(self, *, validate: bool = True) -> None:
+        try:
+            config = json.loads(DOCUMENTED_CONFIG.read_text(encoding="utf-8"))
+            inputs = config["inputs"]
+            params = config["parameters"]
+        except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            messagebox.showerror("Documented example", f"Could not load {DOCUMENTED_CONFIG}:\n{exc}")
+            return
+
+        def repository_path(value: str) -> str:
+            return str((ROOT / value).resolve())
+
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("CSV files")
+            self.dgibi_var.set(repository_path(config["template"]))
+            self.fiss_dgibi_var.set(str(DEFAULT_FISS_TEMPLATE))
+            self.workdir_var.set(str((ROOT / "_runtime" / "scientific-run").resolve()))
+            self.castem_version_var.set(str(config["castem_version"]))
+            self.csv_x_var.set(repository_path(inputs["xrange"]))
+            self.csv_y_var.set(repository_path(inputs["yrange"]))
+            self.csv_zmax_var.set(repository_path(inputs["zfit_zmax"]))
+            self.csv_zmin_var.set(repository_path(inputs["zfit_zmin"]))
+
+            variable_map = {
+                "re_ti": self.re_ti_var,
+                "re_crpa": self.re_crpa_var,
+                "re_smfa": self.re_smfa_var,
+                "re_numspa": self.re_numspa_var,
+                "re_opmin": self.re_opmin_var,
+                "nelem_x": self.nelem_x_var,
+                "nelem_y": self.nelem_y_var,
+                "nelem_z": self.nelem_z_var,
+                "re_tol": self.re_tol_var,
+                "re_fact_z": self.re_fact_z_var,
+                "num_el_fill": self.num_el_fill_var,
+                "re_fact_hole": self.re_fact_hole_var,
+            }
+            for name, variable in variable_map.items():
+                variable.set(str(params[name]))
+            self.opti_med_var.set(bool(params["opti_med"]))
+            self.opti_stl_var.set(bool(params["opti_stl"]))
+            self.opti_visu_var.set(bool(params["opti_visu"]))
+            self.do_merge_var.set(bool(params["merge_bdfs"]))
+            self.chambers_enabled_var.set(False)
+            while self.hole_shape_rows:
+                self._remove_hole_row()
+            self.holes_enabled_var.set(bool(params["holes_enabled"]))
+            for hole in params["holes"]:
+                self._add_hole_row()
+                self._set_hole_row_geometry(
+                    self.hole_shape_rows[-1],
+                    HoleGeometry(
+                        shape=hole.get("shape", "circle"),
+                        cx=float(hole["cx"]),
+                        cy=float(hole["cy"]),
+                        radius=float(hole["r"]),
+                    ),
+                )
+            self.solver_mode_var.set("python")
+            self._refresh_surface_mode()
+            self._toggle_chambers()
+            self._toggle_holes()
+            self._update_method_summary()
+        finally:
+            self._suspend_dirty = False
+        if validate:
+            self._validate_inputs(operation="mesh")
+
+    def _load_shape_gallery(self) -> None:
+        """Load one real, separated example of every supported hole shape."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.workdir_var.set(str((ROOT / "_runtime" / "shape-gallery-run").resolve()))
+            while self.hole_shape_rows:
+                self._remove_hole_row()
+            self.holes_enabled_var.set(True)
+            for geometry in SHAPE_GALLERY:
+                self._add_hole_row()
+                self._set_hole_row_geometry(self.hole_shape_rows[-1], geometry)
+            self.solver_mode_var.set("python")
+            self._toggle_holes()
+            self._update_method_summary()
+            self.notebook.select(self.mesh_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_chamber_example(self) -> None:
+        """Load the validated source-free inlet/outlet chamber case."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.workdir_var.set(
+                str((ROOT / "_runtime" / "python-only-chambers-interface-example").resolve())
+            )
+            self.nelem_x_var.set("2")
+            self.nelem_y_var.set("2")
+            self.nelem_z_var.set("30")
+            self.re_fact_z_var.set("1.025")
+            self.num_el_fill_var.set("15")
+            self.re_fact_hole_var.set("5.0")
+            self.opti_stl_var.set(True)
+            self.opti_visu_var.set(False)
+            self.do_merge_var.set(True)
+            self.solver_mode_var.set("python_only")
+            self.chambers_enabled_var.set(True)
+            self.chamber_height_var.set("0.20")
+            self.chamber_inlet_length_var.set("0.20")
+            self.chamber_outlet_length_var.set("0.20")
+            self.chamber_inlet_height_elements_var.set("10")
+            self.chamber_outlet_height_elements_var.set("10")
+            self.chamber_inlet_length_elements_var.set("10")
+            self.chamber_outlet_length_elements_var.set("10")
+            self.chamber_inlet_height_ratio_var.set("5.0")
+            self.chamber_outlet_height_ratio_var.set("5.0")
+            self.chamber_inlet_length_ratio_var.set("5.0")
+            self.chamber_outlet_length_ratio_var.set("5.0")
+            self._toggle_chambers()
+            self._update_method_summary()
+            self.notebook.select(self.mesh_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_deap_example(self) -> None:
+        """Load the bundled raw-HDF5 simple case into the DEAP fitting mode."""
+
+        try:
+            parser = ConfigParser(
+                interpolation=None,
+                inline_comment_prefixes=("#", ";"),
+            )
+            with DEAP_EXAMPLE_CONFIG.open("r", encoding="utf-8-sig") as stream:
+                parser.read_file(stream)
+            run = parser["run"]
+            files = parser["files"]
+            surface = parser["surface"]
+            naming = parser["naming"]
+            mesh = parser["mesh"]
+            holes = parser["holes"]
+            base = DEAP_EXAMPLE_CONFIG.parent
+
+            def example_path(value: str) -> str:
+                candidate = Path(value.strip()).expanduser()
+                return str(
+                    (candidate if candidate.is_absolute() else base / candidate).resolve()
+                )
+
+            workdir = Path(example_path(run.get("working_directory")))
+            for required in (
+                workdir / "deap_post.h5",
+                workdir / "deap_output.h5",
+            ):
+                if not required.is_file():
+                    raise FileNotFoundError(f"Bundled DEAP example input is missing: {required}")
+        except Exception as exc:
+            messagebox.showerror("DEAP fitting example", str(exc))
+            return
+
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("Fit DEAP results (Python)")
+            self.dgibi_var.set(example_path(files.get("mesh_template")))
+            self.fiss_dgibi_var.set(example_path(files.get("fiss_template")))
+            self.workdir_var.set(str(workdir))
+            self.castem_version_var.set(run.get("castem_version", "25"))
+            self.csv_x_var.set(example_path(files.get("x_csv")))
+            self.csv_y_var.set(example_path(files.get("y_csv")))
+            self.csv_zmin_var.set(example_path(files.get("zmin_csv")))
+            self.csv_zmax_var.set(example_path(files.get("zmax_csv")))
+            self.deap_orientation_var.set(surface.get("orientation", "ZX").upper())
+            self.deap_magnification_var.set(surface.get("magnification", "1.0"))
+            self.deap_bounding_box_var.set(surface.get("bounding_box", ""))
+
+            naming_variables = {
+                "ti": self.re_ti_var,
+                "crpa": self.re_crpa_var,
+                "smfa": self.re_smfa_var,
+                "numspa": self.re_numspa_var,
+                "opmin": self.re_opmin_var,
+            }
+            for key, variable in naming_variables.items():
+                variable.set(naming.get(key))
+
+            mesh_variables = {
+                "elements_x": self.nelem_x_var,
+                "elements_y": self.nelem_y_var,
+                "elements_z": self.nelem_z_var,
+                "geometric_tolerance": self.re_tol_var,
+                "z_inflation_factor": self.re_fact_z_var,
+                "hole_radial_cells": self.num_el_fill_var,
+                "hole_outer_inner_ratio": self.re_fact_hole_var,
+            }
+            for key, variable in mesh_variables.items():
+                variable.set(mesh.get(key))
+
+            self.opti_med_var.set(mesh.getboolean("export_med"))
+            self.opti_stl_var.set(mesh.getboolean("export_stl"))
+            self.opti_visu_var.set(mesh.getboolean("open_gmsh"))
+            self.do_merge_var.set(mesh.getboolean("merge_bdfs"))
+            loaded_mode = mesh.get("mode", "python").strip().lower()
+            self.solver_mode_var.set(
+                "baseline" if loaded_mode == "reference" else loaded_mode
+            )
+            self.chambers_enabled_var.set(False)
+            while self.hole_shape_rows:
+                self._remove_hole_row()
+            self.holes_enabled_var.set(holes.getboolean("enabled"))
+            self._refresh_surface_mode()
+            self._toggle_chambers()
+            self._toggle_holes()
+            self._update_method_summary()
+            self.notebook.select(self.input_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_fractal_example(self) -> None:
+        """Load a reproducible self-affine surface with the documented holes."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("Synthetic fractal")
+            self.fractal_parameter_var.set("Hurst exponent H")
+            self.fractal_value_var.set("0.85")
+            self.fractal_value_y_var.set("0.55")
+            self.surface_points_x_var.set("50")
+            self.surface_points_y_var.set("50")
+            self.surface_size_x_var.set("1.2")
+            self.surface_size_y_var.set("0.9")
+            self.surface_center_x_var.set("0.0")
+            self.surface_center_y_var.set("0.0")
+            self.fractal_rms_height_var.set("1e-5")
+            self.fractal_upper_rms_height_var.set("1.2e-5")
+            self.fractal_aperture_var.set("2e-4")
+            self.fractal_minimum_aperture_var.set("1e-6")
+            self.fractal_wall_correlation_var.set("0.0")
+            self.fractal_rolloff_x_var.set("0.4")
+            self.fractal_rolloff_y_var.set("0.12")
+            self.fractal_distribution_var.set("Lognormal")
+            self.fractal_lognormal_shape_var.set("0.5")
+            self.fractal_seed_var.set("20260721")
+            self.solver_mode_var.set("python_only")
+            self.opti_visu_var.set(False)
+            self.workdir_var.set(
+                str((ROOT / "_runtime" / "advanced-fractal-surface-run").resolve())
+            )
+            self._refresh_surface_mode()
+            self._refresh_fractal_distribution_controls()
+            self._update_fractal_relation()
+            self._update_method_summary()
+            self.notebook.select(self.input_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _load_constant_example(self) -> None:
+        """Load two parallel constant-Z planes with the documented holes."""
+
+        self._load_documented_example(validate=False)
+        self._suspend_dirty = True
+        try:
+            self.surface_mode_var.set("Constant Z planes")
+            self.surface_points_x_var.set("50")
+            self.surface_points_y_var.set("50")
+            self.surface_size_x_var.set("1.2")
+            self.surface_size_y_var.set("0.9")
+            self.surface_center_x_var.set("0.0")
+            self.surface_center_y_var.set("0.0")
+            self.constant_zmin_var.set("0.0")
+            self.constant_zmax_var.set("2e-4")
+            self.workdir_var.set(str((ROOT / "_runtime" / "constant-surface-run").resolve()))
+            self._refresh_surface_mode()
+            self.notebook.select(self.input_tab)
+        finally:
+            self._suspend_dirty = False
+        self._validate_inputs(operation="mesh")
+
+    def _on_holes_toggle(self) -> None:
+        self._toggle_holes()
+        self._update_method_summary()
+        self._mark_dirty()
+
+    def _on_chambers_toggle(self) -> None:
+        self._toggle_chambers()
+        self._update_method_summary()
+        self._mark_dirty()
+
+    def _toggle_chambers(self) -> None:
+        if not hasattr(self, "chamber_entries"):
+            return
+        state = "normal" if self.chambers_enabled_var.get() else "disabled"
+        for entry in self.chamber_entries:
+            entry.configure(state=state)
+
+    def _toggle_holes(self) -> None:
+        if not hasattr(self, "hole_shape_rows"):
+            return
+        for row in self.hole_shape_rows:
+            self._refresh_hole_shape_row(row)
+
+    def _on_solver_mode_change(self) -> None:
+        self._update_method_summary()
+        self._mark_dirty()
+
+    def _refresh_solver_mode_controls(self) -> None:
+        python_only = self.solver_mode_var.get() == "python_only"
+        state = "disabled" if python_only else "normal"
+        if python_only:
+            self.opti_visu_var.set(False)
+        if hasattr(self, "gmsh_checkbox"):
+            self.gmsh_checkbox.configure(state=state)
+        for widget in getattr(self, "_castem_mesh_widgets", ()):
+            widget.configure(state=state)
+
+    def _update_method_summary(self) -> None:
+        solver_mode = self.solver_mode_var.get()
+        self._refresh_solver_mode_controls()
+        if solver_mode == "python_only":
+            self.method_summary_var.set(
+                "Source-free NumPy mode generates the complete conformal "
+                "HEXA8 crack and optional chambers, all named BDF/STL "
+                "boundaries, MED on request, and an internal PNG preview."
+            )
+        elif not self.holes_enabled_var.get():
+            self.method_summary_var.set(
+                "No holes: the selected Cast3M mode uses the maintained "
+                "reference volume path."
+            )
+        elif solver_mode == "python":
+            self.method_summary_var.set("Bulk mode supports circles, rectangles, equilateral triangles, and regular polygons with conformal inflated CQUAD4 fills.")
+        else:
+            self.method_summary_var.set("Reference mode retains the original circle-only Cast3M interpolation and displacement workflow.")
+        mode = {
+            "python_only": "Python-only HEXA8",
+            "python": "bulk Python holes + Cast3M",
+            "baseline": "T13 reference",
+        }.get(solver_mode, solver_mode)
+        if self.chambers_enabled_var.get():
+            mode += " + inlet/outlet chambers"
+        self.context_var.set(f"Active mode: {mode}")
+
+    def _preflight_workdir(self) -> Path:
+        raw = self.workdir_var.get().strip()
+        if not raw:
+            raise ValueError("Select a dedicated working directory.")
+        workdir = Path(raw).expanduser().resolve()
+        if workdir == ROOT:
+            raise ValueError("The repository root cannot be used as the working directory; choose a dedicated run folder.")
+        if workdir.exists() and not workdir.is_dir():
+            raise NotADirectoryError(f"Working path is not a directory: {workdir}")
+        writable_parent = workdir
+        while not writable_parent.exists() and writable_parent != writable_parent.parent:
+            writable_parent = writable_parent.parent
+        if not writable_parent.is_dir() or not os.access(writable_parent, os.W_OK):
+            raise PermissionError(f"Working directory parent is not writable: {writable_parent}")
+        return workdir
+
+    def _validate_inputs(self, operation: str = "mesh") -> bool:
+        if operation not in {"mesh", "fiss"}:
+            raise ValueError(f"Unknown validation operation: {operation}")
+        try:
+            python_only = (
+                operation == "mesh"
+                and self.solver_mode_var.get() == "python_only"
+            )
+            template_raw = (
+                self.dgibi_var.get().strip()
+                if operation == "mesh"
+                else self.fiss_dgibi_var.get().strip()
+            )
+            if not template_raw and not python_only:
+                raise ValueError("Select the DGIBI template for this operation.")
+            template = Path(template_raw).expanduser() if template_raw else None
+            if not python_only and (template is None or not template.is_file()):
+                raise FileNotFoundError(f"Missing DGIBI template: {template}")
+            workdir = self._preflight_workdir()
+            castem_exe = (
+                None
+                if python_only
+                else baseline.resolve_castem_exe(self.castem_version_var.get())
+            )
+            surface_source = self._surface_source_from_ui()
+            surface_grid = build_surface_grid(surface_source)
+            x, y, zmin, zmax = (
+                surface_grid.x,
+                surface_grid.y,
+                surface_grid.zmin,
+                surface_grid.zmax,
+            )
+            params = self._read_params()
+            if operation == "mesh":
+                self._validate_params(params)
+                if python_only and float((zmax - zmin).min()) <= 0.0:
+                    raise ValueError(
+                        "Python-only HEXA8 meshing requires strictly positive "
+                        "zmax-zmin at every surface point."
+                    )
+            else:
+                baseline.App._validate_params(self, params)
+                if any(hole.shape != "circle" for hole in params.hole_shapes):
+                    raise ValueError("The preserved FISS workflow currently supports circular holes only.")
+                fiss = self._read_fiss_setup()
+            details = [
+                f"Surface source: {surface_source.normalized_mode}",
+                f"Grid: {x.shape[1]} × {x.shape[0]} points",
+                f"X range: {x.min():.5g} to {x.max():.5g}",
+                f"Y range: {y.min():.5g} to {y.max():.5g}",
+                f"Opening: {(zmax - zmin).min():.3g} to {(zmax - zmin).max():.3g}",
+                (
+                    "Backend dependencies: Python/NumPy only; no mesh DGIBI, "
+                    "Cast3M, or Gmsh"
+                    if python_only
+                    else f"Cast3M launcher: {castem_exe.name}"
+                ),
+            ]
+            if surface_source.normalized_mode == "fractal":
+                details.append(
+                    f"Self-affine exponent: H={surface_source.resolved_hurst_exponent:.5g}, "
+                    f"D={surface_source.resolved_fractal_dimension:.5g}; seed={surface_source.random_seed}"
+                )
+            elif surface_source.normalized_mode == "deap" and surface_grid.metadata:
+                details.append(
+                    "DEAP fit: "
+                    f"component {surface_grid.metadata['component']}; "
+                    f"{surface_grid.metadata['component_nodes']} connected nodes; "
+                    f"orientation {surface_grid.metadata['orientation']}"
+                )
+            if operation == "mesh" and params.holes_enabled:
+                if not params.holes:
+                    raise ValueError("Enable holes only after adding at least one shape.")
+                if self.solver_mode_var.get() in {"python", "python_only"}:
+                    rings = detect_hole_rings(
+                        x,
+                        y,
+                        params.hole_shapes,
+                        tolerance=params.re_tol,
+                        nelem_x=params.nelem_x,
+                        nelem_y=params.nelem_y,
+                    )
+                    details.append(
+                        "Conformal edges (hole wall = square interface): "
+                        + ", ".join(
+                            f"{ring.geometry.shape} {len(ring.xy)}={len(ring.outer_xy)}"
+                            for ring in rings
+                        )
+                    )
+                else:
+                    if any(hole.shape != "circle" for hole in params.hole_shapes):
+                        raise ValueError(
+                            "Rectangle, triangle, and regular-polygon holes "
+                            "require a Python mesh mode."
+                        )
+                    details.append(f"Reference holes: {len(params.holes)}")
+            elif operation == "mesh":
+                details.append("No holes enabled")
+            if operation == "mesh":
+                details.append(
+                    "Solver mode: "
+                    + {
+                        "python_only": "Python-only source-free HEXA8",
+                        "python": "Bulk Python holes + Cast3M volume",
+                        "baseline": "Original T13 baseline",
+                    }.get(
+                        self.solver_mode_var.get(),
+                        self.solver_mode_var.get(),
+                    )
+                )
+                chambers = chambers_from_params(params)
+                if chambers.enabled:
+                    details.append(
+                        "Chambers: "
+                        f"H={chambers.height:g}; "
+                        f"Lin/Lout={chambers.inlet_length:g}/{chambers.outlet_length:g}; "
+                        f"Nheight={chambers.inlet_height_elements}/"
+                        f"{chambers.outlet_height_elements}; "
+                        f"Nlength={chambers.inlet_length_elements}/"
+                        f"{chambers.outlet_length_elements}"
+                    )
+                    details.append(
+                        "Chamber implementation: source-free Python topology"
+                        if python_only
+                        else (
+                            f"Mesh source: {Path(self.dgibi_var.get()).name} "
+                            "(native opti_chamb activated)"
+                        )
+                    )
+                else:
+                    details.append("Chambers: disabled")
+                if python_only:
+                    details.append(
+                        "Visualization: python_mesh_preview.png is written "
+                        "automatically; Gmsh is not launched."
+                    )
+                stale_count = len(existing_mesh_outputs(workdir)) if workdir.is_dir() else 0
+                if stale_count:
+                    details.append(f"Prior mesh artifacts: {stale_count} (archived automatically before run)")
+            else:
+                details.append(f"FISS model: {fiss.model}")
+        except Exception as exc:
+            self.input_summary_var.set("Validation issue:\n" + str(exc))
+            self._set_status("Configuration needs attention", "error")
+            return False
+
+        self.input_summary_var.set("\n".join(details))
+        self._validated_surface_source = surface_source
+        self._validated_surface_grid = surface_grid
+        self._set_status("Mesh pre-flight passed" if operation == "mesh" else "FISS pre-flight passed", "success")
+        return True
+
+    def _preview_geometry(self) -> None:
+        """Open a real XY-grid preview from the selected or generated source."""
+
+        try:
+            surface_grid = self._surface_grid_from_ui()
+            x, y = surface_grid.x, surface_grid.y
+            params = self._read_params()
+            self._validate_params(params)
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+            from matplotlib.figure import Figure
+            from matplotlib.patches import Polygon
+        except Exception as exc:
+            messagebox.showerror("XY preview", str(exc))
+            return
+
+        window = tk.Toplevel(self)
+        window.title("Crack surface and hole preview")
+        window.geometry("1240x720")
+        figure = Figure(figsize=(12.0, 6.5), dpi=100, facecolor="#ffffff")
+        axes = figure.add_subplot(121)
+        surface_axes = figure.add_subplot(122, projection="3d")
+        step = max(1, max(x.shape) // 55)
+        axes.plot(x[::step, :].T, y[::step, :].T, color="#6d8195", linewidth=0.35, alpha=0.72)
+        axes.plot(x[:, ::step], y[:, ::step], color="#6d8195", linewidth=0.35, alpha=0.72)
+        for number, hole in enumerate(
+            params.hole_shapes if params.holes_enabled else (), start=1
+        ):
+            axes.add_patch(
+                Polygon(
+                    hole_boundary_vertices(hole),
+                    closed=True,
+                    fill=False,
+                    linewidth=2.0,
+                    edgecolor="#d97706",
+                )
+            )
+            axes.annotate(
+                f"H{number}\n{hole.shape}",
+                (hole.cx, hole.cy),
+                color="#9a4d05",
+                ha="center",
+                va="center",
+                fontsize=8,
+                weight="bold",
+            )
+        axes.set_title(
+            f"{surface_grid.mode.title()} XY source grid and configured hole shapes",
+            color="#10233f",
+            pad=13,
+            weight="bold",
+        )
+        axes.set_xlabel("X coordinate")
+        axes.set_ylabel("Y coordinate")
+        axes.set_aspect("equal", adjustable="box")
+        axes.grid(False)
+        surface_step = max(1, max(surface_grid.shape) // 80)
+        sx = surface_grid.x[::surface_step, ::surface_step]
+        sy = surface_grid.y[::surface_step, ::surface_step]
+        surface_axes.plot_surface(
+            sx,
+            sy,
+            surface_grid.zmin[::surface_step, ::surface_step],
+            cmap="Blues",
+            linewidth=0,
+            antialiased=True,
+            alpha=0.82,
+        )
+        surface_axes.plot_surface(
+            sx,
+            sy,
+            surface_grid.zmax[::surface_step, ::surface_step],
+            cmap="Oranges",
+            linewidth=0,
+            antialiased=True,
+            alpha=0.62,
+        )
+        surface_axes.set_title("Lower (blue) and upper (orange) walls", color="#10233f", pad=13, weight="bold")
+        surface_axes.set_xlabel("X")
+        surface_axes.set_ylabel("Y")
+        surface_axes.set_zlabel("Z")
+        surface_axes.view_init(elev=28, azim=-55)
+        figure.tight_layout()
+        canvas = FigureCanvasTkAgg(figure, master=window)
+        canvas.draw()
+        toolbar = NavigationToolbar2Tk(canvas, window, pack_toolbar=False)
+        toolbar.update()
+        toolbar.pack(side="bottom", fill="x")
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def _show_characterization_tab(self) -> bool:
+        """Select the embedded characterization workspace."""
+
+        try:
+            self._characterization_output_directory()
+            self._surface_source_from_ui()
+        except Exception as exc:
+            messagebox.showerror("Advanced characterization", str(exc))
+            return False
+        self.characterization_panel.refresh_output_directory()
+        self.notebook.select(self.characterization_tab)
+        return True
+
+    def _characterization_output_directory(self) -> Path:
+        """Keep characterization artifacts inside the selected run directory."""
+
+        return self._preflight_workdir() / "characterization"
+
+    def _on_characterization_complete(self, result) -> None:
+        apertures = result.summary["apertures"]
+        hydraulic = result.summary["hydraulic_by_aperture_and_direction"][
+            "local_normal"
+        ]
+        self._log(
+            "Automatic characterization complete: "
+            "global-Z/local-normal mean="
+            f"{apertures['global_z']['statistics']['arithmetic_mean']:.8g}/"
+            f"{apertures['local_normal']['statistics']['arithmetic_mean']:.8g}; "
+            "local-normal equivalent X/Y="
+            f"{hydraulic['X']['global_equivalent_hydraulic_aperture']:.8g}/"
+            f"{hydraulic['Y']['global_equivalent_hydraulic_aperture']:.8g}\n"
+        )
+        self.run_summary_var.set(
+            f"Characterization report: "
+            f"{result.exported_files.get('characterization_report')}"
+        )
+        self._set_status("Crack characterization complete", "success")
+
+    def _continue_mesh_after_characterization(self) -> None:
+        self.notebook.select(self.run_tab)
+        self._run_from_workbench(skip_characterization=True)
+
+    def _run_from_workbench(self, *, skip_characterization: bool = False) -> None:
+        if self._active_operation is not None:
+            messagebox.showwarning("Solver busy", "Wait for the active mesh operation to finish.")
+            return
+        if self.characterization_enabled_var.get() and not skip_characterization:
+            if self._show_characterization_tab():
+                self.characterization_panel.start(continue_after=True)
+            return
+        if not self._validate_inputs(operation="mesh"):
+            messagebox.showerror("Validation", "Correct the configuration issues before launching the mesh backend.")
+            return
+        self._active_mesh_params = self._read_params()
+        self._active_merge_requested = bool(self.do_merge_var.get())
+        self._active_open_gmsh_requested = bool(self.opti_visu_var.get())
+        self._begin_operation("mesh")
+        self._set_status("Preparing mesh run", "running")
+        self.run_summary_var.set("The solver is being prepared. Follow detailed output in the live log.")
+        try:
+            self._run()
+        except Exception as exc:
+            self._log(f"Mesh preparation failed: {exc}\n")
+            messagebox.showerror("Mesh preparation", str(exc))
+        if not self._process_started and self._active_operation == "mesh":
+            self._finish_operation(False, "Mesh preparation failed", "No mesh operation was started. Review the validation message and log.")
+
+    def _run_fiss_from_workbench(self) -> None:
+        if self._active_operation is not None:
+            messagebox.showwarning("Solver busy", "Wait for the active Cast3M operation to finish.")
+            return
+        if not self._validate_inputs(operation="fiss"):
+            messagebox.showerror("Validation", "Correct the FISS configuration before launching Cast3M.")
+            return
+        self._begin_operation("fiss")
+        self._set_status("Preparing FISS calculation", "running")
+        try:
+            self._run_fiss()
+        except Exception as exc:
+            self._log(f"FISS preparation failed: {exc}\n")
+            messagebox.showerror("FISS preparation", str(exc))
+        if not self._process_started and self._active_operation == "fiss":
+            self._finish_operation(False, "FISS preparation failed", "No Cast3M process was started. Review the validation message and log.")
+
+    def _begin_operation(self, operation: str) -> None:
+        self._active_operation = operation
+        self._process_started = False
+        self._set_run_controls(busy=True)
+        self.progress.stop()
+        self.progress.configure(mode="determinate")
+        self.progress_var.set(8)
+        self.update_idletasks()
+
+    def _set_run_controls(self, *, busy: bool) -> None:
+        state = "disabled" if busy else "normal"
+        if hasattr(self, "mesh_run_button"):
+            self.mesh_run_button.configure(state=state)
+        if hasattr(self, "fiss_run_button"):
+            self.fiss_run_button.configure(state=state)
+        if hasattr(self, "gmsh_open_button"):
+            self.gmsh_open_button.configure(state=state)
+        if hasattr(self, "characterization_button"):
+            self.characterization_button.configure(state=state)
+
+    def _finish_operation(self, successful: bool, status: str, summary: str) -> None:
+        self.progress.stop()
+        self.progress.configure(mode="determinate")
+        self.progress_var.set(100 if successful else 0)
+        self._active_operation = None
+        self._process_started = False
+        self._set_run_controls(busy=False)
+        self._set_status(status, "success" if successful else "error")
+        self.run_summary_var.set(summary)
+
+    def _run(self) -> None:
+        surface_grid = self._materialize_surface_inputs()
+        if self.solver_mode_var.get() == "python_only":
+            self._run_python_only(surface_grid)
+            return None
+        return super()._run()
+
+    def _run_python_only(self, surface_grid: SurfaceGrid) -> None:
+        """Run the source-free mesher without starting an external process."""
+
+        params = self._active_mesh_params or self._read_params()
+        workdir = self._preflight_workdir()
+        csv_x = Path(self.csv_x_var.get().strip())
+        csv_y = Path(self.csv_y_var.get().strip())
+        csv_zmin = Path(self.csv_zmin_var.get().strip())
+        csv_zmax = Path(self.csv_zmax_var.get().strip())
+        csv_names = self._expected_csv_names(params)
+        merge_requested = bool(self._active_merge_requested)
+        started = time.perf_counter()
+        self.progress.configure(mode="indeterminate")
+        self.progress.start(10)
+        self._set_status("Python-only mesh generation in progress", "running")
+        self._process_started = True
+
+        def thread_log(message: str) -> None:
+            self.after(0, lambda value=message: self._log(value))
+
+        def finish_success(
+            final_bdf: Path,
+            preview_path: Path,
+            elapsed_seconds: float,
+        ) -> None:
+            self._finish_operation(
+                True,
+                "Python-only mesh verified",
+                (
+                    f"Fresh source-free outputs verified in {elapsed_seconds:.3f} s. "
+                    f"Primary result: {final_bdf.name}; preview: {preview_path.name}"
+                ),
+            )
+
+        def finish_failure(error: Exception) -> None:
+            self._log(f"Python-only mesh generation failed: {error}\n")
+            self._finish_operation(False, "Python-only mesh failed", str(error))
+            messagebox.showerror("Python-only mesh", str(error))
+
+        def worker() -> None:
+            try:
+                workdir.mkdir(parents=True, exist_ok=True)
+                archive_existing_mesh_outputs(workdir, thread_log)
+                for source, destination in (
+                    (csv_x, workdir / csv_names["xrange"]),
+                    (csv_y, workdir / csv_names["yrange"]),
+                    (csv_zmax, workdir / csv_names["zfit_zmax"]),
+                    (csv_zmin, workdir / csv_names["zfit_zmin"]),
+                ):
+                    baseline.safe_copy(source, destination)
+
+                result = write_python_mesh_outputs(
+                    workdir,
+                    surface_grid.x,
+                    surface_grid.y,
+                    surface_grid.zmin,
+                    surface_grid.zmax,
+                    params,
+                    export_med=bool(params.opti_med),
+                    log=thread_log,
+                )
+                stl_exports = ()
+                if params.opti_stl:
+                    stl_exports = export_boundary_bdfs_to_stl(
+                        workdir,
+                        hole_count=len(params.holes) if params.holes_enabled else 0,
+                        include_chambers=chambers_from_params(params).enabled,
+                        log=thread_log,
+                    )
+                missing = missing_mesh_outputs(workdir, params)
+                if missing:
+                    raise RuntimeError(
+                        "Fresh Python-only outputs are missing: "
+                        + ", ".join(missing)
+                    )
+
+                if merge_requested:
+                    combined = baseline.merge_bdfs(workdir, thread_log)
+                    if combined is None:
+                        raise RuntimeError("The requested BDF merge produced no file.")
+                    final_bdf = workdir / (
+                        f"combined_ti{params.re_ti}_crpa{params.re_crpa}_"
+                        f"smfa{params.re_smfa_int}_numsp{params.re_numspa}_"
+                        f"opmin{params.re_opmin_int}.bdf"
+                    )
+                    if final_bdf.exists() and final_bdf != combined:
+                        final_bdf.unlink()
+                    if final_bdf != combined:
+                        combined.replace(final_bdf)
+                else:
+                    final_bdf = result.volume_bdf
+
+                elapsed_seconds = time.perf_counter() - started
+                report = {
+                    "backend": "python_only",
+                    "requires_mesh_dgibi": False,
+                    "requires_cast3m": False,
+                    "requires_gmsh": False,
+                    "elapsed_seconds": round(elapsed_seconds, 6),
+                    "mesh_write_seconds": round(result.elapsed_seconds, 6),
+                    "counts": result.mesh.counts,
+                    "boundary_quads": {
+                        name: len(quads)
+                        for name, quads in result.mesh.boundaries.items()
+                    },
+                    "grading": result.mesh.grading,
+                    "quality": result.quality,
+                    "chambers": chambers_from_params(params).report(),
+                    "final_bdf": final_bdf.name,
+                    "preview_png": result.preview_path.name,
+                    "med": result.med_path.name if result.med_path else None,
+                    "stl_files": [entry.target.name for entry in stl_exports],
+                }
+                (workdir / "python-mesh-report.json").write_text(
+                    json.dumps(report, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            except Exception as exc:
+                self.after(0, lambda error=exc: finish_failure(error))
+                return
+            self.after(
+                0,
+                lambda: finish_success(
+                    final_bdf,
+                    result.preview_path,
+                    elapsed_seconds,
+                ),
+            )
+
+        threading.Thread(
+            target=worker,
+            name="python-only-mesh",
+            daemon=True,
+        ).start()
+        return None
+
+    def _run_fiss(self) -> None:
+        self._materialize_surface_inputs()
+        return baseline.App._run_fiss(self)
+
+    def _stream_process_to_log(self, cmd, cwd: Path, on_done=None):
+        operation = self._active_operation or "mesh"
+        self.progress.configure(mode="indeterminate")
+        self.progress.start(10)
+        self._set_status("Cast3M mesh run in progress" if operation == "mesh" else "Cast3M FISS run in progress", "running")
+
+        def completed(return_code: int) -> None:
+            callback_error = None
+            try:
+                if on_done is not None:
+                    on_done(return_code)
+            except Exception as exc:
+                callback_error = exc
+                self._log(f"Post-run processing failed: {exc}\n")
+
+            if return_code != 0:
+                self._finish_operation(False, "Cast3M failed", f"Cast3M returned {return_code}. Inspect the live log for details.")
+                return
+            if callback_error is not None:
+                self._finish_operation(False, "Post-run processing failed", str(callback_error))
+                messagebox.showerror("Post-run processing", str(callback_error))
+                return
+            if operation == "mesh":
+                params = self._active_mesh_params
+                missing = missing_mesh_outputs(Path(cwd), params)
+                if missing:
+                    self._finish_operation(
+                        False,
+                        "Mesh outputs incomplete",
+                        "Cast3M returned 0, but fresh expected files are missing: " + ", ".join(missing),
+                    )
+                    return
+                combined = None
+                if self._active_merge_requested:
+                    combined = Path(cwd) / (
+                        f"combined_ti{params.re_ti}_crpa{params.re_crpa}_smfa{params.re_smfa_int}_"
+                        f"numsp{params.re_numspa}_opmin{params.re_opmin_int}.bdf"
+                    )
+                    if not combined.is_file():
+                        self._finish_operation(False, "BDF merge incomplete", "Fresh Cast3M meshes exist, but the requested combined BDF was not created.")
+                        return
+                result = combined if combined is not None else Path(cwd) / "castem_mesh_v.bdf"
+                if self._active_open_gmsh_requested:
+                    try:
+                        gmsh_exe = baseline.resolve_gmsh_exe()
+                        subprocess.Popen([str(gmsh_exe), str(result)], cwd=str(cwd))
+                        self._log(f"Opened in Gmsh: {result.name}\n")
+                    except Exception as exc:
+                        self._log(f"Gmsh could not be opened: {exc}\n")
+                        messagebox.showwarning("Gmsh", str(exc))
+                self._finish_operation(True, "Mesh run verified", f"Fresh expected outputs verified. Primary result: {result.name}")
+            else:
+                self._finish_operation(True, "FISS run completed", f"Cast3M returned 0 for FISS. Review results under {Path(cwd).name}.")
+
+        try:
+            process = super()._stream_process_to_log(cmd, cwd, on_done=completed)
+        except Exception as exc:
+            self._log(f"Could not start Cast3M: {exc}\n")
+            self._finish_operation(False, "Cast3M could not start", str(exc))
+            messagebox.showerror("Cast3M launch", str(exc))
+            return None
+        self._process_started = process is not None
+        return process
+
+    def _set_status(self, message: str, tone: str) -> None:
+        self.status_tone = tone
+        self.status_var.set(message)
+        if not hasattr(self, "status_label"):
+            return
+        colors = {
+            "success": "#baf0df",
+            "error": "#ffd2cf",
+            "running": "#d7eaff",
+            "neutral": "#ffffff",
+        }
+        self.status_label.configure(foreground=colors.get(tone, "#ffffff"))
+
+    def _open_mesh_comparison(self) -> None:
+        if not COMPARISON_IMAGE.is_file():
+            messagebox.showinfo(
+                "Mesh comparison",
+                "No comparison image is available yet. Run scripts\\render_hole_mesh_comparison.py after completing both mesh runs.",
+            )
+            return
+        try:
+            os.startfile(str(COMPARISON_IMAGE))
+        except OSError as exc:
+            messagebox.showerror("Mesh comparison", str(exc))
+
+    def _open_mesh_in_gmsh(self) -> None:
+        """Open the preferred existing run artifact without launching Cast3M."""
+
+        try:
+            raw_workdir = self.workdir_var.get().strip()
+            if not raw_workdir:
+                raise ValueError("Select a working directory first.")
+            workdir = Path(raw_workdir).expanduser().resolve()
+            if not workdir.is_dir():
+                raise FileNotFoundError(f"Working directory does not exist: {workdir}")
+
+            candidates: list[Path] = []
+            try:
+                params = self._read_params()
+                candidates.append(
+                    workdir
+                    / (
+                        f"combined_ti{params.re_ti}_crpa{params.re_crpa}_smfa{params.re_smfa_int}_"
+                        f"numsp{params.re_numspa}_opmin{params.re_opmin_int}.bdf"
+                    )
+                )
+            except (TypeError, ValueError):
+                pass
+            candidates.extend(
+                sorted(workdir.glob("combined*.bdf"), key=lambda path: path.stat().st_mtime, reverse=True)
+            )
+            candidates.append(workdir / "castem_mesh_v.bdf")
+            mesh = next((path for path in candidates if path.is_file()), None)
+            if mesh is None:
+                raise FileNotFoundError("No combined BDF or castem_mesh_v.bdf exists in the selected working directory.")
+
+            gmsh_exe = baseline.resolve_gmsh_exe()
+            subprocess.Popen([str(gmsh_exe), str(mesh)], cwd=str(workdir))
+        except Exception as exc:
+            messagebox.showerror("Open mesh in Gmsh", str(exc))
+            return
+
+        self._log(f"Opened in Gmsh: {mesh.name}\n")
+        self.run_summary_var.set(f"Opened {mesh.name} in Gmsh.")
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Launch the GUI, or dispatch ``--headless`` without creating a Tk root."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] in {"-h", "--help"}:
+        print(
+            "Usage:\n"
+            "  python castem_pipeline_gui_scientific.py\n"
+            "  python castem_pipeline_gui_scientific.py --headless CONFIG "
+            "[--surface-mode MODE] [--validate-only]\n\n"
+            "With no arguments, open the scientific workbench. Use --headless to "
+            "run an INI configuration without creating a GUI."
+        )
+        return 0
+    if args and args[0] == "--headless":
+        from castem_pipeline_headless import main as headless_main
+
+        return headless_main(args[1:])
+    if args:
+        print(
+            f"ERROR: unknown argument: {args[0]}\n"
+            "Use --help for GUI and headless launch syntax.",
+            file=sys.stderr,
+        )
+        return 2
+
+    app = ScientificApp()
+    app.mainloop()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

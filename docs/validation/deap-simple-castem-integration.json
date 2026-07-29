@@ -1,0 +1,52 @@
+{
+  "title": "DEAP fit and CSV-bypass Cast3M integration verification",
+  "date": "2026-07-22",
+  "case": "1_simple",
+  "runtime": {
+    "python": "3.13.5",
+    "cast3m": "2025.0",
+    "cast3m_launcher": "25"
+  },
+  "runs": [
+    {
+      "surface_mode": "deap",
+      "command": "python castem_pipeline_headless.py examples\\deap\\1_simple\\run.ini --surface-mode deap",
+      "python_fit": true,
+      "surface_grid_points": [20, 20],
+      "cast3m_return_code": 0,
+      "cast3m_error_level": 0,
+      "elapsed_seconds": 9.869439,
+      "missing_outputs": [],
+      "success": true
+    },
+    {
+      "surface_mode": "csv",
+      "command": "python castem_pipeline_headless.py examples\\deap\\1_simple\\run.ini --surface-mode csv",
+      "python_fit": false,
+      "surface_grid_points": [20, 20],
+      "cast3m_return_code": 0,
+      "cast3m_error_level": 0,
+      "elapsed_seconds": 5.943053,
+      "missing_outputs": [],
+      "success": true
+    }
+  ],
+  "combined_bdf_comparison": {
+    "byte_identical": true,
+    "sha256": "97b5a46f850d9557ae9b4aae2053f10178af7fc6e852c16df8367e8802ea604c",
+    "bytes": 439730,
+    "grid_cards": 2399,
+    "chexa_cards": 722,
+    "cquad4_cards": 874
+  },
+  "gmsh_check": {
+    "version": "4.15.0",
+    "command": "gmsh combined_ti10_crpa1_smfa60_numsp20_opmin10.bdf -check -nopopup",
+    "return_code": 0
+  },
+  "notes": [
+    "Both runs used the same preserved Cast3M template with opti_visu=0.",
+    "Cast3M emitted its existing signalling IEEE_INVALID_FLAG notice after normal error-level-0 completion.",
+    "The generated meshes are runtime evidence and remain ignored; this report does not claim general mesh-quality or CFD validation."
+  ]
+}

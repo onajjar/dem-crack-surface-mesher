@@ -1,0 +1,145 @@
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+pytest-cache-files-*/
+.cache/
+.hypothesis/
+.mypy_cache/
+.nox/
+.pyre/
+.pytype/
+.ruff_cache/
+.tox/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Virtual environments and local configuration
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# Packaging artifacts
+build/
+dist/
+site/
+wheelhouse/
+*.egg-info/
+*.so
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local pipeline runs, captures, and temporary files
+/work/
+/work*/
+/_runtime/
+/runtime/
+/runs/
+/output/
+/outputs/
+/capture/
+/captures/
+/screenshots/
+/recordings/
+/test-results/
+/playwright-report/
+/.playwright/
+/.browser/
+/.mplconfig/
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.log
+
+# Generated Cast3M/Gmsh meshes and solver artifacts
+*.bdf
+*.med
+*.msh
+*.msh[0-9]
+*.mesh
+*.stl
+*.vtk
+*.vtu
+*.xdmf
+*.geo_unrolled
+*.pos
+*.h5
+*.hdf5
+result.h
+results.h
+*.trace
+*.ps
+python_mesh_preview.png
+python-mesh-report.json
+
+# Deliberately reviewed, small baseline example artifacts
+!examples/output/combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf
+!examples/output/castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi
+!examples/multiple-holes/output/combined_ti60_crpa1_smfa5_numsp50_opmin1.bdf
+!examples/multiple-holes/output/castem_tool_ti60_crpa1_smfa5_numsp50_opmin1.dgibi
+
+# Reviewed raw DEAP application inputs. Large files are routed through Git LFS.
+!examples/deap/*/results/deap_post.h5
+!examples/deap/*/results/deap_output.h5
+
+# Runtime files produced when a bundled DEAP application is executed in place.
+examples/deap/*/results/_generated_surface_inputs/
+examples/deap/*/results/xrange_ti*.csv
+examples/deap/*/results/yrange_ti*.csv
+examples/deap/*/results/zfit_zmax_ti*.csv
+examples/deap/*/results/zfit_zmin_ti*.csv
+examples/deap/*/results/*_ti*_crpa*_smfa*_numsp*_opmin*.dgibi
+examples/deap/*/results/headless-run-report.json
+examples/deap/*/results/_previous_mesh_runs/
+examples/characterization/*/generated_output/
+
+# Large reviewed MATLAB analysis archive remains local; track its audit only.
+legacy/matlab/Crack_Analysis_MATLAB/*
+!legacy/matlab/Crack_Analysis_MATLAB/README.md
+
+# Generated pipeline inputs and patched Cast3M programs at repository root
+/xrange_ti*.csv
+/yrange_ti*.csv
+/zfit_zmax_ti*.csv
+/zfit_zmin_ti*.csv
+/*_ti*_crpa*_smfa*_numsp*_opmin*.dgibi
+
+# Generated FISS text exports and quarantine folders
+xi*_ti*.txt
+yi*_ti*.txt
+zi*_ti*.txt
+ouvi*_ti*.txt
+etendi*_ti*.txt
+*_P*_T*_ti*_crpa*_smfa*_numsp*_opmin*.txt
+_txt_quarantine_*/
+
+# Baseline templates and documented CSV examples must remain trackable
+!source_codes/
+!source_codes/*.dgibi
+!examples/
+!examples/input/
+!examples/input/*.csv
+
+# Generated root-level characterization results
+/characterization/

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "description": "Two-hole Cast3M mesh example using the repository's existing 50x50 input quartet.",
+  "entrypoint": "castem_pipeline_gui_t13.App._run",
+  "template": "source_codes/castem_tool.dgibi",
+  "working_directory": "_runtime/multiple-holes-output",
+  "castem_version": "25",
+  "inputs": {
+    "xrange": "examples/input/xrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+    "yrange": "examples/input/yrange_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+    "zfit_zmax": "examples/input/zfit_zmax_ti60_crpa1_smfa5_numsp50_opmin1.csv",
+    "zfit_zmin": "examples/input/zfit_zmin_ti60_crpa1_smfa5_numsp50_opmin1.csv"
+  },
+  "parameters": {
+    "re_ti": 60,
+    "re_crpa": 1,
+    "re_smfa": 0.05,
+    "re_numspa": 50,
+    "re_opmin": 0.000001,
+    "nelem_x": 1,
+    "nelem_y": 1,
+    "nelem_z": 1,
+    "re_tol": 1e-10,
+    "re_fact_z": 1.05,
+    "num_el_fill": 5,
+    "re_fact_hole": 5.0,
+    "holes_enabled": true,
+    "holes": [
+      {
+        "cx": -0.2,
+        "cy": 0.2,
+        "r": 0.07
+      },
+      {
+        "cx": 0.2,
+        "cy": -0.2,
+        "r": 0.07
+      }
+    ],
+    "opti_med": 0,
+    "opti_stl": 0,
+    "opti_visu": 0,
+    "merge_bdfs": true
+  }
+}

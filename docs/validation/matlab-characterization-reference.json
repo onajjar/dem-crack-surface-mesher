@@ -1,0 +1,18 @@
+{
+  "software": "25.2.0.3042426 (R2025b) Update 1",
+  "definition": "Cubic-law resistance integrated by the trapezoidal rule; population statistics used for deterministic comparison.",
+  "planar_constant": {
+    "arithmetic_mean_aperture": 0.00019999999999999998,
+    "cubic_mean_aperture": 0.00020000000000000009,
+    "equivalent_aperture": 0.00020000000000000009,
+    "geometrical_tortuosity": 1,
+    "aperture_standard_deviation_population": 2.7105054312137611E-20
+  },
+  "varying_aperture": {
+    "projected_length": 1.2,
+    "series_resistance_integral": 2.6732412093536023E+11,
+    "equivalent_aperture": 0.00016496090588974822,
+    "arithmetic_mean_aperture": 0.00019999999999999998,
+    "cubic_mean_aperture": 0.00021639677110463963
+  }
+}

@@ -1,0 +1,30 @@
+castem_pipeline_gui_t13.py -text
+bpm_cfx.ico binary
+source_codes/castem_tool.dgibi -text
+source_codes/fiss.eso -text
+source_codes/fuite_fissure.dgibi -text
+source_codes/merge_surface_bdf.py -text
+examples/input/*.csv -text
+examples/output/*.bdf -text
+examples/output/*.dgibi -text
+examples/output/*.json -text
+examples/chambers/*.bdf -text whitespace=-blank-at-eol,-blank-at-eof
+examples/chambers/*.ini -text
+examples/chambers/*.png binary
+examples/multiple-holes/*.json -text
+examples/multiple-holes/output/*.bdf -text
+examples/multiple-holes/output/*.dgibi -text
+examples/multiple-holes/output/*.json -text
+docs/assets/*.png binary
+docs/assets/*.gif binary
+docs/workflow.mmd -text
+legacy/matlab/*.m -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+legacy/matlab/SHA256SUMS -text
+examples/deap/*/run.ini -text
+examples/deap/*/reference/*.csv -text whitespace=cr-at-eol
+examples/deap/*/results/input.boundary -text whitespace=cr-at-eol
+examples/deap/1_simple/results/*.h5 binary
+examples/deap/2_large/results/*.h5 filter=lfs diff=lfs merge=lfs -text
+examples/deap/3_rebar/results/*.h5 filter=lfs diff=lfs merge=lfs -text
+examples/deap/4_brazilian/results/*.h5 filter=lfs diff=lfs merge=lfs -text
+docs/validation/deap-surface-standalone-report.json -text whitespace=cr-at-eol

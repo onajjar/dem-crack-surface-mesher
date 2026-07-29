@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible problem in the GUI, headless runner, or generated pipeline.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach confidential geometry, credentials, or unnecessarily large solver outputs.
+        Report security vulnerabilities privately as described in SECURITY.md.
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: Describe what happened and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include the smallest safe configuration and exact commands needed to reproduce the issue.
+      placeholder: |
+        1. Run ...
+        2. Configure ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Windows, Python, Cast3M, Gmsh, and relevant package versions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or diagnostics
+      description: Paste a short sanitized excerpt or provide checksums and artifact metadata.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I removed credentials, personal paths, and confidential data.
+          required: true
+        - label: I checked the existing issues and documentation for this problem.
+          required: true

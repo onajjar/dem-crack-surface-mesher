@@ -1,0 +1,9 @@
+# Runtime dependencies for Python 3.10+
+numpy>=1.23
+matplotlib>=3.6
+scipy>=1.10
+PyWavelets>=1.4
+meshio>=5.3
+
+# Required for raw DEAP fitting and complete HDF5 post-processing.
+h5py>=3.8

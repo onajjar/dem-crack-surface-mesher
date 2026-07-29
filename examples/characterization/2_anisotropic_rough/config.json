@@ -1,0 +1,17 @@
+{
+  "case": "anisotropic_rough",
+  "points_x": 64,
+  "points_y": 48,
+  "size_x": 1.2,
+  "size_y": 0.9,
+  "mean_aperture": 0.0002,
+  "aperture_standard_deviation": 0.00004,
+  "mid_surface_rms": 0.00003,
+  "hurst_x": 0.82,
+  "hurst_y": 0.58,
+  "correlation_length_x": 0.25,
+  "correlation_length_y": 0.08,
+  "minimum_aperture": 0.000001,
+  "length_unit": "m",
+  "random_seed": 202
+}
