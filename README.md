@@ -1,170 +1,111 @@
-# dem-cfd-crack-geometry-to-mesh-converter
-Python tool for converting DEM/CFD crack geometries into simulation-ready meshes for numerical analysis.
-
-## Repository structure
-
-```text
-DEM-CFD-Crack-Geometry-to-Mesh-Converter/
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── LICENSE
-├── src/
-│   ├── __init__.py
-│   ├── converter.py
-│   ├── geometry.py
-│   ├── mesh_io.py
-│   └── utils.py
-├── examples/
-│   ├── sample_input/
-│   └── sample_output/
-├── assets/
-│   └── interface.png
-└── tests/
-    └── test_converter.py
-```
-
-## README.md
-
-````markdown
 # DEM/CFD Crack Geometry to Mesh Converter
 
-A Python-based tool for converting crack or complex geometries obtained from DEM/CFD workflows into simulation-ready meshes.
+Research software for reconstructing three-dimensional crack surfaces from
+DEM/CFD data, generating simulation-ready meshes, and preparing NASTRAN BDF
+models for leakage and flow studies.
 
-## Overview
+[![Windows branch](https://img.shields.io/badge/Windows-current%20version-0078D4?logo=windows)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/baseline/current-version)
+[![Linux branch](https://img.shields.io/badge/Linux-native%20port-FCC624?logo=linux&logoColor=black)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/linux-port)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.nucengdes.2025.114718-2F6F9F)](https://doi.org/10.1016/j.nucengdes.2025.114718)
 
-This project is designed to transform geometry data into meshes that can be used in numerical simulation workflows, especially for:
-- finite element analysis (FEM)
-- computational fluid dynamics (CFD)
-- coupled DEM/CFD studies
+> **Choose a platform branch before cloning.** The default `main` branch is
+> the project landing page; the complete applications, examples, tests, and
+> technical documentation are maintained in the platform branches below.
 
-The tool focuses on preprocessing geometrical data, preparing mesh-compatible formats, and supporting scientific simulation pipelines.
+## Choose your platform
 
-## Features
+| Distribution | Branch | Intended use | Documentation |
+|---|---|---|---|
+| **Windows** | [`baseline/current-version`](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/baseline/current-version) | Windows desktop and headless workflows with the preserved Cast3M baseline | [Windows README](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/baseline/current-version/README.md) |
+| **Linux** | [`linux-port`](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/linux-port) | Native Linux setup and launchers for desktop or headless execution | [Linux README](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/README.md) · [Linux guide](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/docs/linux.md) |
 
-- Import geometry data from DEM/CFD workflows
-- Process and clean crack geometry before meshing
-- Convert geometry into mesh-ready formats
-- Support preprocessing for numerical simulation
-- Python-based and adaptable to custom workflows
+Both distributions preserve the immutable historical T13 runtime files. The
+Linux port adds native process and executable discovery without rewriting that
+scientific baseline.
 
-## Applications
+![Scientific Workbench](https://raw.githubusercontent.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/linux-port/docs/assets/scientific-workbench.png)
 
-This project can be useful for:
-- crack geometry reconstruction
-- preprocessing for CFD simulations in fractured media
-- mesh preparation for multiphysics workflows
-- scientific computing and simulation automation
+## Quick start
 
-## Installation
+### Windows
+
+```powershell
+git clone --branch baseline/current-version --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-windows
+cd converter-windows
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -c constraints-baseline.txt
+python castem_pipeline_gui_scientific.py
+```
+
+### Linux
 
 ```bash
-pip install -r requirements.txt
-````
-
-## Usage
-
-```bash
-python -m src.converter
+git clone --branch linux-port --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-linux
+cd converter-linux
+./scripts/setup_linux.sh
+./run_linux.sh
 ```
 
-## Tech stack
+Cast3M and Gmsh are external applications and are not installed by the Python
+requirements. The source-free Python meshing backend remains available when
+Cast3M is not installed. Git LFS is required to download the larger bundled
+DEAP example datasets.
 
-* Python
-* Scientific computing workflows
-* Geometry processing
-* Mesh preparation for simulation
+## Main capabilities
 
-## Project status
+- Load existing crack-surface CSV matrices or fit raw DEAP HDF5 results with a
+  MATLAB-compatible Python quadratic LOESS reconstruction.
+- Generate reproducible constant or directional fractal crack surfaces.
+- Characterize aperture, tortuosity, roughness, Hurst scaling, orientation,
+  connectivity, and hydraulic proxies.
+- Generate structured HEXA8 crack meshes with Cast3M or the source-free Python
+  backend.
+- Model circular and shaped through-holes, inlet/outlet chambers, and graded
+  mesh regions.
+- Export NASTRAN BDF, MED, and STL data for downstream CFD workflows.
+- Optionally evaluate crack flow with Cast3M's `FISS` operator.
 
-This project is under active development.
+## Scientific workflow
 
-## Author
-
-Omar Najjar
-PhD in Civil Engineering
-Numerical Simulation | Scientific Computing | Multiphysics Modeling
-
-````
-
-## requirements.txt
-
-```txt
-numpy
-scipy
-matplotlib
-meshio
-````
-
-## .gitignore
-
-```gitignore
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.log
-*.tmp
-*.bak
-.env
-.venv/
-venv/
-.idea/
-.vscode/
-build/
-dist/
-*.msh
-*.vtk
-*.vtu
-*.xdmf
-*.h5
-*.csv
+```mermaid
+flowchart LR
+    A[DEM / HDF5 / CSV data] --> B[Crack-surface reconstruction]
+    B --> C[Geometrical characterization]
+    B --> D[Cast3M or Python meshing]
+    C --> D
+    D --> E[Volume and boundary meshes]
+    E --> F[NASTRAN BDF / MED / STL]
+    E --> G[CFD and optional FISS analysis]
 ```
 
-## LICENSE
+## Citation
 
-Use the MIT License.
+If this software or its reconstruction workflow contributes to research or a
+publication, please cite:
 
-## Suggested pinned information for GitHub
+> O. Najjar, T. Heitz, C. Oliver-Leblond, J.-L. Tailhan, G. Rastiello, and
+> F. Ragueneau, “Three-dimensional crack reconstruction from Beam–Particle
+> Model for CFD-based leakage assessment,” *Nuclear Engineering and Design*,
+> vol. 448, article 114718, 2026.
+> [https://doi.org/10.1016/j.nucengdes.2025.114718](https://doi.org/10.1016/j.nucengdes.2025.114718)
 
-### Repository title
+Each platform branch contains `CITATION.cff` and `CITATION.bib` metadata for
+reference managers and automated citation tools.
 
-DEM/CFD Crack Geometry to Mesh Converter
+## Repository policy
 
-### About section
+- `main` is the public project landing page and platform selector.
+- `baseline/current-version` contains the maintained Windows distribution.
+- `linux-port` contains the native Linux distribution.
+- Generated solver, mesh, and characterization outputs stay outside Git unless
+  they are deliberately reviewed examples.
+- The files listed in `BASELINE_SHA256SUMS` remain byte-for-byte protected in
+  the implementation branches.
 
-Python tool for converting DEM/CFD crack geometries into simulation-ready meshes for numerical analysis.
-
-### Topics
-
-`python`, `cfd`, `dem`, `mesh-generation`, `geometry-processing`, `scientific-computing`, `simulation`, `numerical-methods`
-
-## What to remove before publishing
-
-* Temporary comments
-* Internal lab paths
-* Private datasets
-* Unused scripts
-* Large output files
-* Informal file names
-
-## What to add before publishing
-
-* One clean screenshot in `assets/`
-* One simple example in `examples/`
-* One small test in `tests/`
-* Clear docstrings in source files
-
-## First publishing checklist
-
-* Repository name cleaned
-* README added
-* requirements.txt added
-* .gitignore added
-* LICENSE added
-* No confidential files
-* One working example included
-* One screenshot included
-
-```
-```
+Contribution and security guidance are available in the maintained source
+branches: [Contributing](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/CONTRIBUTING.md),
+[Code of Conduct](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/CODE_OF_CONDUCT.md),
+and [Security](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/SECURITY.md).
