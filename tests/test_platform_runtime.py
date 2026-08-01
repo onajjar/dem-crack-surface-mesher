@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from types import ModuleType
 
@@ -14,14 +15,15 @@ def _executable(path: Path, text: str = "#!/bin/sh\nexit 0\n") -> Path:
     return path
 
 
-def test_castem_path_directory_resolves_native_linux_launcher(
+def test_castem_path_directory_resolves_native_launcher(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    launcher = _executable(tmp_path / "castem25")
+    launcher_name = "castem25.bat" if os.name == "nt" else "castem25"
+    launcher = _executable(tmp_path / launcher_name)
     monkeypatch.setenv("CASTEM_PATH", str(tmp_path))
 
-    assert platform_runtime.resolve_castem_exe("2025", platform_name="posix") == launcher
+    assert platform_runtime.resolve_castem_exe("2025", platform_name=os.name) == launcher
 
 
 def test_invalid_castem_override_has_actionable_error(
@@ -74,6 +76,7 @@ def test_castem_command_runs_native_linux_launcher_directly(tmp_path: Path) -> N
     ) == [str(launcher), dgibi.name]
 
 
+@pytest.mark.skipif(os.name == "nt", reason="requires a POSIX /bin/bash interpreter")
 def test_castem_command_repairs_legacy_linux_wrapper_shebang(tmp_path: Path) -> None:
     launcher = _executable(tmp_path / "castem25", "#/bin/bash\nexit 0\n")
     dgibi = tmp_path / "mesh.dgibi"
@@ -104,15 +107,16 @@ def test_gmsh_is_resolved_from_path(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    gmsh = _executable(tmp_path / "gmsh")
+    executable_name = "gmsh.exe" if os.name == "nt" else "gmsh"
+    gmsh = _executable(tmp_path / executable_name)
     monkeypatch.delenv("GMSH_PATH", raising=False)
     monkeypatch.setattr(
         platform_runtime.shutil,
         "which",
-        lambda name: str(gmsh) if name == "gmsh" else None,
+        lambda name: str(gmsh) if name == executable_name else None,
     )
 
-    assert platform_runtime.resolve_gmsh_exe(platform_name="posix") == gmsh
+    assert platform_runtime.resolve_gmsh_exe(platform_name=os.name) == gmsh
 
 
 def test_immutable_module_resolvers_can_be_adapted_without_editing_it() -> None:
