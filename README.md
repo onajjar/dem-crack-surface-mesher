@@ -4,8 +4,8 @@ Research software for reconstructing three-dimensional crack surfaces from
 DEM/CFD data, generating simulation-ready meshes, and preparing NASTRAN BDF
 models for leakage and flow studies.
 
-[![Windows branch](https://img.shields.io/badge/Windows-current%20version-0078D4?logo=windows)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/baseline/current-version)
-[![Linux branch](https://img.shields.io/badge/Linux-native%20port-FCC624?logo=linux&logoColor=black)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/linux-port)
+[![Windows branch](https://img.shields.io/badge/Windows-current%20version-0078D4?logo=windows)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/windows)
+[![Linux branch](https://img.shields.io/badge/Linux-native%20port-FCC624?logo=linux&logoColor=black)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/linux)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.nucengdes.2025.114718-2F6F9F)](https://doi.org/10.1016/j.nucengdes.2025.114718)
 
@@ -17,21 +17,21 @@ models for leakage and flow studies.
 
 | Distribution | Branch | Intended use | Documentation |
 |---|---|---|---|
-| **Windows** | [`baseline/current-version`](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/baseline/current-version) | Windows desktop and headless workflows with the preserved Cast3M baseline | [Windows README](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/baseline/current-version/README.md) |
-| **Linux** | [`linux-port`](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/linux-port) | Native Linux setup and launchers for desktop or headless execution | [Linux README](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/README.md) · [Linux guide](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/docs/linux.md) |
+| **Windows** | [`windows`](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/windows) | Windows desktop and headless workflows with the preserved Cast3M baseline | [Windows README](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/windows/README.md) |
+| **Linux** | [`linux`](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/tree/linux) | Native Linux setup and launchers for desktop or headless execution | [Linux README](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux/README.md) · [Linux guide](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux/docs/linux.md) |
 
 Both distributions preserve the immutable historical T13 runtime files. The
 Linux port adds native process and executable discovery without rewriting that
 scientific baseline.
 
-![Scientific Workbench](https://raw.githubusercontent.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/linux-port/docs/assets/scientific-workbench.png)
+![Scientific Workbench](https://raw.githubusercontent.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/linux/docs/assets/scientific-workbench.png)
 
 ## Quick start
 
 ### Windows
 
 ```powershell
-git clone --branch baseline/current-version --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-windows
+git clone --branch windows --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-windows
 cd converter-windows
 py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -43,7 +43,7 @@ python castem_pipeline_gui_scientific.py
 ### Linux
 
 ```bash
-git clone --branch linux-port --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-linux
+git clone --branch linux --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-linux
 cd converter-linux
 ./scripts/setup_linux.sh
 ./run_linux.sh
@@ -98,14 +98,14 @@ reference managers and automated citation tools.
 ## Repository policy
 
 - `main` is the public project landing page and platform selector.
-- `baseline/current-version` contains the maintained Windows distribution.
-- `linux-port` contains the native Linux distribution.
+- `windows` contains the maintained Windows distribution.
+- `linux` contains the native Linux distribution.
 - Generated solver, mesh, and characterization outputs stay outside Git unless
   they are deliberately reviewed examples.
 - The files listed in `BASELINE_SHA256SUMS` remain byte-for-byte protected in
   the implementation branches.
 
 Contribution and security guidance are available in the maintained source
-branches: [Contributing](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/CONTRIBUTING.md),
-[Code of Conduct](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/CODE_OF_CONDUCT.md),
-and [Security](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux-port/SECURITY.md).
+branches: [Contributing](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux/CONTRIBUTING.md),
+[Code of Conduct](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux/CODE_OF_CONDUCT.md),
+and [Security](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/blob/linux/SECURITY.md).
