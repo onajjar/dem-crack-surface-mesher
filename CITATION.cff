@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: >-
   If you use this software or its crack-reconstruction workflow in research,
   please cite the preferred article below.
-title: "DEM/CFD Crack Geometry to Mesh Converter"
+title: "DEM Crack Surface Mesher"
 type: software
 authors:
   - family-names: Najjar
@@ -17,8 +17,8 @@ authors:
     given-names: Giuseppe
   - family-names: Ragueneau
     given-names: Frédéric
-repository-code: "https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter"
-url: "https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter"
+repository-code: "https://github.com/onajjar/dem-crack-surface-mesher"
+url: "https://github.com/onajjar/dem-crack-surface-mesher"
 keywords:
   - crack reconstruction
   - beam-particle model

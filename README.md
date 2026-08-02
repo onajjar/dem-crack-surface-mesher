@@ -1,6 +1,6 @@
-# DEM/CFD Crack Geometry to Mesh Converter
+# DEM Crack Surface Mesher
 
-[![CI](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml/badge.svg?branch=windows)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml?query=branch%3Awindows)
+[![CI](https://github.com/onajjar/dem-crack-surface-mesher/actions/workflows/ci.yml/badge.svg?branch=windows)](https://github.com/onajjar/dem-crack-surface-mesher/actions/workflows/ci.yml?query=branch%3Awindows)
 
 A Windows desktop pipeline that loads CSVs, fits raw DEAP discrete-simulation
 results in Python, or synthesizes structured crack surfaces; optionally
@@ -366,7 +366,7 @@ compatibility.
 ## Installation
 
 ```powershell
-git clone --branch windows --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-windows
+git clone --branch windows --single-branch https://github.com/onajjar/dem-crack-surface-mesher.git converter-windows
 cd converter-windows
 
 py -3.11 -m venv .venv
