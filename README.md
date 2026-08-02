@@ -24,7 +24,7 @@ Both distributions preserve the immutable historical T13 runtime files. The
 Linux port adds native process and executable discovery without rewriting that
 scientific baseline.
 
-![Scientific Workbench](https://raw.githubusercontent.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/linux/docs/assets/scientific-workbench.png)
+[![Scientific Workbench showing the mesh and hole controls](docs/assets/scientific-workbench.png)](docs/assets/scientific-workbench.png)
 
 ## Quick start
 
@@ -70,16 +70,10 @@ DEAP example datasets.
 
 ## Scientific workflow
 
-```mermaid
-flowchart LR
-    A[DEM / HDF5 / CSV data] --> B[Crack-surface reconstruction]
-    B --> C[Geometrical characterization]
-    B --> D[Cast3M or Python meshing]
-    C --> D
-    D --> E[Volume and boundary meshes]
-    E --> F[NASTRAN BDF / MED / STL]
-    E --> G[CFD and optional FISS analysis]
-```
+[![Scientific workflow from crack-surface data to CFD-ready meshes and optional FISS flow results](docs/assets/workflow.png)](docs/assets/workflow.png)
+
+The solid path covers mesh conversion with the Python-only default or Cast3M;
+the dashed path covers the optional FISS flow calculation.
 
 ## Citation
 
