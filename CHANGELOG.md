@@ -131,5 +131,5 @@ All notable repository-level changes are documented here. This project follows t
 - Large historical meshes, solver results, traces, and temporary run directories were intentionally excluded.
 - This is a pre-refactor preservation release, not a claim of numerical validation or production readiness.
 
-[Unreleased]: https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/compare/v0.1.0-baseline...HEAD
-[0.1.0-baseline]: https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/releases/tag/v0.1.0-baseline
+[Unreleased]: https://github.com/onajjar/dem-crack-surface-mesher/compare/v0.1.0-baseline...HEAD
+[0.1.0-baseline]: https://github.com/onajjar/dem-crack-surface-mesher/releases/tag/v0.1.0-baseline

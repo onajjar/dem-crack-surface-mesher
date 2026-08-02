@@ -1,6 +1,6 @@
-# DEM/CFD Crack Geometry to Mesh Converter
+# DEM Crack Surface Mesher
 
-[![CI](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml/badge.svg?branch=linux)](https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter/actions/workflows/ci.yml?query=branch%3Alinux)
+[![CI](https://github.com/onajjar/dem-crack-surface-mesher/actions/workflows/ci.yml/badge.svg?branch=linux)](https://github.com/onajjar/dem-crack-surface-mesher/actions/workflows/ci.yml?query=branch%3Alinux)
 
 A cross-platform desktop and headless pipeline that loads CSVs, fits raw DEAP
 discrete-simulation results in Python, or synthesizes structured crack surfaces; optionally
@@ -373,7 +373,7 @@ compatibility.
 Linux:
 
 ```bash
-git clone --branch linux --single-branch https://github.com/onajjar/dem-cfd-crack-geometry-to-mesh-converter.git converter-linux
+git clone --branch linux --single-branch https://github.com/onajjar/dem-crack-surface-mesher.git converter-linux
 cd converter-linux
 ./scripts/setup_linux.sh
 ```
