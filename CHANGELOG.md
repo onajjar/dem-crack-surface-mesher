@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added Vassaux et al. (2016) as the methodological reference for the
+  beam-particle/discrete-element model underlying the DEM microcracking data.
 - Made source-free Python-only HEXA8 the Workbench default and disabled the
   Cast3M DGIBI path/browser, launcher version, and Gmsh controls until a Cast3M
   backend is selected.
