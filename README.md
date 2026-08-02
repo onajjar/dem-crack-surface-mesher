@@ -86,6 +86,15 @@ publication, please cite:
 > vol. 448, article 114718, 2026.
 > [https://doi.org/10.1016/j.nucengdes.2025.114718](https://doi.org/10.1016/j.nucengdes.2025.114718)
 
+For the beam-particle/discrete-element formulation underlying the DEM
+microcracking simulations, also cite:
+
+> M. Vassaux, C. Oliver-Leblond, B. Richard, and F. Ragueneau,
+> “Beam-particle approach to model cracking and energy dissipation in concrete:
+> Identification strategy and validation,” *Cement and Concrete Composites*,
+> vol. 70, pp. 1–14, 2016.
+> [https://doi.org/10.1016/j.cemconcomp.2016.03.011](https://doi.org/10.1016/j.cemconcomp.2016.03.011)
+
 Each platform branch contains `CITATION.cff` and `CITATION.bib` metadata for
 reference managers and automated citation tools.
 
