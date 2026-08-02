@@ -50,3 +50,24 @@ preferred-citation:
   year: 2026
   doi: "10.1016/j.nucengdes.2025.114718"
   url: "https://www.sciencedirect.com/science/article/pii/S0029549325008957"
+references:
+  - type: article
+    title: >-
+      Beam-particle approach to model cracking and energy dissipation in
+      concrete: Identification strategy and validation
+    authors:
+      - family-names: Vassaux
+        given-names: M.
+      - family-names: Oliver-Leblond
+        given-names: C.
+      - family-names: Richard
+        given-names: B.
+      - family-names: Ragueneau
+        given-names: F.
+    journal: "Cement and Concrete Composites"
+    volume: 70
+    start: 1
+    end: 14
+    year: 2016
+    doi: "10.1016/j.cemconcomp.2016.03.011"
+    url: "https://www.sciencedirect.com/science/article/pii/S0958946516300506"

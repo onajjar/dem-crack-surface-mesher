@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added Vassaux et al. (2016) as the methodological reference for the
+  beam-particle/discrete-element model underlying the DEM microcracking data.
 - Added native Linux/macOS Cast3M, Gmsh, desktop-opening, GUI, headless,
   benchmark, and example launch support while preserving Windows batch
   behavior and all immutable baseline files.
