@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a repository-relative Windows setup script that discovers Conda,
+  standard Python, or the optional `py` launcher and rejects unsupported Python
+  versions before creating `.venv`; documented both virtualenv and Conda setup.
 - Added Vassaux et al. (2016) as the methodological reference for the
   beam-particle/discrete-element model underlying the DEM microcracking data.
 - Made source-free Python-only HEXA8 the Workbench default and disabled the

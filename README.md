@@ -374,21 +374,54 @@ compatibility.
 
 ## Installation
 
+Run the setup from the repository root, not from `C:\Windows\System32`. If the
+project was supplied as a folder or ZIP archive, open PowerShell in that folder
+or navigate to it first:
+
+```powershell
+Set-Location 'C:\path\to\converter-windows'
+```
+
+The recommended setup script locates an available `python`, `py -3`, or
+`python3` interpreter, requires Python 3.10 or newer, creates `.venv` in the
+repository root, and installs the recorded runtime dependencies:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1
+.\.venv\Scripts\Activate.ps1
+```
+
+The execution-policy override applies only to that setup process; it does not
+change the user or machine policy.
+
+The `py` launcher is not required. To perform the same setup manually with the
+active Python interpreter, use:
+
 ```powershell
 git clone --branch windows --single-branch https://github.com/onajjar/dem-crack-surface-mesher.git converter-windows
 cd converter-windows
 
-py -3.11 -m venv .venv
+python --version  # Must be 3.10 or newer
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-To recreate the recorded top-level Python package versions used for the baseline runs, install with the committed constraints:
-
-```powershell
 python -m pip install -r requirements.txt -c constraints-baseline.txt
 ```
+
+If the prompt begins with `(base)`, Conda is active and its `python` command can
+be used. Alternatively, create a dedicated Conda environment instead of
+`.venv`:
+
+```powershell
+conda create -n dem-crack-mesher python=3.11
+conda activate dem-crack-mesher
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -c constraints-baseline.txt
+```
+
+The committed constraints reproduce the recorded top-level package versions.
+Omit `-c constraints-baseline.txt` only when intentionally selecting the newest
+compatible dependency versions.
 
 Cast3M is resolved in this order:
 
