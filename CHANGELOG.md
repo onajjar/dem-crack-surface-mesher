@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Made Linux setup discover `PYTHON_BIN`, `python3`, or Conda's `python`, reject
+  unsupported Python versions, and remain repository-relative; removed the
+  Windows README's dependency on the optional `py` launcher.
 - Added Vassaux et al. (2016) as the methodological reference for the
   beam-particle/discrete-element model underlying the DEM microcracking data.
 - Added native Linux/macOS Cast3M, Gmsh, desktop-opening, GUI, headless,

@@ -14,9 +14,34 @@ From the repository root:
 ./scripts/setup_linux.sh
 ```
 
-The script creates `.venv` and installs `requirements.txt` with the recorded
-versions in `constraints-baseline.txt`. On Debian or Ubuntu, install Tk first
-if the GUI package is absent:
+The script resolves the repository from its own location, so it can also be
+called from another working directory. It uses `PYTHON_BIN` when set,
+otherwise tries `python3` and then `python`; Python 3.10 or newer is required.
+It creates or reuses `.venv` and installs `requirements.txt` with the recorded
+versions in `constraints-baseline.txt`. To check discovery without creating or
+modifying an environment, run:
+
+```bash
+./scripts/setup_linux.sh --check-only
+```
+
+If Conda is active and you specifically want its interpreter to create
+`.venv`, use:
+
+```bash
+PYTHON_BIN=python ./scripts/setup_linux.sh
+```
+
+Alternatively, install directly in a dedicated Conda environment:
+
+```bash
+conda create -n dem-crack-mesher python=3.11
+conda activate dem-crack-mesher
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -c constraints-baseline.txt
+```
+
+On Debian or Ubuntu, install Tk first if the GUI package is absent:
 
 ```bash
 sudo apt install python3-venv python3-tk

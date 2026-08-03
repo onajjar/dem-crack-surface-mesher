@@ -379,7 +379,12 @@ compatibility.
 
 ## Installation
 
-Linux:
+Run the setup from the repository root. If the project was supplied as a folder
+or archive, open a terminal in that folder or navigate to it first. The setup
+script resolves the repository from its own location, so it does not create
+`.venv` in the caller's working directory.
+
+### Linux
 
 ```bash
 git clone --branch linux --single-branch https://github.com/onajjar/dem-crack-surface-mesher.git converter-linux
@@ -387,8 +392,9 @@ cd converter-linux
 ./scripts/setup_linux.sh
 ```
 
-The setup script creates `.venv` and installs the recorded runtime dependency
-versions. To install manually, run:
+The script uses `PYTHON_BIN` when set, otherwise tries `python3` and then
+`python`, requires Python 3.10 or newer, creates `.venv`, and installs the
+recorded runtime dependency versions. To install manually, run:
 
 ```bash
 python3 -m venv .venv
@@ -397,14 +403,29 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt -c constraints-baseline.txt
 ```
 
-Windows PowerShell:
+When Conda is active, replace `python3` with `python`, or create a dedicated
+environment instead of `.venv`:
+
+```bash
+conda create -n dem-crack-mesher python=3.11
+conda activate dem-crack-mesher
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -c constraints-baseline.txt
+```
+
+### Windows PowerShell
 
 ```powershell
-py -3.11 -m venv .venv
+python --version  # Must be 3.10 or newer
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt -c constraints-baseline.txt
 ```
+
+The Windows `py` launcher is optional and is not installed by every Python or
+Conda distribution. The maintained `windows` branch also includes an automated
+PowerShell setup script.
 
 Cast3M is resolved in this order:
 
