@@ -33,12 +33,16 @@ scientific baseline.
 ```powershell
 git clone --branch windows --single-branch https://github.com/onajjar/dem-crack-surface-mesher.git converter-windows
 cd converter-windows
-py -3 -m venv .venv
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt -c constraints-baseline.txt
 python castem_pipeline_gui_scientific.py
 ```
+
+Run these commands from the cloned project folder, not from
+`C:\Windows\System32`. The setup script accepts Python 3.10 or newer from an
+active Conda environment or the `python`, optional `py -3`, or `python3`
+commands; the `py` launcher is not required. Its execution-policy override is
+limited to the setup process.
 
 ### Linux
 
@@ -48,6 +52,10 @@ cd converter-linux
 ./scripts/setup_linux.sh
 ./run_linux.sh
 ```
+
+The Linux setup script requires Python 3.10 or newer. It uses `PYTHON_BIN`
+when provided, otherwise tries `python3` and then `python`, including the
+`python` command supplied by an active Conda environment.
 
 Cast3M and Gmsh are external applications and are not installed by the Python
 requirements. The source-free Python meshing backend remains available when
