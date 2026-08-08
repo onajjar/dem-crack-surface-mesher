@@ -28,3 +28,8 @@ examples/deap/2_large/results/*.h5 filter=lfs diff=lfs merge=lfs -text
 examples/deap/3_rebar/results/*.h5 filter=lfs diff=lfs merge=lfs -text
 examples/deap/4_brazilian/results/*.h5 filter=lfs diff=lfs merge=lfs -text
 docs/validation/deap-surface-standalone-report.json -text whitespace=cr-at-eol
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+compose.yaml text eol=lf
+docs/docker.md text eol=lf
+examples/docker/*.ini text eol=lf

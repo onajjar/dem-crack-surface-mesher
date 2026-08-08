@@ -48,3 +48,46 @@ def test_windows_setup_check_works_outside_the_repository() -> None:
     assert completed.returncode == 0, completed.stderr
     assert f"Project root: {ROOT}" in completed.stdout
     assert "Setup check passed. No environment was created." in completed.stdout
+
+
+@pytest.mark.skipif(os.name != "nt", reason="PowerShell setup is Windows-specific")
+def test_windows_setup_handles_multiple_python_commands_on_path(tmp_path: Path) -> None:
+    first_directory = tmp_path / "first python"
+    second_directory = tmp_path / "second python"
+    first_directory.mkdir()
+    second_directory.mkdir()
+
+    for directory in (first_directory, second_directory):
+        shim = directory / "python.cmd"
+        shim.write_text(
+            f'@echo off\n"{sys.executable}" %*\n',
+            encoding="utf-8",
+        )
+
+    environment = os.environ.copy()
+    environment.pop("PYTHON_BIN", None)
+    environment["PATH"] = os.pathsep.join(
+        (str(first_directory), str(second_directory), environment["PATH"])
+    )
+
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(SETUP_SCRIPT),
+            "-CheckOnly",
+        ],
+        cwd=ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert f"Selected Python: {first_directory / 'python.cmd'}" in completed.stdout
+    assert "Setup check passed. No environment was created." in completed.stdout

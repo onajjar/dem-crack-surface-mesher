@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed Windows setup when PowerShell discovers more than one `python`
+  application: every resolved executable is now tested independently instead
+  of being concatenated into one invalid command.
+- Added a reproducible Linux-container workflow for Windows Docker Desktop and
+  Linux Docker Engine, including Compose, persistent example output, beginner
+  diagrams, host-Python-free validation/meshing commands, and CI smoke tests.
 - Added a repository-relative Windows setup script that discovers Conda,
   standard Python, or the optional `py` launcher and rejects unsupported Python
   versions before creating `.venv`; documented both virtualenv and Conda setup.

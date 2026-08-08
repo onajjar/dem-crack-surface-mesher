@@ -14,6 +14,20 @@ $venvPath = Join-Path $projectRoot ".venv"
 $venvPython = Join-Path $venvPath "Scripts\python.exe"
 $minimumVersion = [Version]"3.10"
 
+function Resolve-ApplicationPaths {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    @(
+        Get-Command $Name -CommandType Application -All -ErrorAction SilentlyContinue |
+            ForEach-Object { [string]$_.Source } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Unique
+    )
+}
+
 foreach ($requiredPath in @($requirementsPath, $constraintsPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required setup file is missing: $requiredPath"
@@ -22,24 +36,28 @@ foreach ($requiredPath in @($requirementsPath, $constraintsPath)) {
 
 $candidateSpecs = @()
 if ($PythonExecutable) {
-    $resolvedExplicit = Get-Command $PythonExecutable -CommandType Application -ErrorAction SilentlyContinue
-    if ($null -eq $resolvedExplicit) {
+    $resolvedExplicitPaths = @(Resolve-ApplicationPaths -Name $PythonExecutable)
+    if ($resolvedExplicitPaths.Count -eq 0) {
         throw "Python executable not found: $PythonExecutable"
     }
-    $candidateSpecs += [PSCustomObject]@{
-        Label = $PythonExecutable
-        Command = $resolvedExplicit.Source
-        Arguments = @()
+    foreach ($resolvedPath in $resolvedExplicitPaths) {
+        $candidateSpecs += [PSCustomObject]@{
+            Label = "$PythonExecutable [$resolvedPath]"
+            Command = [string]$resolvedPath
+            Arguments = @()
+        }
     }
 } elseif ($env:PYTHON_BIN) {
-    $resolvedEnvironment = Get-Command $env:PYTHON_BIN -CommandType Application -ErrorAction SilentlyContinue
-    if ($null -eq $resolvedEnvironment) {
+    $resolvedEnvironmentPaths = @(Resolve-ApplicationPaths -Name $env:PYTHON_BIN)
+    if ($resolvedEnvironmentPaths.Count -eq 0) {
         throw "PYTHON_BIN does not identify an executable: $($env:PYTHON_BIN)"
     }
-    $candidateSpecs += [PSCustomObject]@{
-        Label = "PYTHON_BIN"
-        Command = $resolvedEnvironment.Source
-        Arguments = @()
+    foreach ($resolvedPath in $resolvedEnvironmentPaths) {
+        $candidateSpecs += [PSCustomObject]@{
+            Label = "PYTHON_BIN [$resolvedPath]"
+            Command = [string]$resolvedPath
+            Arguments = @()
+        }
     }
 } else {
     foreach ($candidate in @(
@@ -47,11 +65,10 @@ if ($PythonExecutable) {
         [PSCustomObject]@{ Name = "py"; Arguments = @("-3") },
         [PSCustomObject]@{ Name = "python3"; Arguments = @() }
     )) {
-        $resolved = Get-Command $candidate.Name -CommandType Application -ErrorAction SilentlyContinue
-        if ($null -ne $resolved) {
+        foreach ($resolvedPath in @(Resolve-ApplicationPaths -Name $candidate.Name)) {
             $candidateSpecs += [PSCustomObject]@{
-                Label = $candidate.Name
-                Command = $resolved.Source
+                Label = "$($candidate.Name) [$resolvedPath]"
+                Command = [string]$resolvedPath
                 Arguments = $candidate.Arguments
             }
         }
@@ -94,6 +111,9 @@ Install Python, or create a Conda environment with:
   conda create -n dem-crack-mesher python=3.11
   conda activate dem-crack-mesher
 Then run this script again.
+Or use the container workflow without host Python:
+  docker compose build
+  docker compose run --rm mesher --headless examples/docker/constant-planes.ini --validate-only
 "@
 }
 

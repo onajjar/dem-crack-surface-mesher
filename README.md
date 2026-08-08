@@ -372,6 +372,27 @@ Matplotlib 3.10.0, h5py 3.12.1, meshio 5.3.5, Cast3M 25, and Gmsh 4.15.2.
 These versions describe the validated host, not a claim of exclusive
 compatibility.
 
+## Docker (no host Python required)
+
+The repository also provides a Linux-container image that runs identically
+from Windows Docker Desktop and Linux Docker Engine. It packages Python 3.11
+and the recorded dependencies, so neither `python.exe`, Conda, nor the optional
+Windows `py` launcher is used on the host:
+
+```console
+docker compose build
+docker compose run --rm mesher --headless examples/docker/constant-planes.ini --validate-only
+docker compose run --rm mesher --headless examples/docker/constant-planes.ini
+```
+
+Generated files from the complete example persist in `container-output` even
+though `--rm` removes the container. The container supports headless
+source-free Python workflows; use native installation for the Tk desktop,
+Cast3M/FISS, or the external Gmsh viewer. The [Docker and container guide](docs/docker.md)
+starts with `hello-world` and a disposable Python example, then explains
+images, containers, bind mounts, Windows/Linux commands, diagrams, custom
+cases, and troubleshooting.
+
 ## Installation
 
 Run the setup from the repository root, not from `C:\Windows\System32`. If the
@@ -382,9 +403,10 @@ or navigate to it first:
 Set-Location 'C:\path\to\converter-windows'
 ```
 
-The recommended setup script locates an available `python`, `py -3`, or
-`python3` interpreter, requires Python 3.10 or newer, creates `.venv` in the
-repository root, and installs the recorded runtime dependencies:
+The recommended setup script locates every available `python`, `py -3`, or
+`python3` application in command-search order, tests each independently,
+requires Python 3.10 or newer, creates `.venv` in the repository root, and
+installs the recorded runtime dependencies:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1
@@ -655,6 +677,21 @@ On a Windows desktop, `python scripts\capture_scientific_ui.py` recreates the sc
 - The standalone `source_codes/merge_surface_bdf.py` is retained for provenance but differs from the merger embedded in the GUI.
 
 ## Troubleshooting
+
+**Python is installed but the setup script rejects it**
+
+List every application PowerShell can see:
+
+```powershell
+Get-Command python -CommandType Application -All | Select-Object Source
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1 -CheckOnly
+```
+
+The current script tests each returned path separately, which handles a real
+Python installation and a Microsoft Store alias appearing together. To test a
+known installation explicitly, use for example
+`-PythonExecutable 'C:\Python\python.exe'`. Alternatively, follow the
+[Docker guide](docs/docker.md), which does not invoke host Python.
 
 **Cast3M executable not found**
 
