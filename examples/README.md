@@ -8,6 +8,7 @@
 | [Multiple-hole run](multiple-holes/README.md) | 2 | `multiple-holes/output/` |
 | [Generated surfaces](surfaces/README.md) | 2 | ignored real runs under `_runtime/` |
 | [Raw DEAP applications](deap/README.md) | 0 | raw HDF5 + MATLAB reference CSVs |
+| [Minimal Docker run](docker/README.md) | 0 | ignored generated files under `container-output/` |
 
 ## Shared input summary
 

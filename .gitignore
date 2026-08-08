@@ -72,6 +72,10 @@ temp/
 *.rej
 *.log
 
+# Results persisted through the Docker Compose bind mount
+/container-output/*
+!/container-output/README.md
+
 # Generated Cast3M/Gmsh meshes and solver artifacts
 *.bdf
 *.med

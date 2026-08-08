@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a reproducible Linux-container workflow for Windows Docker Desktop and
+  Linux Docker Engine, including Compose, persistent example output, beginner
+  diagrams, host-Python-free validation/meshing commands, and CI smoke tests.
 - Made Linux setup discover `PYTHON_BIN`, `python3`, or Conda's `python`, reject
   unsupported Python versions, and remain repository-relative; removed the
   Windows README's dependency on the optional `py` launcher.

@@ -377,6 +377,26 @@ Matplotlib 3.10.0, h5py 3.12.1, meshio 5.3.5, Cast3M 25, and Gmsh 4.15.2.
 These versions describe the validated host, not a claim of exclusive
 compatibility.
 
+## Docker (no host Python required)
+
+The repository also provides a Linux-container image that runs identically
+from Windows Docker Desktop and Linux Docker Engine. It packages Python 3.11
+and the recorded dependencies, so the host does not need Python or Conda:
+
+```console
+docker compose build
+docker compose run --rm mesher --headless examples/docker/constant-planes.ini --validate-only
+docker compose run --rm mesher --headless examples/docker/constant-planes.ini
+```
+
+Generated files from the complete example persist in `container-output` even
+though `--rm` removes the container. The container supports headless
+source-free Python workflows; use native installation for the Tk desktop,
+Cast3M/FISS, or the external Gmsh viewer. The [Docker and container guide](docs/docker.md)
+starts with `hello-world` and a disposable Python example, then explains
+images, containers, bind mounts, Windows/Linux commands, diagrams, custom
+cases, and troubleshooting.
+
 ## Installation
 
 Run the setup from the repository root. If the project was supplied as a folder

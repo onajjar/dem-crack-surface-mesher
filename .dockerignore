@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+_runtime
+characterization
+container-output
+*.log
+*.tmp
+*.bak

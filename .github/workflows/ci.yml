@@ -48,3 +48,34 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+  container:
+    name: Docker / Python 3.11
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Compose definition
+        run: docker compose config --quiet
+
+      - name: Build container image
+        run: docker build --tag dem-crack-surface-mesher:local .
+
+      - name: Check image entry point
+        run: docker run --rm dem-crack-surface-mesher:local --help
+
+      - name: Check Compose one-off runner
+        run: docker compose run --rm --no-deps mesher
+
+      - name: Validate source-free example in container
+        run: >-
+          docker run --rm dem-crack-surface-mesher:local
+          --headless examples/docker/constant-planes.ini --validate-only
+
+      - name: Run source-free mesh in container
+        run: >-
+          docker run --rm dem-crack-surface-mesher:local
+          --headless examples/docker/constant-planes.ini
