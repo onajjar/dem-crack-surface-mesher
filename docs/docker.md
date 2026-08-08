@@ -146,9 +146,11 @@ separate writable output mount prevent the container from modifying case data.
 
 ## 6. What the project files do
 
-- `Dockerfile` starts from Linux Python 3.11, installs the recorded dependency
-  constraints, verifies the six protected runtime files, compiles the Python
-  source, and changes to an unprivileged numeric user.
+- `Dockerfile` starts from Linux Python 3.11, installs the minimal Debian Tk
+  runtime required when the launcher imports `tkinter`, and checks that import
+  during the build. It also installs the recorded dependency constraints,
+  verifies the six protected runtime files, compiles the Python source, and
+  changes to an unprivileged numeric user.
 - `.dockerignore` removes Git metadata, virtual environments, caches, and local
   results from the build context.
 - `compose.yaml` builds the image and mounts `container-output` at the example
@@ -198,8 +200,11 @@ HOST_UID="$(id -u)" HOST_GID="$(id -g)" \
 
 **The desktop window does not open**
 
-That is intentional in the container. Use the branch's native setup for the Tk
-workbench and external viewers, or use `--headless` in Docker.
+That is intentional in the container. The image includes the Tk shared runtime
+because the preserved launcher imports `tkinter` before dispatching headless
+commands, but it does not add a display server or a desktop session. Use the
+branch's native setup for the Tk workbench and external viewers, or use
+`--headless` in Docker.
 
 **A host Python error still appears**
 

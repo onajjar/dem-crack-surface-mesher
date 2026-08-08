@@ -12,6 +12,11 @@ ENV HOME=/tmp \
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libtk8.6 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt constraints-baseline.txt ./
 RUN python -m pip install --no-cache-dir \
         -r requirements.txt \
@@ -19,7 +24,8 @@ RUN python -m pip install --no-cache-dir \
 
 COPY . .
 
-RUN python scripts/verify_baseline.py \
+RUN python -c "import tkinter; print(tkinter.TkVersion)" \
+    && python scripts/verify_baseline.py \
     && python -m compileall -q . \
     && mkdir -p /app/_runtime /tmp/cache /tmp/matplotlib \
     && chown -R 1000:1000 /app /tmp/cache /tmp/matplotlib

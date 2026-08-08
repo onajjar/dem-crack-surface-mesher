@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed container startup by installing the minimal Debian Tk 8.6 runtime
+  required by the preserved launcher and smoke-testing `import tkinter` while
+  building the image; the supported container workflow remains headless.
 - Fixed Windows setup when PowerShell discovers more than one `python`
   application: every resolved executable is now tested independently instead
   of being concatenated into one invalid command.
