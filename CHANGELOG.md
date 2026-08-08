@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed container startup by installing the minimal Debian Tk 8.6 runtime
+  required by the preserved launcher and smoke-testing `import tkinter` while
+  building the image; the supported container workflow remains headless.
 - Added a reproducible Linux-container workflow for Windows Docker Desktop and
   Linux Docker Engine, including Compose, persistent example output, beginner
   diagrams, host-Python-free validation/meshing commands, and CI smoke tests.

@@ -30,6 +30,8 @@ def test_container_distribution_is_complete_and_non_privileged() -> None:
     )
 
     assert "FROM python:3.11-slim-bookworm" in dockerfile
+    assert "libtk8.6" in dockerfile
+    assert 'python -c "import tkinter; print(tkinter.TkVersion)"' in dockerfile
     assert "python scripts/verify_baseline.py" in dockerfile
     assert 'USER 1000:1000' in dockerfile
     assert 'ENTRYPOINT ["python", "castem_pipeline_gui_scientific.py"]' in dockerfile
@@ -37,6 +39,7 @@ def test_container_distribution_is_complete_and_non_privileged() -> None:
     assert "privileged:" not in compose
     assert "/var/run/docker.sock" not in compose
     assert "docker compose run --rm mesher" in guide
+    assert "does not add a display server" in guide
     assert "docs/docker.md" in readme
     assert "docker build" in workflow
     assert "--validate-only" in workflow
