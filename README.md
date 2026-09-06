@@ -27,6 +27,21 @@ scientific baseline.
 
 [![Scientific Workbench showing the mesh and hole controls](docs/assets/scientific-workbench.png)](docs/assets/scientific-workbench.png)
 
+## MATLAB fitting and contact verification
+
+The updated Python reconstruction is checked against 216 frozen MATLAB R2025b
+reference cases: 32 real DEAP scenarios, 160 arbitrary-point fits and 24 paired
+surface/contact cases. Native Windows and Linux checks cover Python 3.10 and
+3.13, with exact agreement of the tested contact decisions.
+
+Read the [comparison report, figures and reproducible evidence](https://github.com/onajjar/dem-crack-surface-mesher/tree/linux/docs/validation/matlab-parity-2026-09-06)
+for numerical tolerances, input coverage and physical limitations. Both platform
+branches contain the same verified fitting core and the reference tests.
+
+Touching walls remain closed in the reconstructed surfaces. The current
+Python-only HEXA8 volume mesher requires positive aperture and reports contact
+patches during preflight; see the report before choosing a meshing workflow.
+
 ## Docker quick start (no host Python)
 
 Docker builds one reusable Linux image containing Python and the recorded
