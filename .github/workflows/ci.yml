@@ -11,7 +11,7 @@ jobs:
   quality:
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -49,12 +49,7 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
-      - name: Diagnose MATLAB backend CPU dispatch
-        if: always()
-        run: python scripts/probe_matlab_backend.py
-
       - name: Compare fitting and contact to frozen MATLAB oracle
-        if: always()
         run: >-
           python scripts/validate_matlab_fitting.py --groups arbitrary contact
           --output _runtime/matlab-fitting.json
@@ -76,7 +71,6 @@ jobs:
           name: matlab-${{ matrix.os }}-${{ matrix.python-version }}
           path: |
             _runtime/matlab-*.json
-            _runtime/backend-probe.json
           if-no-files-found: ignore
 
   container:

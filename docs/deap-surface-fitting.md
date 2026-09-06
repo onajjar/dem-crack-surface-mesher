@@ -71,19 +71,19 @@ R2025b oracle matrix. Use `--groups arbitrary contact` when the large DEAP LFS
 inputs are not present. This validator fails on numerical or contact-mask
 disagreement and records the operating system, backend and source hashes.
 
-The port uses the reference-validated oneMKL LAPACK through `matlab_lapack.py`,
-including when NumPy and SciPy were installed from standard pip wheels. Runtime
-requirements install `mkl==2023.1.0` on Windows/Linux x86-64. A Conda installation
-can provide the runtime from its own `Library/bin` or `lib` directory. Fitting
-fails explicitly if the runtime is unavailable; CSV/synthetic surface modes
-and meshing load without it. Run the frozen fixtures on a new CPU/runtime before
-claiming equivalence: matching one MATLAB release is not a universal guarantee.
+The port controls the six-column pivoted-QR arithmetic in `matlab_lapack.py`.
+Standard SciPy distributions select different BLAS/LAPACK implementations; the
+audit also found different oneMKL results on Intel and AMD processors. These
+rounding differences become significant in nearly singular local fits and can
+change contact decisions. Installing the same library version was insufficient.
 
-This backend choice is necessary: a standard OpenBLAS SciPy wheel changed
-ill-conditioned wall fits and two synthetic contact decisions in the audit.
-Using the same LAPACK backend restored the comparison on the tested Windows
-environments. Native Linux evidence is produced by the CI jobs, including all
-32 real DEAP scenarios; check the artifact for the commit you are using.
+The compatibility solver therefore fixes the reduction order, fused operations,
+norm rounding, rank threshold, and basic-solution convention explicitly. It uses
+Python's fused multiply-add or the C99 runtime equivalent on Python 3.10-3.12.
+It does not require MATLAB or a vendor-specific BLAS. Matching the frozen R2025b
+fixtures is evidence for the tested cases, not proof of equivalence for every
+possible input or MATLAB release. CI saves numerical evidence for each tested
+operating system and Python version, including the full DEAP set on Linux.
 
 Contact follows the executable MATLAB code, including where a MATLAB comment
 incorrectly says "clamp to opmin": negative fitted aperture is set to **zero**,

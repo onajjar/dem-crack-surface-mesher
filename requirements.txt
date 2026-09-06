@@ -7,7 +7,3 @@ meshio>=5.3
 
 # Required for raw DEAP fitting and complete HDF5 post-processing.
 h5py>=3.8
-
-# Same LAPACK for MATLAB-compatible fitting with either pip or Conda SciPy.
-# Other surface/meshing modes remain usable on architectures without oneMKL.
-mkl==2023.1.0; platform_machine == "AMD64" or platform_machine == "x86_64"
