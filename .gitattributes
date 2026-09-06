@@ -40,3 +40,9 @@ tests/data/matlab_r2025b/** -text whitespace=cr-at-eol
 deap_crack_surface.py text eol=lf
 matlab_floating_point.py text eol=lf
 matlab_lapack.py text eol=lf
+
+# Preserve reviewed numerical evidence and its checksums.
+docs/validation/matlab-parity-2026-09-06/** -text whitespace=cr-at-eol
+docs/validation/matlab-parity-2026-09-06/report.pdf binary
+docs/validation/matlab-parity-2026-09-06/figures/*.pdf binary
+docs/validation/matlab-parity-2026-09-06/figures/*.svg -text whitespace=-blank-at-eol,cr-at-eol

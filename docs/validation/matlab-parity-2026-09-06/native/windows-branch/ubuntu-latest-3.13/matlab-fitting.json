@@ -1,0 +1,2753 @@
+{
+  "pass": true,
+  "cases": [
+    {
+      "group": "arbitrary",
+      "id": "A001_uniform_quadratic_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A002_uniform_quadratic_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A003_uniform_quadratic_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A004_uniform_quadratic_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A005_uniform_quadratic_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A006_uniform_quadratic_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A007_uniform_quadratic_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A008_uniform_quadratic_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A009_uniform_quadratic_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A010_uniform_quadratic_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A011_uniform_quadratic_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A012_uniform_quadratic_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A013_uniform_quadratic_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A014_uniform_quadratic_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A015_uniform_quadratic_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A016_uniform_quadratic_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A017_uniform_wavy_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A018_uniform_wavy_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A019_uniform_wavy_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A020_uniform_wavy_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A021_uniform_wavy_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A022_uniform_wavy_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A023_uniform_wavy_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A024_uniform_wavy_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A025_uniform_wavy_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A026_uniform_wavy_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A027_uniform_wavy_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A028_uniform_wavy_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A029_uniform_wavy_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A030_uniform_wavy_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A031_uniform_wavy_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A032_uniform_wavy_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A033_anisotropic_scales_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A034_anisotropic_scales_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A035_anisotropic_scales_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A036_anisotropic_scales_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A037_anisotropic_scales_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A038_anisotropic_scales_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-16,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A039_anisotropic_scales_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A040_anisotropic_scales_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A041_anisotropic_scales_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A042_anisotropic_scales_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A043_anisotropic_scales_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A044_anisotropic_scales_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A045_anisotropic_scales_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A046_anisotropic_scales_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A047_anisotropic_scales_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A048_anisotropic_scales_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A049_rotated_ellipse_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A050_rotated_ellipse_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A051_rotated_ellipse_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A052_rotated_ellipse_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A053_rotated_ellipse_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A054_rotated_ellipse_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A055_rotated_ellipse_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A056_rotated_ellipse_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A057_rotated_ellipse_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A058_rotated_ellipse_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A059_rotated_ellipse_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A060_rotated_ellipse_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A061_rotated_ellipse_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A062_rotated_ellipse_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A063_rotated_ellipse_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A064_rotated_ellipse_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A065_clustered_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A066_clustered_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A067_clustered_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A068_clustered_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A069_clustered_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A070_clustered_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A071_clustered_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A072_clustered_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A073_clustered_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A074_clustered_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A075_clustered_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A076_clustered_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A077_clustered_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A078_clustered_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A079_clustered_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A080_clustered_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A081_regular_grid_ties_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A082_regular_grid_ties_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A083_regular_grid_ties_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A084_regular_grid_ties_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 1.1102230246251565e-16,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A085_regular_grid_ties_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A086_regular_grid_ties_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A087_regular_grid_ties_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 2.7755575615628914e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A088_regular_grid_ties_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 1.1102230246251565e-16,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A089_regular_grid_ties_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A090_regular_grid_ties_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A091_regular_grid_ties_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A092_regular_grid_ties_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A093_regular_grid_ties_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A094_regular_grid_ties_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A095_regular_grid_ties_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 3.122502256758253e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A096_regular_grid_ties_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A097_duplicated_hull_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A098_duplicated_hull_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A099_duplicated_hull_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A100_duplicated_hull_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A101_duplicated_hull_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A102_duplicated_hull_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A103_duplicated_hull_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A104_duplicated_hull_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A105_duplicated_hull_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A106_duplicated_hull_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A107_duplicated_hull_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A108_duplicated_hull_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A109_duplicated_hull_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A110_duplicated_hull_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A111_duplicated_hull_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A112_duplicated_hull_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A113_boundary_ring_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A114_boundary_ring_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A115_boundary_ring_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A116_boundary_ring_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A117_boundary_ring_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A118_boundary_ring_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A119_boundary_ring_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A120_boundary_ring_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A121_boundary_ring_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A122_boundary_ring_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A123_boundary_ring_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A124_boundary_ring_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A125_boundary_ring_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A126_boundary_ring_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A127_boundary_ring_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A128_boundary_ring_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A129_near_collinear_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A130_near_collinear_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A131_near_collinear_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A132_near_collinear_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A133_near_collinear_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A134_near_collinear_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A135_near_collinear_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A136_near_collinear_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A137_near_collinear_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A138_near_collinear_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A139_near_collinear_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A140_near_collinear_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A141_near_collinear_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A142_near_collinear_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A143_near_collinear_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A144_near_collinear_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A145_offset_dynamic_range_s0_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A146_offset_dynamic_range_s0_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A147_offset_dynamic_range_s0_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A148_offset_dynamic_range_s0_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A149_offset_dynamic_range_s1_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A150_offset_dynamic_range_s1_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A151_offset_dynamic_range_s1_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A152_offset_dynamic_range_s1_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A153_offset_dynamic_range_s2_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A154_offset_dynamic_range_s2_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A155_offset_dynamic_range_s2_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A156_offset_dynamic_range_s2_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A157_offset_dynamic_range_s3_p008",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A158_offset_dynamic_range_s3_p020",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A159_offset_dynamic_range_s3_p050",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "arbitrary",
+      "id": "A160_offset_dynamic_range_s3_p100",
+      "arrays": {
+        "prediction": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C01_constant_gap_p008",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 1.9081958235744878e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.734723475976807e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C02_constant_gap_p020",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 6.938893903907228e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C03_constant_gap_p050",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 1.0408340855860843e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C04_constant_gap_p100",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 3.469446951953614e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 3.469446951953614e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 3.469446951953614e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C05_central_touch_p008",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 2.168404344971009e-19,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 2.168404344971009e-19,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C06_central_touch_p020",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 3.469446951953614e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 6.938893903907228e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 6.938893903907228e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C07_central_touch_p050",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 2.7755575615628914e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C08_central_touch_p100",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 5.551115123125783e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 4.5102810375396984e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 4.163336342344337e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C09_closed_island_p008",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 6.938893903907228e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 6.938893903907228e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 6.938893903907228e-18,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C10_closed_island_p020",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 1.0408340855860843e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C11_closed_island_p050",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 2.7755575615628914e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C12_closed_island_p100",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 4.5102810375396984e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 7.632783294297951e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 7.632783294297951e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C13_closed_stripe_p008",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C14_closed_stripe_p020",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C15_closed_stripe_p050",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C16_closed_stripe_p100",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C17_checker_contact_p008",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C18_checker_contact_p020",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C19_checker_contact_p050",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C20_checker_contact_p100",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C21_rough_contact_p008",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 1.734723475976807e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.734723475976807e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.734723475976807e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C22_rough_contact_p020",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C23_rough_contact_p050",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 1.3877787807814457e-17,
+          "nonfinite_masks_match": true,
+          "exact": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "group": "contact",
+      "id": "C24_rough_contact_p100",
+      "contact_mismatches": 0,
+      "negative_apertures": 0,
+      "arrays": {
+        "lower": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "raw_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        },
+        "final_upper": {
+          "pass": true,
+          "max_abs_error": 0.0,
+          "nonfinite_masks_match": true,
+          "exact": true
+        }
+      },
+      "pass": true
+    }
+  ],
+  "absolute_tolerance": 1e-12,
+  "backend": {
+    "name": "deterministic six-column pivoted QR",
+    "version": "1",
+    "fma": "math.fma",
+    "reference": "MATLAB R2025b Update 1 / PCWIN64"
+  },
+  "runtime": {
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "python": "3.13.15",
+    "numpy": "2.1.3",
+    "scipy": "1.15.3"
+  },
+  "source_sha256": {
+    "deap_crack_surface.py": "0c13b043d6cb81c23348770ff3238b81ebc18bf9eed9fc06951a5755295a8d9d",
+    "matlab_floating_point.py": "b112136944eaaa38b6a34c7b3426d46182600bbbbec2ba8719ea250c9b10f056",
+    "matlab_lapack.py": "a72c2af016b4c58992febff2faaca3773b90ab9745477a278341a39332104a03"
+  },
+  "fixture_provenance_sha256": "d9fe54b7cd68e894c30f966b72c22a50eb0a0cec2f365d2ffd14d698d9eca022"
+}

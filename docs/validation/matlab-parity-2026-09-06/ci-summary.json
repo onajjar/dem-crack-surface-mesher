@@ -1,0 +1,212 @@
+{
+  "assessment": "Both platform versions pass all five native CI jobs: Windows and Linux with Python 3.10 and 3.13, plus Docker. Each version passes 184 fitting/contact cases on all four runtimes and the additional 32 real DEAP cases on native Linux. All contact decisions match MATLAB. The tested fitting sources are identical on both platform branches.",
+  "reference": "Windows MATLAB R2025b Update 1 / Curve Fitting Toolbox 25.2",
+  "scope": "Validated source commits before the evidence-only publication commit; source hashes below also identify the fitting implementation in the published branches.",
+  "source_sha256": {
+    "deap_crack_surface.py": "0c13b043d6cb81c23348770ff3238b81ebc18bf9eed9fc06951a5755295a8d9d",
+    "matlab_floating_point.py": "b112136944eaaa38b6a34c7b3426d46182600bbbbec2ba8719ea250c9b10f056",
+    "matlab_lapack.py": "a72c2af016b4c58992febff2faaca3773b90ab9745477a278341a39332104a03"
+  },
+  "runs": [
+    {
+      "platform_branch": "windows",
+      "review_commit": "1e8bad04e304b98540e3c53155fffaf1454ecc7e",
+      "url": "https://github.com/onajjar/dem-crack-surface-mesher/actions/runs/34061077569",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Docker / Python 3.11",
+          "conclusion": "success"
+        },
+        {
+          "name": "ubuntu-latest / Python 3.10",
+          "conclusion": "success"
+        },
+        {
+          "name": "windows-latest / Python 3.13",
+          "conclusion": "success"
+        },
+        {
+          "name": "windows-latest / Python 3.10",
+          "conclusion": "success"
+        },
+        {
+          "name": "ubuntu-latest / Python 3.13",
+          "conclusion": "success"
+        }
+      ],
+      "numerical_reports": [
+        {
+          "path": "native/windows-branch/ubuntu-latest-3.10/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "machine": "x86_64",
+            "python": "3.10.21",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/windows-branch/ubuntu-latest-3.13/matlab-deap.json",
+          "cases": 32,
+          "pass": true,
+          "max_abs_error": 8.881784197001252e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "machine": "x86_64",
+            "python": "3.13.15",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/windows-branch/ubuntu-latest-3.13/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "machine": "x86_64",
+            "python": "3.13.15",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/windows-branch/windows-latest-3.10/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 1.1102230246251565e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Windows-10-10.0.26100-SP0",
+            "machine": "AMD64",
+            "python": "3.10.11",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/windows-branch/windows-latest-3.13/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 1.1102230246251565e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Windows-2025Server-10.0.26100-SP0",
+            "machine": "AMD64",
+            "python": "3.13.15",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        }
+      ]
+    },
+    {
+      "platform_branch": "linux",
+      "review_commit": "64463a2ed71621f28a6a606ea1c55f0723e96387",
+      "url": "https://github.com/onajjar/dem-crack-surface-mesher/actions/runs/34061093981",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "ubuntu-latest / Python 3.13",
+          "conclusion": "success"
+        },
+        {
+          "name": "windows-latest / Python 3.13",
+          "conclusion": "success"
+        },
+        {
+          "name": "Docker / Python 3.11",
+          "conclusion": "success"
+        },
+        {
+          "name": "windows-latest / Python 3.10",
+          "conclusion": "success"
+        },
+        {
+          "name": "ubuntu-latest / Python 3.10",
+          "conclusion": "success"
+        }
+      ],
+      "numerical_reports": [
+        {
+          "path": "native/linux-branch/ubuntu-latest-3.10/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "machine": "x86_64",
+            "python": "3.10.21",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/linux-branch/ubuntu-latest-3.13/matlab-deap.json",
+          "cases": 32,
+          "pass": true,
+          "max_abs_error": 8.881784197001252e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "machine": "x86_64",
+            "python": "3.13.15",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/linux-branch/ubuntu-latest-3.13/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 2.0816681711721685e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "machine": "x86_64",
+            "python": "3.13.15",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/linux-branch/windows-latest-3.10/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 1.1102230246251565e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Windows-10-10.0.26100-SP0",
+            "machine": "AMD64",
+            "python": "3.10.11",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        },
+        {
+          "path": "native/linux-branch/windows-latest-3.13/matlab-fitting.json",
+          "cases": 184,
+          "pass": true,
+          "max_abs_error": 1.1102230246251565e-16,
+          "contact_mismatches": 0,
+          "runtime": {
+            "platform": "Windows-2025Server-10.0.26100-SP0",
+            "machine": "AMD64",
+            "python": "3.13.15",
+            "numpy": "2.1.3",
+            "scipy": "1.15.3"
+          }
+        }
+      ]
+    }
+  ]
+}

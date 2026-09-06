@@ -1,0 +1,114 @@
+[
+  {
+    "file": "work\\matlab_deap_outputs\\B01_brazilian_archived.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B02_brazilian_early.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B03_brazilian_tied_component2.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B04_brazilian_t50.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B05_brazilian_component2.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B06_brazilian_component2_t85.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B07_brazilian_high_threshold.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\B08_brazilian_late_component2.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\L01_large_archived.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\L04_large_narrow_span.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\L05_large_midtime.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\L06_large_very_narrow.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\L07_large_orientation_xy.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\L08_large_mag2.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\R01_rebar_archived.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\R04_rebar_narrow_span.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\R05_rebar_component2_mid.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\R06_rebar_dense_grid.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\R07_rebar_component2_late.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\R08_rebar_orientation_zx_mag2.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\S01_simple_archived.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\S04_simple_component2_t2.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\S05_simple_low_threshold.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\S06_simple_global_span.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\S07_simple_orientation_yz.mat",
+    "same": true
+  },
+  {
+    "file": "work\\matlab_deap_outputs\\S08_simple_orientation_zx_mag2.mat",
+    "same": true
+  },
+  {
+    "file": "raw\\matlab_arbitrary_outputs.mat",
+    "same": true
+  },
+  {
+    "file": "raw\\matlab_contact_outputs.mat",
+    "same": true
+  }
+]

@@ -143,3 +143,7 @@ Their SHA-256 hashes match the files in the original
 The references are archived MATLAB-generated CSVs. The validator does not call
 MATLAB. The original `.m` files remain available under `legacy/matlab` solely
 for provenance.
+
+The [September 2026 report and figures](validation/matlab-parity-2026-09-06/README.md)
+contain the full 216-case results, native Windows/Linux CI evidence, contact
+maps and case atlases. All tested contact decisions agree with MATLAB.

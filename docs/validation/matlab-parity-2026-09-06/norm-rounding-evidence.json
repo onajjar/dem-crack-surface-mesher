@@ -1,0 +1,12 @@
+{
+  "matlab": "R2025b Update 1",
+  "command": "actual_norms=[norm(witness3); norm(witness21)]",
+  "expected_hex": [
+    "0x1.0000000000000p+0",
+    "0x1.f37e48f79545fp-6"
+  ],
+  "sha256": {
+    "norm_rounding_probe.mat": "6c515f1be5beb4402ded016ad64a5e92ff18c83722ced7f238b9c3087d1dc64f",
+    "norm_rounding_matlab.mat": "fa4f829c0e89b293ca8d93fc41d74da946fbd93b64aff99ebfcd75cbb446f26a"
+  }
+}
