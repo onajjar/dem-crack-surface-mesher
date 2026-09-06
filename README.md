@@ -148,6 +148,18 @@ preserving every fitted value and volume cell.
 
 ![Integrated Python fit compared with archived MATLAB surfaces](docs/assets/deap-surface-comparison.png)
 
+## MATLAB surface and contact verification
+
+The September 2026 review corrected surface extraction and fitting arithmetic
+that could change wall geometry and contact decisions. The complete 216-case
+MATLAB reference comparison passes, with zero differing contact decisions.
+Both platform versions pass native Windows/Linux CI on Python 3.10 and 3.13.
+
+See the [assessment, figures and reproducible evidence](docs/validation/matlab-parity-2026-09-06/README.md)
+and the [PDF report](docs/validation/matlab-parity-2026-09-06/report.pdf).
+Contact surfaces retain MATLAB's zero aperture. The Python-only HEXA8 mesher
+requires positive aperture and now reports closed-contact inputs at preflight.
+
 ## Verified baseline executions
 
 ### No-hole example

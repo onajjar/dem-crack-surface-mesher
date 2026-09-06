@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Correct MATLAB surface extraction and fitting parity, including time indexing,
+  minimum neighbourhood size, rank handling and deterministic QR arithmetic.
+- Preserve exact MATLAB contact clamping and accept zero-span fits in preflight;
+  report the Python-only volume mesher's positive-aperture restriction early.
+- Add 216 frozen MATLAB reference cases and native Windows/Linux numerical CI.
+- Publish the September 2026 review, comparison figures and reproducible evidence
+  under `docs/validation/matlab-parity-2026-09-06/`.
+
 - Fixed container startup by installing the minimal Debian Tk 8.6 runtime
   required by the preserved launcher and smoke-testing `import tkinter` while
   building the image; the supported container workflow remains headless.
