@@ -39,7 +39,7 @@ from python_hole_interpolation import (
     normalize_hole_geometry,
     parse_hole_spec,
 )
-from python_volume_mesher import write_python_mesh_outputs
+from python_volume_mesher import validate_volume_aperture, write_python_mesh_outputs
 from stl_export import (
     active_native_stl_sort_lines,
     comment_native_stl_export,
@@ -610,6 +610,8 @@ def validate_setup(
             "Enabled chambers require mesh mode = python_only or python."
         )
     surface_grid = surface_grid or build_surface_grid(setup.surface_source)
+    if setup.mesh_mode == "python_only" and _operation_uses_mesh(setup.operation):
+        validate_volume_aperture(surface_grid.zmin, surface_grid.zmax)
     if (
         _operation_uses_mesh(setup.operation)
         and setup.mesh_mode != "python_only"
@@ -634,8 +636,8 @@ def validate_setup(
         )
 
     p = setup.params
-    if p.re_smfa <= 0 or p.re_opmin < 0 or p.re_tol <= 0:
-        raise ValueError("smfa and geometric_tolerance must be > 0; opmin must be >= 0.")
+    if p.re_smfa < 0 or p.re_opmin < 0 or p.re_tol <= 0:
+        raise ValueError("smfa and opmin must be >= 0; geometric_tolerance must be > 0.")
     if min(p.nelem_x, p.nelem_y, p.nelem_z, p.num_el_fill) < 1:
         raise ValueError("mesh element counts and hole_radial_cells must be >= 1.")
     if not math.isfinite(p.re_fact_z) or p.re_fact_z <= 0:

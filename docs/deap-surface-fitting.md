@@ -64,6 +64,45 @@ CSV/synthetic surface abstraction is in `surface_generation.py`.
 
 ## Verification
 
+### Extended fitting and contact audit (September 2026)
+
+Use `python scripts/validate_matlab_fitting.py` for the 216-case frozen MATLAB
+R2025b oracle matrix. Use `--groups arbitrary contact` when the large DEAP LFS
+inputs are not present. This validator fails on numerical or contact-mask
+disagreement and records the operating system, backend and source hashes.
+
+The port controls the six-column pivoted-QR arithmetic in `matlab_lapack.py`.
+Standard SciPy distributions select different BLAS/LAPACK implementations; the
+audit also found different oneMKL results on Intel and AMD processors. These
+rounding differences become significant in nearly singular local fits and can
+change contact decisions. Installing the same library version was insufficient.
+
+The compatibility solver therefore fixes the reduction order, fused operations,
+norm rounding, rank threshold, and basic-solution convention explicitly. It uses
+Python's fused multiply-add or the C99 runtime equivalent on Python 3.10-3.12.
+It does not require MATLAB or a vendor-specific BLAS. Matching the frozen R2025b
+fixtures is evidence for the tested cases, not proof of equivalence for every
+possible input or MATLAB release. CI saves numerical evidence for each tested
+operating system and Python version, including the full DEAP set on Linux.
+
+Contact follows the executable MATLAB code, including where a MATLAB comment
+incorrectly says "clamp to opmin": negative fitted aperture is set to **zero**,
+the lower wall is retained, and the upper wall is rebuilt from it. Outside the
+data bounding rectangle the lower wall is extended and the aperture is zero.
+No positive minimum aperture is inserted. Generated fit metadata records the
+number of raw overlaps and closed points. Span zero uses eight neighbours and
+is accepted by the headless pipeline.
+
+The current Python-only HEXA8 volume mesher requires positive aperture at every
+grid point. It cannot represent touching walls; `--validate-only` now reports
+that limitation before execution. Fitting/exporting/characterizing a contact
+surface remains valid. Do not open contact patches artificially to bypass the
+restriction: that changes the geometry and its flow paths.
+
+See [the fixture provenance and reproduction instructions](../tests/data/matlab_r2025b/README.md).
+
+### Earlier four archived CSV comparisons
+
 Run the complete four-case check with:
 
 ```powershell
