@@ -35,3 +35,8 @@ docs/docker.md text eol=lf
 examples/docker/*.ini text eol=lf
 # Frozen oracle inputs, outputs, and checksum manifests must be byte-identical.
 tests/data/matlab_r2025b/** -text whitespace=cr-at-eol
+
+# Keep fitting-source provenance hashes comparable across operating systems.
+deap_crack_surface.py text eol=lf
+matlab_floating_point.py text eol=lf
+matlab_lapack.py text eol=lf

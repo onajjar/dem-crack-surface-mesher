@@ -95,9 +95,9 @@ def _reference_norm(values: np.ndarray) -> float:
         product = _round_extended_significand(square) << (exponent - base_exponent)
         lane = i % 4
         accumulators[lane] = _round_extended_significand(accumulators[lane] + product)
-    total = 0
-    for accumulator in accumulators:
-        total = _round_extended_significand(total + accumulator)
+    even = _round_extended_significand(accumulators[0] + accumulators[2])
+    odd = _round_extended_significand(accumulators[1] + accumulators[3])
+    total = _round_extended_significand(even + odd)
     if total == 0:
         return 0.0
     # Normalize the square root to a 64-bit integer significand. Compare the
