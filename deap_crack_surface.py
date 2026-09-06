@@ -21,6 +21,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import ConvexHull
 
+from matlab_floating_point import matlab_power3 as _matlab_power3
+from matlab_lapack import backend_info
+from matlab_lapack import matlab_mldivide as _matlab_mldivide
+
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.int64]
 
@@ -38,12 +42,12 @@ class SurfaceConfig:
     bounding_box: tuple[float, float, float, float, float, float] | None = None
 
     def validate(self) -> None:
-        if isinstance(self.time_step, bool) or self.time_step < 0:
-            raise ValueError("time_step must be non-negative")
+        if isinstance(self.time_step, bool) or self.time_step <= 0:
+            raise ValueError("time_step must be positive")
         if isinstance(self.component, bool) or self.component < 1:
             raise ValueError("component uses MATLAB-style numbering and must be >= 1")
-        if not math.isfinite(self.span) or not 0.0 < self.span <= 1.0:
-            raise ValueError("span must be in (0, 1]")
+        if not math.isfinite(self.span) or not 0.0 <= self.span <= 1.0:
+            raise ValueError("span must be in [0, 1]")
         if isinstance(self.grid_resolution, bool) or self.grid_resolution <= 0:
             raise ValueError("grid_resolution must be positive")
         if not math.isfinite(self.opening_threshold) or self.opening_threshold < 0.0:
@@ -218,7 +222,7 @@ def extract_components(config: SurfaceConfig) -> list[CrackComponent]:
         coordinates = np.asarray(post_h5["v_elem_coord"], dtype=np.float64)
         displacements = np.asarray(post_h5[f"disp_{time_step:04d}"], dtype=np.float64)
         openings = np.asarray(post_h5[f"crack_open_{time_step:04d}"], dtype=np.float64)
-        crack_count = int(post_h5["nSurfaces_per_time_step"][time_step])
+        crack_count = int(post_h5["nSurfaces_per_time_step"][time_step - 1])
         connectivity = np.asarray(post_h5["vs_broken_connect"], dtype=np.int64)
 
     if np.all(openings <= config.opening_threshold):
@@ -254,6 +258,39 @@ def _quadratic_terms(dx: FloatArray, dy: FloatArray) -> FloatArray:
     )
 
 
+def _matlab_sum(values: FloatArray) -> np.float64:
+    """Reproduce MATLAB R2025b's scalar/SIMD double reduction order."""
+    if values.size < 44:
+        total = np.float64(0.0)
+        for value in values:
+            total = np.float64(total + value)
+        return total
+    lanes = [np.float64(0.0)] * 4
+    for index, value in enumerate(values):
+        lane = index % 4
+        lanes[lane] = np.float64(lanes[lane] + value)
+    total = np.float64(0.0)
+    for lane in lanes:
+        total = np.float64(total + lane)
+    return total
+
+
+def _matlab_mean_std(values: FloatArray) -> tuple[float, float]:
+    mean = np.float64(_matlab_sum(values) / values.size)
+    centered = values - mean
+    variance = np.float64(_matlab_sum(centered * centered) / (values.size - 1))
+    return float(mean), float(np.sqrt(variance))
+
+
+def _matlab_dot6(left: FloatArray, right: FloatArray) -> np.float64:
+    """Reproduce MATLAB R2025b's six-term dot-product reduction tree."""
+    products = left * right
+    first = np.float64(products[0] + products[1])
+    second = np.float64(products[2] + products[3])
+    third = np.float64(products[4] + products[5])
+    return np.float64(np.float64(first + second) + third)
+
+
 def quadratic_loess_surface(
     x: FloatArray,
     y: FloatArray,
@@ -279,8 +316,10 @@ def quadratic_loess_surface(
         raise ValueError("x, y, and z must have equal lengths")
     if qx.shape != qy.shape:
         raise ValueError("query_x and query_y must have equal shapes")
-    if x.size < 6:
-        raise ValueError("quadratic surface LOESS requires at least six points")
+    if x.size < 8:
+        raise ValueError("quadratic surface LOESS requires at least eight points")
+    if not math.isfinite(span) or not 0.0 <= span <= 1.0:
+        raise ValueError("span must be in [0, 1]")
 
     weights = (
         np.ones_like(z)
@@ -290,17 +329,20 @@ def quadratic_loess_surface(
     if weights.shape != z.shape or np.any(weights < 0.0):
         raise ValueError("user_weights must be non-negative and match z")
 
-    x_mean, y_mean = float(np.mean(x)), float(np.mean(y))
-    x_scale, y_scale = float(np.std(x, ddof=1)), float(np.std(y, ddof=1))
-    if x_scale == 0.0 or y_scale == 0.0:
-        raise ValueError("both predictors must have non-zero variance")
+    x_mean, x_scale = _matlab_mean_std(x)
+    y_mean, y_scale = _matlab_mean_std(y)
+    # Curve Fitting Toolbox leaves constant predictors centered but unscaled.
+    if x_scale == 0.0:
+        x_scale = 1.0
+    if y_scale == 0.0:
+        y_scale = 1.0
     xn = (x - x_mean) / x_scale
     yn = (y - y_mean) / y_scale
     qxn = (qx.reshape(-1) - x_mean) / x_scale
     qyn = (qy.reshape(-1) - y_mean) / y_scale
 
     point_count = x.size
-    neighbor_count = min(point_count, max(6, int(math.ceil(span * point_count))))
+    neighbor_count = min(point_count, max(8, int(math.ceil(span * point_count))))
     positive = weights > 0.0
     xn_positive = xn[positive]
     yn_positive = yn[positive]
@@ -320,15 +362,13 @@ def quadratic_loess_surface(
         local_distances = all_distances[local_indices]
         bandwidth = float(local_distances[-1])
         if bandwidth == 0.0:
-            fitted[row] = float(
-                np.average(z_positive[local_indices], weights=weights_positive[local_indices])
-            )
+            fitted[row] = np.nan
             continue
-        distance_weights = np.clip(1.0 - (local_distances / bandwidth) ** 3, 0.0, None) ** 3
+        distance_ratio_cube = _matlab_power3(local_distances / bandwidth)
+        distance_weights = _matlab_power3(
+            np.clip(1.0 - distance_ratio_cube, 0.0, None)
+        )
         combined = distance_weights * weights_positive[local_indices]
-        keep = combined > 0.0
-        local_indices = local_indices[keep]
-        combined = combined[keep]
         # MATLAB's curvefit.LowessFit uses the globally referenced normalized
         # predictors divided by the local bandwidth (rather than centering the
         # polynomial at the query point).  The distinction matters numerically
@@ -338,16 +378,15 @@ def quadratic_loess_surface(
             yn_positive[local_indices] / bandwidth,
         )
         root_weight = np.sqrt(combined)
-        coefficients, _, _, _ = np.linalg.lstsq(
+        coefficients = _matlab_mldivide(
             design * root_weight[:, None],
             z_positive[local_indices] * root_weight,
-            rcond=None,
         )
         query_terms = _quadratic_terms(
             np.asarray([qxn[row] / bandwidth]),
             np.asarray([qyn[row] / bandwidth]),
         )
-        fitted[row] = (query_terms @ coefficients).item()
+        fitted[row] = _matlab_dot6(query_terms[0], coefficients)
     return fitted.reshape(qx.shape)
 
 
@@ -360,6 +399,16 @@ def _closed_hull_indices(x: FloatArray, y: FloatArray) -> IntArray:
     start = int(np.argmin(vertices))
     vertices = np.roll(vertices, -start)
     return np.r_[vertices, vertices[0]]
+
+
+def _matlab_linspace(start: float, stop: float, count: int) -> FloatArray:
+    """Match MATLAB's per-index division order instead of NumPy's fixed step."""
+    if count == 1:
+        return np.asarray([stop], dtype=np.float64)
+    indices = np.arange(count, dtype=np.float64)
+    values = start + indices * np.float64(stop - start) / np.float64(count - 1)
+    values[-1] = stop
+    return values
 
 
 def reconstruct_surface(config: SurfaceConfig) -> SurfaceResult:
@@ -398,8 +447,8 @@ def reconstruct_surface(config: SurfaceConfig) -> SurfaceResult:
     grid_span_x = max(10, int(math.ceil((xmax - xmin) / element_size)))
     grid_span_y = max(10, int(math.ceil((ymax - ymin) / element_size)))
     grid_x, grid_y = np.meshgrid(
-        np.linspace(xmin, xmax, grid_span_x),
-        np.linspace(ymin, ymax, grid_span_y),
+        _matlab_linspace(xmin, xmax, grid_span_x),
+        _matlab_linspace(ymin, ymax, grid_span_y),
     )
 
     fitted_min = quadratic_loess_surface(
@@ -438,6 +487,7 @@ def reconstruct_surface(config: SurfaceConfig) -> SurfaceResult:
         & (grid_y <= data_ymax)
     )
     opening_fit = raw_fitted_max - fitted_min
+    overlap_count = int(np.count_nonzero((opening_fit < 0.0) & inside))
     opening_fit[~inside] = 0.0
 
     if ix_min > 0:
@@ -453,6 +503,13 @@ def reconstruct_surface(config: SurfaceConfig) -> SurfaceResult:
 
     metadata: dict[str, object] = {
         "algorithm": "normalized 2D quadratic LOESS compatible with MATLAB fittype('loess')",
+        "numerical_backend": backend_info(),
+        "contact": {
+            "rule": "zero negative aperture, retain lower wall, rebuild upper wall",
+            "raw_overlap_points_inside": overlap_count,
+            "closed_points": int(np.count_nonzero(fitted_max == fitted_min)),
+            "closed_points_outside_domain": int(np.count_nonzero(~inside)),
+        },
         "results_directory": config.case_dir.name,
         "input_files": {
             "deap_post.h5": (config.case_dir / "deap_post.h5").stat().st_size,

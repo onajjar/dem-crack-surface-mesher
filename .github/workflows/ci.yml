@@ -9,12 +9,13 @@ permissions:
 
 jobs:
   quality:
-    name: Python ${{ matrix.python-version }}
-    runs-on: windows-latest
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.13"]
 
     steps:
@@ -47,6 +48,29 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+      - name: Compare fitting and contact to frozen MATLAB oracle
+        run: >-
+          python scripts/validate_matlab_fitting.py --groups arbitrary contact
+          --output _runtime/matlab-fitting.json
+
+      - name: Fetch full DEAP inputs for native Linux comparison
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        run: git lfs pull --include="examples/deap/**"
+
+      - name: Compare all real DEAP cases on native Linux
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        run: >-
+          python scripts/validate_matlab_fitting.py --groups deap
+          --output _runtime/matlab-deap.json
+
+      - name: Save numerical comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matlab-${{ matrix.os }}-${{ matrix.python-version }}
+          path: _runtime/matlab-*.json
+          if-no-files-found: ignore
 
   container:
     name: Docker / Python 3.11

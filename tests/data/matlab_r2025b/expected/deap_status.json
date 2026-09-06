@@ -1,0 +1,194 @@
+[
+  {
+    "id": "S01_simple_archived",
+    "source_case": "1_simple",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "S02_simple_early",
+    "source_case": "1_simple",
+    "status": "error",
+    "error_identifier": "MATLAB:unassignedOutputs"
+  },
+  {
+    "id": "S03_simple_component2",
+    "source_case": "1_simple",
+    "status": "error",
+    "error_identifier": "MATLAB:unassignedOutputs"
+  },
+  {
+    "id": "S04_simple_component2_t2",
+    "source_case": "1_simple",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "S05_simple_low_threshold",
+    "source_case": "1_simple",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "S06_simple_global_span",
+    "source_case": "1_simple",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "S07_simple_orientation_yz",
+    "source_case": "1_simple",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "S08_simple_orientation_zx_mag2",
+    "source_case": "1_simple",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "L01_large_archived",
+    "source_case": "2_large",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "L02_large_early",
+    "source_case": "2_large",
+    "status": "error",
+    "error_identifier": "MATLAB:unassignedOutputs"
+  },
+  {
+    "id": "L03_large_component2",
+    "source_case": "2_large",
+    "status": "error",
+    "error_identifier": "MATLAB:unassignedOutputs"
+  },
+  {
+    "id": "L04_large_narrow_span",
+    "source_case": "2_large",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "L05_large_midtime",
+    "source_case": "2_large",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "L06_large_very_narrow",
+    "source_case": "2_large",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "L07_large_orientation_xy",
+    "source_case": "2_large",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "L08_large_mag2",
+    "source_case": "2_large",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "R01_rebar_archived",
+    "source_case": "3_rebar",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "R02_rebar_early",
+    "source_case": "3_rebar",
+    "status": "error",
+    "error_identifier": "MATLAB:unassignedOutputs"
+  },
+  {
+    "id": "R03_rebar_component2",
+    "source_case": "3_rebar",
+    "status": "error",
+    "error_identifier": "MATLAB:unassignedOutputs"
+  },
+  {
+    "id": "R04_rebar_narrow_span",
+    "source_case": "3_rebar",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "R05_rebar_component2_mid",
+    "source_case": "3_rebar",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "R06_rebar_dense_grid",
+    "source_case": "3_rebar",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "R07_rebar_component2_late",
+    "source_case": "3_rebar",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "R08_rebar_orientation_zx_mag2",
+    "source_case": "3_rebar",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B01_brazilian_archived",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B02_brazilian_early",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B03_brazilian_tied_component2",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B04_brazilian_t50",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B05_brazilian_component2",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B06_brazilian_component2_t85",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B07_brazilian_high_threshold",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  },
+  {
+    "id": "B08_brazilian_late_component2",
+    "source_case": "4_brazilian",
+    "status": "ok",
+    "error_identifier": ""
+  }
+]

@@ -613,6 +613,17 @@ def _build_chamber(
     )
 
 
+def validate_volume_aperture(zmin: np.ndarray, zmax: np.ndarray) -> None:
+    """Reject contact before creating HEXA8 cells; never open touching walls."""
+    aperture = np.asarray(zmax) - np.asarray(zmin)
+    if not np.isfinite(aperture).all() or np.any(aperture <= 0.0):
+        raise ValueError(
+            "Python-only volume meshing requires strictly positive zmax-zmin "
+            "at every structured-grid point. MATLAB contact surfaces are preserved; "
+            "this HEXA8 mesher cannot mesh touching walls."
+        )
+
+
 def build_python_volume_mesh(
     x: np.ndarray,
     y: np.ndarray,
@@ -629,11 +640,7 @@ def build_python_volume_mesh(
     if not all(np.isfinite(values).all() for values in arrays):
         raise ValueError("Surface grids contain non-finite coordinates.")
     aperture_grid = zmax - zmin
-    if np.any(aperture_grid <= 0.0):
-        raise ValueError(
-            "Python-only volume meshing requires strictly positive zmax-zmin "
-            "at every structured-grid point."
-        )
+    validate_volume_aperture(zmin, zmax)
 
     holes = (
         getattr(params, "hole_shapes", getattr(params, "holes", ()))
