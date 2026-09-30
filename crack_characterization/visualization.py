@@ -223,8 +223,9 @@ def _aperture_figure(
     ]
     equivalent_x = hydraulic["X"]["global_equivalent_hydraulic_aperture"]
     equivalent_y = hydraulic["Y"]["global_equivalent_hydraulic_aperture"]
+    cubic_text = "n/a" if cubic is None else f"{cubic:.4g}"
     figure.suptitle(
-        f"Aperture characterization — mean={mean:.4g}, cubic={cubic:.4g}, "
+        f"Aperture characterization — mean={mean:.4g}, cubic={cubic_text}, "
         f"equivalent X/Y={equivalent_x:.4g}/{equivalent_y:.4g} "
         f"{config.length_unit}"
     )

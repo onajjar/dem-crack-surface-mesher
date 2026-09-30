@@ -444,3 +444,39 @@ def test_multiple_synthetic_realizations_are_exported_with_distinct_seeds() -> N
 def test_characterization_honors_cancellation_before_work() -> None:
     with pytest.raises(InterruptedError, match="cancelled"):
         characterize_surface(_grid(), _config(), cancelled=lambda: True)
+
+
+def test_aperture_method_spelling_is_normalized_like_validation() -> None:
+    result = characterize_surface(_grid(), _config(aperture_method=" Global-Z "))
+
+    assert result.summary["hydraulic"] == (
+        result.summary["hydraulic_by_aperture_and_direction"]["global_z"]["X"]
+    )
+
+
+def test_report_and_figures_tolerate_undefined_cubic_mean() -> None:
+    x_values = np.linspace(0.0, 1.2, 24)
+    y_values = np.linspace(0.0, 0.8, 20)
+    x, _ = np.meshgrid(x_values, y_values)
+    opening = 0.01 + 0.004 * np.cos(2.0 * np.pi * x / 1.2)
+    opening[3:5, 4:7] = -0.002
+    output_directory = ROOT / "_runtime" / "tests" / "characterization-negative"
+    shutil.rmtree(output_directory, ignore_errors=True)
+    try:
+        result = characterize_surface(
+            _grid(opening, x_axis=x_values, y_axis=y_values),
+            _config(
+                allow_negative_aperture=True,
+                generate_figures=True,
+                publication_formats=("png",),
+                figure_dpi=72,
+            ),
+            output_directory=output_directory,
+        )
+        assert result.summary["aperture"]["statistics"]["global_cubic_mean"] is None
+        report = next(output_directory.rglob("characterization_report.md")).read_text(
+            encoding="utf-8"
+        )
+        assert "n/a (negative openings retained)" in report
+    finally:
+        shutil.rmtree(output_directory, ignore_errors=True)
