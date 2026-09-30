@@ -47,4 +47,4 @@ Participation in this project is governed by the [Code of Conduct](CODE_OF_CONDU
 
 ## Licensing note
 
-This repository currently has no `LICENSE` file. Confirm contribution and redistribution terms with the maintainer before submitting substantial code or third-party material, particularly changes involving `source_codes/fiss.eso`.
+Contributions are accepted under the [MIT License](LICENSE). Do not submit third-party code unless its licence allows redistribution under compatible terms; changes to `source_codes/fiss.eso` stay under the original Cast3M terms of that file.

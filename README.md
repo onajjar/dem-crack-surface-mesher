@@ -758,6 +758,6 @@ Use a fresh work directory and start with conservative `nelem_x`, `nelem_y`, and
 
 This release is a preservation point for future testing and refactoring. See [CHANGELOG.md](CHANGELOG.md), [the source audit](docs/source-audit.md), [CONTRIBUTING.md](CONTRIBUTING.md), and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-No `LICENSE` file was present in the supplied project, so none has been added. Public source visibility alone does not grant reuse, modification, or redistribution rights. If the maintainer confirms the right to license all distributed material, the MIT License is recommended for the Python project; the provenance and redistribution terms of `source_codes/fiss.eso` must still be confirmed before describing this repository as open source.
+The project is released under the [MIT License](LICENSE). The licence covers the code and documentation written for this repository; `source_codes/fiss.eso` is Cast3M operator source and remains under its original Cast3M/CEA terms, and Cast3M and Gmsh themselves are external dependencies distributed under their own licences.
 
 Please report security concerns through the process in [SECURITY.md](SECURITY.md).
