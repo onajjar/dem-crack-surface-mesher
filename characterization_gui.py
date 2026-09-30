@@ -615,8 +615,16 @@ class CharacterizationPanel(ttk.Frame):
             parent=self,
             filetypes=[("JSON settings", "*.json")],
         )
-        if selected:
-            self._apply_settings(json.loads(Path(selected).read_text(encoding="utf-8")))
+        if not selected:
+            return
+        try:
+            values = json.loads(Path(selected).read_text(encoding="utf-8"))
+            if not isinstance(values, dict):
+                raise ValueError("The settings file must contain a JSON object.")
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Characterization settings", str(exc), parent=self)
+            return
+        self._apply_settings(values)
 
     def _set_running(self, running: bool) -> None:
         state = "disabled" if running else "normal"
