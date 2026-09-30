@@ -163,3 +163,8 @@ Contribution and security guidance are available in the maintained source
 branches: [Contributing](https://github.com/onajjar/dem-crack-surface-mesher/blob/linux/CONTRIBUTING.md),
 [Code of Conduct](https://github.com/onajjar/dem-crack-surface-mesher/blob/linux/CODE_OF_CONDUCT.md),
 and [Security](https://github.com/onajjar/dem-crack-surface-mesher/blob/linux/SECURITY.md).
+
+## License
+
+Released under the [MIT License](LICENSE). `source_codes/fiss.eso` in the
+implementation branches is Cast3M operator source and keeps its original terms.
