@@ -74,6 +74,13 @@ def _markdown_report(
         field["reconstruction_maximum_absolute_error"]
         for field in wavelet_fields.values()
     )
+    # The cubic mean is undefined when negative (interpenetrating) openings are retained.
+    cubic_mean = local_aperture["global_cubic_mean"]
+    cubic_mean_text = (
+        "n/a (negative openings retained)"
+        if cubic_mean is None
+        else f"{cubic_mean:.8g} {config.length_unit}"
+    )
     lines = [
         "# Advanced crack characterization report",
         "",
@@ -100,8 +107,8 @@ def _markdown_report(
             f"{config.length_unit} | Preferred geometrical opening |"
         ),
         (
-            f"| Local-normal cubic-mean aperture | {local_aperture['global_cubic_mean']:.8g} "
-            f"{config.length_unit} | Global conductance proxy; not a series-flow equivalent |"
+            f"| Local-normal cubic-mean aperture | {cubic_mean_text} "
+            f"| Global conductance proxy; not a series-flow equivalent |"
         ),
         (
             f"| Area-weighted cubic mean | "

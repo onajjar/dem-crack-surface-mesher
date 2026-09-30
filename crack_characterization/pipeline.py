@@ -265,7 +265,7 @@ def characterize_surface(
             config,
         )
     )
-    selected_method = config.aperture_method
+    selected_method = config.aperture_method.strip().lower().replace("-", "_")
     selected_direction = config.flow_direction.strip().upper()
     hydraulic = hydraulic_directions[selected_method][selected_direction]
     _notify(progress, 0.40, "Calculating directional geometrical tortuosity", cancelled)
