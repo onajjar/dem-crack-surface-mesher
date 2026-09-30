@@ -40,7 +40,7 @@ def array_metrics(actual: np.ndarray, expected: np.ndarray) -> dict:
 
 
 def validate(groups: list[str], arrays_dir: Path | None = None) -> dict:
-    provenance = json.loads((FIXTURES / "provenance.json").read_text())
+    provenance = json.loads((FIXTURES / "provenance.json").read_text(encoding="utf-8"))
     for relative, expected in provenance["files"].items():
         actual = hashlib.sha256((FIXTURES / relative).read_bytes()).hexdigest()
         if actual != expected:
@@ -50,9 +50,10 @@ def validate(groups: list[str], arrays_dir: Path | None = None) -> dict:
     rows = []
     for group in groups:
         if group == "deap":
-            cases = json.loads((FIXTURES / "inputs/deap_scenarios.json").read_text())
+            cases = json.loads(
+                (FIXTURES / "inputs/deap_scenarios.json").read_text(encoding="utf-8"))
             statuses = {c["id"]: c["status"] for c in json.loads(
-                (FIXTURES / "expected/deap_status.json").read_text())}
+                (FIXTURES / "expected/deap_status.json").read_text(encoding="utf-8"))}
             for relative, expected in provenance["deap_inputs"].items():
                 if hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() != expected:
                     raise ValueError(f"DEAP input missing or changed: {relative}; run git lfs pull.")
@@ -144,7 +145,7 @@ def validate(groups: list[str], arrays_dir: Path | None = None) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(__doc__)
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--groups", nargs="+", choices=("deap", "arbitrary", "contact"),
                         default=["deap", "arbitrary", "contact"])
     parser.add_argument("--output", type=Path, default=ROOT / "_runtime/matlab-validation.json")
