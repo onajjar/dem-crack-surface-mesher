@@ -6,6 +6,7 @@ All notable repository-level changes are documented here. This project follows t
 
 ### Added
 
+- Added an MIT `LICENSE`; `source_codes/fiss.eso` keeps its original Cast3M terms.
 - Added 216 frozen MATLAB reference cases and native Windows/Linux numerical CI.
 - Published the September 2026 review, comparison figures and reproducible evidence
   under `docs/validation/matlab-parity-2026-09-06/`.

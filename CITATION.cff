@@ -19,6 +19,7 @@ authors:
     given-names: Frédéric
 repository-code: "https://github.com/onajjar/dem-crack-surface-mesher"
 url: "https://github.com/onajjar/dem-crack-surface-mesher"
+license: MIT
 keywords:
   - crack reconstruction
   - beam-particle model
