@@ -1,24 +1,17 @@
 # Changelog
 
-## Unreleased
+All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
 
-- Correct MATLAB surface extraction and fitting parity, including time indexing,
-  minimum neighbourhood size, rank handling and deterministic QR arithmetic.
-- Preserve exact MATLAB contact clamping and accept zero-span fits in preflight;
-  report the Python-only volume mesher's positive-aperture restriction early.
-- Add 216 frozen MATLAB reference cases and native Windows/Linux numerical CI.
-- Publish the September 2026 review, comparison figures and reproducible evidence
+## [Unreleased]
+
+### Added
+
+- Added 216 frozen MATLAB reference cases and native Windows/Linux numerical CI.
+- Published the September 2026 review, comparison figures and reproducible evidence
   under `docs/validation/matlab-parity-2026-09-06/`.
-
-- Fixed container startup by installing the minimal Debian Tk 8.6 runtime
-  required by the preserved launcher and smoke-testing `import tkinter` while
-  building the image; the supported container workflow remains headless.
 - Added a reproducible Linux-container workflow for Windows Docker Desktop and
   Linux Docker Engine, including Compose, persistent example output, beginner
   diagrams, host-Python-free validation/meshing commands, and CI smoke tests.
-- Made Linux setup discover `PYTHON_BIN`, `python3`, or Conda's `python`, reject
-  unsupported Python versions, and remain repository-relative; removed the
-  Windows README's dependency on the optional `py` launcher.
 - Added Vassaux et al. (2016) as the methodological reference for the
   beam-particle/discrete-element model underlying the DEM microcracking data.
 - Added native Linux/macOS Cast3M, Gmsh, desktop-opening, GUI, headless,
@@ -26,47 +19,12 @@
   behavior and all immutable baseline files.
 - Added Linux setup/launcher scripts, Linux-and-Windows CI coverage, portable
   command tests, and an end-to-end Linux validation guide.
-- Normalized merged BDF output by omitting only zero-area `CQUAD4` records with
-  fewer than three distinct nodes, allowing exactly closed DEAP crack fronts
-  to pass native Gmsh/CFD importer checks without changing non-zero geometry.
-- Made source-free Python-only HEXA8 the Workbench default and disabled the
-  Cast3M DGIBI path/browser, launcher version, and Gmsh controls until a Cast3M
-  backend is selected.
-- Extended meshing-time fractal synthesis with directional Hurst exponents,
-  paired X/Y roll-off wavelengths, Gaussian/uniform/Laplace/lognormal
-  marginals, separate lower/upper wall RMS targets, configurable wall
-  correlation, independent opposing walls, variable aperture, and positive
-  minimum-aperture enforcement with target-versus-achieved reporting.
 - Added and fully meshed the source-free `fractal-advanced.ini` example; its
   13,870 HEXA8 cells passed all Gauss-point checks with minimum scaled Jacobian
   `0.580399`, and an independent topology audit found 110,960 positive corner
   Jacobians with no residual hole-fill seams.
-- Refreshed the current Workbench stills, characterization stills, generated
-  surface comparison, workflow diagram, and animated walkthrough; the demo now
-  includes the embedded Characterization tab.
-- Integrated the complete inlet/outlet chamber construction and conditional
-  BDF exports directly into the single `source_codes/castem_tool.dgibi` mesh
-  source behind the native `opti_chamb = 0/1` option.
-- Reduced Python chamber handling to validation and scalar parameter patching;
-  Python no longer stores or injects Cast3M chamber geometry.
-- Retained the embedded chamber preset, complete `[chambers]` example,
-  parameter/output reporting, named BDF/STL boundaries, and bulk Python hole
-  path while removing the redundant chamber template and example DGIBI.
-- Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
 - Added centralized pytest/Ruff configuration, CI linting, public contribution templates, and broader generated-file exclusions for release readiness.
-- Removed a dead scientific-UI assignment without changing runtime behavior.
-- Replaced the legacy T13 interface GIF with the current multi-tab Scientific
-  Workbench walkthrough and removed the obsolete baseline screenshot.
 - Added CSV, reproducible self-affine fractal, and constant-plane surface sources behind one canonical four-grid Cast3M contract.
-- Replaced the MATLAB runtime dependency for DEAP crack fitting with a Python
-  quadratic LOESS implementation, explicit DEAP-fit/CSV-bypass controls, four
-  application datasets, fit reports, and archived MATLAB provenance sources.
-- Made boundary-BDF-to-high-precision-ASCII-STL conversion the default whenever
-  STL export is selected, with Cast3M's native STL block commented in generated
-  DGIBI and exactly degenerate BDF triangles reported and omitted.
-- Limited manual dataset naming inputs to DEAP fitting; CSV mode now derives
-  and cross-checks them from filenames, while generated modes retain their
-  established disabled defaults.
 - Added publisher-verified article citation guidance, GitHub-native
   `CITATION.cff` metadata, and a reusable BibTeX record for the scientific
   crack-reconstruction methodology.
@@ -80,22 +38,10 @@
   aperture, robust statistics, directional geometrical tortuosity, cubic-law
   flow-path proxies, roughness/Hurst diagnostics, orientation/connectivity,
   anisotropic synthetic generation, publication figures, and complete exports.
-- Made measured-surface characterization parameter-free in the embedded tab:
-  both aperture definitions, X/Y cubic-law paths, X/Y wall and mid-surface
-  tortuosity, both X/Y Hurst estimators, and all other supported descriptors
-  are calculated in one run. Editable scientific controls are now limited to
-  optional synthetic-surface generation.
-- Bound the read-only characterization results path dynamically to
-  `<working directory>/characterization`, including direct tab access and
-  working-directory changes, so a launch-time path cannot write results into
-  the repository root.
 - Added a versioned physical-equations report covering every implemented
   characteristic, estimator, unit, assumption, reliability rule, synthetic
   equation, and output mapping. Each characterization run copies the report to
   its working-directory results as `characterization_equations.md`.
-- Converted all scientific Markdown equations to GitHub-compatible `$...$` and
-  `$$...$$` delimiters so inline and displayed mathematics render instead of
-  appearing as literal LaTeX text.
 - Added automatic reconstruction-preserving 2D wavelet decomposition for both
   crack walls, the mid-surface, and both aperture definitions. Full-resolution
   coarse and dyadic horizontal/vertical/diagonal detail surfaces, wavelength
@@ -110,13 +56,6 @@
   characterize-then-mesh headless operations, five validated examples,
   independent MATLAB analytical reference data, and a documented legacy
   algorithm/cleanup audit.
-
-All notable repository-level changes are documented here. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) without claiming semantic-versioning compatibility for the preserved computational code.
-
-## [Unreleased]
-
-### Added
-
 - A single scientific launcher with preflight validation, XY geometry preview, reference/bulk solver modes, streamed status, and separated mesh/FISS workflows.
 - Vectorized rectilinear interpolation and complete lower/upper/mean NASTRAN hole-fill meshes imported by Cast3M with `LIRE 'NAS'`.
 - Explicit geometric hole inflation controlled by `num_el_fill` and `re_fact_hole`, plus topology and orientation checks.
@@ -131,6 +70,80 @@ All notable repository-level changes are documented here. This project follows t
 - Integrated raw DEAP HDF5 fitting into the GUI and headless runner, including
   per-run `--surface-mode`, four MATLAB-reference validations at `1e-12 m`, Git
   LFS routing for large example inputs, and comparison/report artifacts.
+
+### Changed
+
+- Made Linux setup discover `PYTHON_BIN`, `python3`, or Conda's `python`, reject
+  unsupported Python versions, and remain repository-relative; removed the
+  Windows README's dependency on the optional `py` launcher.
+- Normalized merged BDF output by omitting only zero-area `CQUAD4` records with
+  fewer than three distinct nodes, allowing exactly closed DEAP crack fronts
+  to pass native Gmsh/CFD importer checks without changing non-zero geometry.
+- Made source-free Python-only HEXA8 the Workbench default and disabled the
+  Cast3M DGIBI path/browser, launcher version, and Gmsh controls until a Cast3M
+  backend is selected.
+- Extended meshing-time fractal synthesis with directional Hurst exponents,
+  paired X/Y roll-off wavelengths, Gaussian/uniform/Laplace/lognormal
+  marginals, separate lower/upper wall RMS targets, configurable wall
+  correlation, independent opposing walls, variable aperture, and positive
+  minimum-aperture enforcement with target-versus-achieved reporting.
+- Refreshed the current Workbench stills, characterization stills, generated
+  surface comparison, workflow diagram, and animated walkthrough; the demo now
+  includes the embedded Characterization tab.
+- Integrated the complete inlet/outlet chamber construction and conditional
+  BDF exports directly into the single `source_codes/castem_tool.dgibi` mesh
+  source behind the native `opti_chamb = 0/1` option.
+- Reduced Python chamber handling to validation and scalar parameter patching;
+  Python no longer stores or injects Cast3M chamber geometry.
+- Retained the embedded chamber preset, complete `[chambers]` example,
+  parameter/output reporting, named BDF/STL boundaries, and bulk Python hole
+  path while removing the redundant chamber template and example DGIBI.
+- Made `castem_pipeline_gui_scientific.py` the single primary GUI/headless launcher via `--headless CONFIG`, while retaining the standalone headless command for compatibility.
+- Removed a dead scientific-UI assignment without changing runtime behavior.
+- Replaced the legacy T13 interface GIF with the current multi-tab Scientific
+  Workbench walkthrough and removed the obsolete baseline screenshot.
+- Replaced the MATLAB runtime dependency for DEAP crack fitting with a Python
+  quadratic LOESS implementation, explicit DEAP-fit/CSV-bypass controls, four
+  application datasets, fit reports, and archived MATLAB provenance sources.
+- Made boundary-BDF-to-high-precision-ASCII-STL conversion the default whenever
+  STL export is selected, with Cast3M's native STL block commented in generated
+  DGIBI and exactly degenerate BDF triangles reported and omitted.
+- Limited manual dataset naming inputs to DEAP fitting; CSV mode now derives
+  and cross-checks them from filenames, while generated modes retain their
+  established disabled defaults.
+- Made measured-surface characterization parameter-free in the embedded tab:
+  both aperture definitions, X/Y cubic-law paths, X/Y wall and mid-surface
+  tortuosity, both X/Y Hurst estimators, and all other supported descriptors
+  are calculated in one run. Editable scientific controls are now limited to
+  optional synthetic-surface generation.
+- Bound the read-only characterization results path dynamically to
+  `<working directory>/characterization`, including direct tab access and
+  working-directory changes, so a launch-time path cannot write results into
+  the repository root.
+- Converted all scientific Markdown equations to GitHub-compatible `$...$` and
+  `$$...$$` delimiters so inline and displayed mathematics render instead of
+  appearing as literal LaTeX text.
+
+### Fixed
+
+- Normalized the characterization `aperture_method` spelling before selecting
+  hydraulic results, so values accepted by validation such as `Global-Z` no
+  longer raise a `KeyError`.
+- The characterization report and aperture figure now print `n/a` for the
+  cubic-mean aperture when negative openings are retained, instead of failing
+  while formatting an undefined value.
+- `scripts/validate_matlab_fitting.py` now shows its usage description
+  correctly and reads the JSON fixtures as UTF-8 on every platform.
+- Linux launcher checks now read only the first 512 bytes of a candidate
+  executable instead of loading the whole file.
+- Corrected MATLAB surface extraction and fitting parity, including time indexing,
+  minimum neighbourhood size, rank handling and deterministic QR arithmetic.
+- Preserved exact MATLAB contact clamping and accepted zero-span fits in preflight;
+  the Python-only volume mesher now reports its positive-aperture restriction
+  early.
+- Fixed container startup by installing the minimal Debian Tk 8.6 runtime
+  required by the preserved launcher and smoke-testing `import tkinter` while
+  building the image; the supported container workflow remains headless.
 
 ## [0.1.0-baseline] - 2026-07-10
 
