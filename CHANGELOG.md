@@ -124,8 +124,13 @@ All notable repository-level changes are documented here. This project follows t
 - The characterization report and aperture figure now print `n/a` for the
   cubic-mean aperture when negative openings are retained, instead of failing
   while formatting an undefined value.
-- `scripts/validate_matlab_fitting.py` now shows its usage description
-  correctly and reads the JSON fixtures as UTF-8 on every platform.
+- The headless runner now names a missing required INI setting, for example
+  `[run] working_directory`, instead of failing with an attribute error.
+- Loading an unreadable or malformed characterization settings file now shows
+  an error dialog instead of an unhandled exception.
+- `scripts/validate_matlab_fitting.py` and `scripts/render_mesh.py` now show
+  their usage description correctly; the former also reads its JSON fixtures
+  as UTF-8 on every platform.
 - Corrected MATLAB surface extraction and fitting parity, including time indexing,
   minimum neighbourhood size, rank handling and deterministic QR arithmetic.
 - Preserved exact MATLAB contact clamping and accepted zero-span fits in preflight;
