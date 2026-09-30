@@ -111,8 +111,15 @@ def _optional_path(base: Path, value: str | None) -> Path | None:
     return _path(base, value)
 
 
+def _required(section, key: str) -> str:
+    value = section.get(key)
+    if value is None:
+        raise ValueError(f"Missing required setting [{section.name}] {key}")
+    return value
+
+
 def _number(section, key: str) -> float:
-    return baseline.parse_float(section.get(key))
+    return baseline.parse_float(_required(section, key))
 
 
 def _optional_number(section, key: str) -> float | None:
@@ -247,7 +254,7 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
     mesh = parser["mesh"]
     holes_section = parser["holes"]
     base = config_path.parent
-    workdir = _path(base, run.get("working_directory"))
+    workdir = _path(base, _required(run, "working_directory"))
     operation = run.get("operation", "mesh").strip().lower()
 
     surface_section = parser["surface"] if parser.has_section("surface") else None
@@ -268,10 +275,10 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         raise ValueError("surface mode must be csv, deap, fractal, or constant.")
 
     if surface_mode == "csv":
-        csv_x = _path(base, files.get("x_csv"))
-        csv_y = _path(base, files.get("y_csv"))
-        csv_zmin = _path(base, files.get("zmin_csv"))
-        csv_zmax = _path(base, files.get("zmax_csv"))
+        csv_x = _path(base, _required(files, "x_csv"))
+        csv_y = _path(base, _required(files, "y_csv"))
+        csv_zmin = _path(base, _required(files, "zmin_csv"))
+        csv_zmax = _path(base, _required(files, "zmax_csv"))
         dataset_naming = parse_csv_set_metadata((csv_x, csv_y, csv_zmin, csv_zmax))
         surface_source = SurfaceSource(
             mode="csv",

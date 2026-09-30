@@ -70,6 +70,18 @@ def test_all_shape_headless_example_is_conformal() -> None:
     assert all(count >= 32 for count in edges)
 
 
+def test_missing_required_setting_is_named(tmp_path: Path) -> None:
+    lines = CONFIG.read_text(encoding="utf-8").splitlines()
+    config = tmp_path / "missing-workdir.ini"
+    config.write_text(
+        "\n".join(line for line in lines if not line.startswith("working_directory")),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"\[run\] working_directory"):
+        load_setup(config)
+
+
 def test_non_circular_shapes_are_rejected_in_reference_mode() -> None:
     setup = replace(load_setup(SHAPE_CONFIG), mesh_mode="reference")
 
