@@ -28,6 +28,13 @@ def _castem_versions(version: str) -> tuple[str, str]:
     return short, year
 
 
+def _read_header(path: Path, size: int = 512) -> bytes:
+    """Read only the start of a file; wrappers can sit next to large binaries."""
+
+    with path.open("rb") as stream:
+        return stream.read(size)
+
+
 def _is_runnable_file(path: Path, *, platform_name: str) -> bool:
     if not path.is_file():
         return False
@@ -36,7 +43,7 @@ def _is_runnable_file(path: Path, *, platform_name: str) -> bool:
     if not os.access(path, os.X_OK):
         return False
     try:
-        first_line = path.read_bytes()[:512].splitlines()[0].decode(
+        first_line = _read_header(path).splitlines()[0].decode(
             "utf-8",
             errors="ignore",
         )
@@ -157,7 +164,7 @@ def _fallback_shell(path: Path) -> str | None:
     """Return an interpreter for an executable text wrapper with no valid shebang."""
 
     try:
-        header = path.read_bytes()[:512]
+        header = _read_header(path)
     except OSError:
         return None
     if not header or header.startswith(b"#!") or b"\0" in header:
