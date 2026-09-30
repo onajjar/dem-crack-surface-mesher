@@ -23,7 +23,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(ROOT / "_runtime" / "mplconfig"))
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bdf", type=Path, default=DEFAULT_BDF)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--title", default="Real Cast3M volume mesh")
