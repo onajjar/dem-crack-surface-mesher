@@ -211,6 +211,19 @@ The source-free equivalent is:
 ./run_linux.sh --headless examples/python-only-chambers/run.ini
 ```
 
+## OpenFOAM export
+
+`export_openfoam = true` in `[mesh]` writes an OpenFOAM case after a
+successful mesh run. The optional `[openfoam]` section takes every exporter
+option (see the commented section of `examples/scientific-run.ini` and the
+[OpenFOAM export guide](openfoam-export.md)); unknown keys are rejected at
+validation. The report stores the export summary under `mesh.openfoam`, and the
+run fails when the export fails.
+
+```bash
+./run_linux.sh --headless examples/openfoam/run.ini
+```
+
 ## Output safety
 
 With `archive_existing_outputs = true`, fixed-name prior mesh outputs are moved into a timestamped `_previous_mesh_runs` directory before a new mesh run. With it set to `false`, the runner refuses to start if such outputs exist. It never recursively cleans the configured directory.

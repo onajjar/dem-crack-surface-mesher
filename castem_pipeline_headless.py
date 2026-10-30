@@ -30,6 +30,12 @@ from crack_characterization import (
     characterize_surface,
 )
 from dataset_naming import DatasetNaming, parse_csv_set_metadata
+from openfoam_export import (
+    OpenFOAMSettings,
+    export_summary,
+    export_workdir,
+    settings_from_mapping,
+)
 from platform_runtime import castem_command, launch_gmsh, resolve_castem_exe
 from python_hole_interpolation import (
     HoleGeometry,
@@ -100,6 +106,7 @@ class HeadlessSetup:
     characterization_output: Path
     characterization: CharacterizationConfig
     synthetic: SyntheticConfig | None
+    openfoam: OpenFOAMSettings | None = None
 
 
 def _path(base: Path, value: str) -> Path:
@@ -574,6 +581,13 @@ def load_setup(path: Path, *, surface_mode_override: str | None = None) -> Headl
         characterization_output=characterization_output,
         characterization=characterization,
         synthetic=synthetic,
+        openfoam=(
+            settings_from_mapping(
+                dict(parser["openfoam"]) if parser.has_section("openfoam") else {}
+            )
+            if mesh.getboolean("export_openfoam", fallback=False)
+            else None
+        ),
     )
 
 
@@ -895,6 +909,20 @@ def run_mesh(
             volume = workdir / "castem_mesh_v.bdf"
             final_bdf = volume if volume.is_file() else None
 
+    openfoam = None
+    if setup.openfoam is not None and return_code == 0 and not missing:
+        try:
+            exported = export_workdir(
+                workdir,
+                setup.openfoam,
+                python_mesh=python_result.mesh if python_result is not None else None,
+                log=lambda message: print(message, end=""),
+            )
+            openfoam = export_summary(exported)
+        except Exception as exc:  # noqa: BLE001 - reported in the run summary
+            print(f"[OpenFOAM] Export failed: {exc}")
+            openfoam = {"success": False, "error": str(exc)}
+
     if setup.open_gmsh and final_bdf is not None and final_bdf.is_file():
         launch_gmsh(final_bdf, cwd=workdir)
 
@@ -946,7 +974,13 @@ def run_mesh(
             else "not_requested"
         ),
         "python_only": python_details,
-        "success": return_code == 0 and not missing and final_bdf is not None,
+        "openfoam": openfoam,
+        "success": (
+            return_code == 0
+            and not missing
+            and final_bdf is not None
+            and (openfoam is None or bool(openfoam.get("success")))
+        ),
     }
 
 
