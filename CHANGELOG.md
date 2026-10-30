@@ -6,6 +6,21 @@ All notable repository-level changes are documented here. This project follows t
 
 ### Added
 
+- Added an OpenFOAM case export (`openfoam_export.py`) for every mesh backend,
+  available in the Scientific Workbench, in the headless runner
+  (`[mesh] export_openfoam` and `[openfoam]`) and as a command-line tool for an
+  existing run directory or merged BDF. It writes an ASCII or binary polyMesh
+  with named crack, hole and chamber patches, chamber cell zones (rebuilt from
+  the crack mouths for a merged BDF) and oriented crack-mouth face zones, and a
+  laminar `simpleFoam` or `rhoSimpleFoam` case for OpenFOAM.com or `foamRun`
+  case for OpenFOAM.org, with flow-rate monitors, `Allrun`/`Allclean`, a length
+  scale and an OpenFOAM-style quality report. The pressure equation interpolates
+  its coefficient harmonically, so the case stays stable where thin crack layers
+  meet much thicker chamber cells. Warped thin
+  hexahedra that would fail the face-pyramid check are split into prisms column
+  by column, only where needed; coincident Cast3M nodes are merged and
+  degenerate cells on closed contacts are collapsed or dropped. A previous
+  export is archived, never deleted. See `docs/openfoam-export.md`.
 - Added an MIT `LICENSE`; `source_codes/fiss.eso` keeps its original Cast3M terms.
 - Added 216 frozen MATLAB reference cases and native Windows/Linux numerical CI.
 - Published the September 2026 review, comparison figures and reproducible evidence

@@ -151,6 +151,18 @@ case remains in [`examples/chambers`](../examples/chambers/README.md).
 
 ![Embedded inlet and outlet chamber controls](assets/scientific-workbench-chambers.png)
 
+## OpenFOAM export
+
+The **OpenFOAM case export** card on the Mesh tab writes an OpenFOAM case after
+every successful mesh run, for all three backends. It sets the solver
+(`simpleFoam`, `rhoSimpleFoam` or mesh only), the distribution (OpenFOAM.com or
+OpenFOAM.org), the cell split, the case folder, the absolute inlet and outlet
+pressures, the temperature, the iteration count and the length scale to
+metres. Invalid values stop the run before meshing. The python_only backend
+exports from memory; Cast3M runs are exported from their BDF files in a
+background thread. A failed export is reported and leaves the mesh in place.
+See the [OpenFOAM export guide](openfoam-export.md).
+
 ## Generated surfaces
 
 DEAP mode reconstructs the selected connected crack component from

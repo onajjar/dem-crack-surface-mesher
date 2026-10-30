@@ -206,6 +206,21 @@ python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\python-only
 python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\python-only-chambers\run.ini
 ```
 
+## OpenFOAM export
+
+`export_openfoam = true` in `[mesh]` writes an OpenFOAM case after a
+successful mesh run. The optional `[openfoam]` section takes every exporter
+option (see the commented section of `examples/scientific-run.ini` and the
+[OpenFOAM export guide](openfoam-export.md)); unknown keys are rejected at
+validation. The report stores the export summary under `mesh.openfoam`, and the
+run fails when the export fails.
+
+```powershell
+python.exe .\castem_pipeline_gui_scientific.py --headless .\examples\openfoam\run.ini
+```
+
+Run the written case with OpenFOAM in WSL or Docker (`wsl sh ./Allrun` from the case folder).
+
 ## Output safety
 
 With `archive_existing_outputs = true`, fixed-name prior mesh outputs are moved into a timestamped `_previous_mesh_runs` directory before a new mesh run. With it set to `false`, the runner refuses to start if such outputs exist. It never recursively cleans the configured directory.

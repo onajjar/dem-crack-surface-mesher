@@ -35,6 +35,12 @@ from chamber_geometry import (
 )
 from characterization_gui import CharacterizationPanel
 from dataset_naming import parse_csv_set_metadata
+from openfoam_export import (
+    SUPPORTED_SPLITS,
+    OpenFOAMSettings,
+    export_summary,
+    export_workdir,
+)
 from python_hole_interpolation import (
     HoleGeometry,
     detect_hole_rings,
@@ -55,6 +61,14 @@ DEAP_EXAMPLE_CONFIG = ROOT / "examples" / "deap" / "1_simple" / "run.ini"
 COMPARISON_IMAGE = ROOT / "docs" / "assets" / "mesh-comparison-r2-conformal.png"
 ARTICLE_URL = "https://doi.org/10.1016/j.nucengdes.2025.114718"
 DEFAULT_SOLVER_MODE = "python_only"
+OPENFOAM_SOLVER_LABELS = (
+    "simpleFoam (incompressible laminar)",
+    "rhoSimpleFoam (compressible ideal gas)",
+    "Mesh only (checkMesh)",
+)
+OPENFOAM_SOLVERS = dict(zip(OPENFOAM_SOLVER_LABELS, ("simpleFoam", "rhoSimpleFoam", "none")))
+OPENFOAM_VERSION_LABELS = ("OpenFOAM.com (v2xxx)", "OpenFOAM.org (11 or later)")
+OPENFOAM_VERSIONS = dict(zip(OPENFOAM_VERSION_LABELS, ("com", "org")))
 SHAPE_GALLERY = (
     HoleGeometry("circle", -0.25, 0.25, radius=0.045),
     HoleGeometry("rectangle", 0.23, 0.25, width=0.10, height=0.06, rotation_degrees=15.0),
@@ -161,6 +175,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         self._active_operation: str | None = None
         self._process_started = False
         self._active_mesh_params = None
+        self._active_openfoam_settings: OpenFOAMSettings | None = None
         self._validated_surface_source: SurfaceSource | None = None
         self._validated_surface_grid: SurfaceGrid | None = None
         self.status_var = tk.StringVar(value="Initializing")
@@ -209,6 +224,21 @@ class ScientificApp(PythonHoleInterpolationApp):
         self.chamber_outlet_height_ratio_var = tk.StringVar(value="5.0")
         self.chamber_inlet_length_ratio_var = tk.StringVar(value="5.0")
         self.chamber_outlet_length_ratio_var = tk.StringVar(value="5.0")
+        openfoam_defaults = OpenFOAMSettings()
+        self.openfoam_enabled_var = tk.BooleanVar(value=False)
+        self.openfoam_solver_var = tk.StringVar(value=OPENFOAM_SOLVER_LABELS[0])
+        self.openfoam_version_var = tk.StringVar(value=OPENFOAM_VERSION_LABELS[0])
+        self.openfoam_split_var = tk.StringVar(value=openfoam_defaults.cell_split)
+        self.openfoam_case_var = tk.StringVar(value=openfoam_defaults.case_directory)
+        self.openfoam_inlet_pressure_var = tk.StringVar(
+            value=repr(openfoam_defaults.inlet_pressure)
+        )
+        self.openfoam_outlet_pressure_var = tk.StringVar(
+            value=repr(openfoam_defaults.outlet_pressure)
+        )
+        self.openfoam_temperature_var = tk.StringVar(value=repr(openfoam_defaults.temperature))
+        self.openfoam_iterations_var = tk.StringVar(value=str(openfoam_defaults.iterations))
+        self.openfoam_scale_var = tk.StringVar(value=repr(openfoam_defaults.length_scale))
 
         shell = ttk.Frame(parent, style="Scientific.TFrame")
         shell.pack(fill="both", expand=True)
@@ -894,11 +924,105 @@ class ScientificApp(PythonHoleInterpolationApp):
         )
         return grid
 
+    def _build_openfoam_card(self, tab, *, row: int) -> None:
+        card = self._card(tab, "OpenFOAM case export")
+        card.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        for column in (1, 3, 5, 7):
+            card.columnconfigure(column, weight=1)
+        ttk.Checkbutton(
+            card,
+            text="Export an OpenFOAM case (polyMesh, patches, zones, laminar run setup)",
+            variable=self.openfoam_enabled_var,
+            command=self._toggle_openfoam,
+            style="Card.TCheckbutton",
+        ).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 6))
+        ttk.Label(
+            card,
+            text="Pressures are absolute (Pa). Run ./Allrun in OpenFOAM (Linux, WSL or Docker).",
+            style="CardMuted.TLabel",
+        ).grid(row=0, column=4, columnspan=4, sticky="e", pady=(0, 6))
+        combos = (
+            ("Solver", self.openfoam_solver_var, OPENFOAM_SOLVER_LABELS, 34),
+            ("Distribution", self.openfoam_version_var, OPENFOAM_VERSION_LABELS, 24),
+            ("Cell split", self.openfoam_split_var, SUPPORTED_SPLITS, 8),
+        )
+        self.openfoam_widgets = []
+        for index, (label, variable, values, width) in enumerate(combos):
+            ttk.Label(card, text=label, style="Card.TLabel").grid(
+                row=1, column=2 * index, sticky="w", padx=(0, 7), pady=5
+            )
+            combo = ttk.Combobox(
+                card,
+                textvariable=variable,
+                values=values,
+                state="readonly",
+                width=width,
+                style="Scientific.TCombobox",
+            )
+            combo.grid(row=1, column=2 * index + 1, sticky="we", pady=5, padx=(0, 12))
+            self.openfoam_widgets.append(combo)
+        self.openfoam_widgets.append(self._field(card, 1, 6, "Case folder", self.openfoam_case_var))
+        for index, (label, variable) in enumerate(
+            (
+                ("Inlet pressure", self.openfoam_inlet_pressure_var),
+                ("Outlet pressure", self.openfoam_outlet_pressure_var),
+                ("Temperature (K)", self.openfoam_temperature_var),
+                ("Iterations", self.openfoam_iterations_var),
+            )
+        ):
+            self.openfoam_widgets.append(self._field(card, 2, 2 * index, label, variable))
+        self.openfoam_widgets.append(
+            self._field(card, 3, 0, "Length scale to m", self.openfoam_scale_var)
+        )
+        ttk.Label(
+            card,
+            text="Coordinates are multiplied by this factor (1e-3 for a mesh in mm).",
+            style="CardMuted.TLabel",
+        ).grid(row=3, column=2, columnspan=6, sticky="w", pady=5)
+        self._toggle_openfoam()
+
+    def _toggle_openfoam(self) -> None:
+        state = "normal" if self.openfoam_enabled_var.get() else "disabled"
+        for widget in getattr(self, "openfoam_widgets", ()):
+            if isinstance(widget, ttk.Combobox):
+                widget.configure(state="readonly" if state == "normal" else "disabled")
+            else:
+                widget.configure(state=state)
+
+    def _openfoam_settings(self) -> OpenFOAMSettings | None:
+        """Settings from the OpenFOAM card, or None when the export is off."""
+
+        if not self.openfoam_enabled_var.get():
+            return None
+
+        def number(variable, label: str) -> float:
+            try:
+                return float(variable.get().strip())
+            except ValueError as exc:
+                raise ValueError(f"OpenFOAM {label} must be a number.") from exc
+
+        iterations = number(self.openfoam_iterations_var, "iterations")
+        if not iterations.is_integer():
+            raise ValueError("OpenFOAM iterations must be a whole number.")
+        defaults = OpenFOAMSettings()
+        return OpenFOAMSettings(
+            case_directory=self.openfoam_case_var.get().strip(),
+            solver=OPENFOAM_SOLVERS[self.openfoam_solver_var.get()],
+            openfoam_version=OPENFOAM_VERSIONS[self.openfoam_version_var.get()],
+            cell_split=self.openfoam_split_var.get(),
+            inlet_pressure=number(self.openfoam_inlet_pressure_var, "inlet pressure"),
+            outlet_pressure=number(self.openfoam_outlet_pressure_var, "outlet pressure"),
+            temperature=number(self.openfoam_temperature_var, "temperature"),
+            length_scale=number(self.openfoam_scale_var, "length scale"),
+            iterations=int(iterations),
+            write_interval=min(defaults.write_interval, int(iterations)),
+        ).validated()
+
     def _build_mesh_tab(self) -> None:
         tab = self.mesh_tab
         tab.columnconfigure(0, weight=1)
         tab.columnconfigure(1, weight=1)
-        tab.rowconfigure(2, weight=1)
+        tab.rowconfigure(3, weight=1)
 
         mesh = self._card(tab, "Volume discretization")
         mesh.grid(row=0, column=0, sticky="ew", padx=(0, 9), pady=(0, 10))
@@ -936,8 +1060,10 @@ class ScientificApp(PythonHoleInterpolationApp):
             command=self._on_solver_mode_change,
         ).grid(row=7, column=0, sticky="w", pady=3)
 
+        self._build_openfoam_card(tab, row=1)
+
         chambers = self._card(tab, "Optional inlet and outlet chambers")
-        chambers.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        chambers.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         for column in (1, 3, 5):
             chambers.columnconfigure(column, weight=1)
         ttk.Checkbutton(
@@ -1041,7 +1167,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         ).grid(row=4, column=4, columnspan=2, sticky="w", padx=(8, 0))
 
         holes = self._card(tab, "Hole shapes / internal boundaries")
-        holes.grid(row=2, column=0, columnspan=2, sticky="nsew")
+        holes.grid(row=3, column=0, columnspan=2, sticky="nsew")
         holes.columnconfigure(7, weight=1)
         ttk.Checkbutton(holes, text="Enable holes", variable=self.holes_enabled_var, command=self._on_holes_toggle).grid(row=0, column=0, sticky="w", pady=(0, 7))
         ttk.Button(holes, text="Add hole", style="Quiet.TButton", command=self._add_hole_row).grid(row=0, column=1, padx=(8, 0), pady=(0, 7))
@@ -1358,6 +1484,16 @@ class ScientificApp(PythonHoleInterpolationApp):
             self.holes_enabled_var,
             self.do_merge_var,
             self.solver_mode_var,
+            self.openfoam_enabled_var,
+            self.openfoam_solver_var,
+            self.openfoam_version_var,
+            self.openfoam_split_var,
+            self.openfoam_case_var,
+            self.openfoam_inlet_pressure_var,
+            self.openfoam_outlet_pressure_var,
+            self.openfoam_temperature_var,
+            self.openfoam_iterations_var,
+            self.openfoam_scale_var,
             self.fiss_dgibi_var,
             self.fiss_model_var,
             self.fiss_rugo_var,
@@ -2330,6 +2466,11 @@ class ScientificApp(PythonHoleInterpolationApp):
         if not self._validate_inputs(operation="mesh"):
             messagebox.showerror("Validation", "Correct the configuration issues before launching the mesh backend.")
             return
+        try:
+            self._active_openfoam_settings = self._openfoam_settings()
+        except ValueError as exc:
+            messagebox.showerror("OpenFOAM export", str(exc))
+            return
         self._active_mesh_params = self._read_params()
         self._active_merge_requested = bool(self.do_merge_var.get())
         self._active_open_gmsh_requested = bool(self.opti_visu_var.get())
@@ -2409,6 +2550,7 @@ class ScientificApp(PythonHoleInterpolationApp):
         csv_zmax = Path(self.csv_zmax_var.get().strip())
         csv_names = self._expected_csv_names(params)
         merge_requested = bool(self._active_merge_requested)
+        openfoam_settings = self._active_openfoam_settings
         started = time.perf_counter()
         self.progress.configure(mode="indeterminate")
         self.progress.start(10)
@@ -2422,6 +2564,7 @@ class ScientificApp(PythonHoleInterpolationApp):
             final_bdf: Path,
             preview_path: Path,
             elapsed_seconds: float,
+            openfoam: dict | None = None,
         ) -> None:
             self._finish_operation(
                 True,
@@ -2429,6 +2572,7 @@ class ScientificApp(PythonHoleInterpolationApp):
                 (
                     f"Fresh source-free outputs verified in {elapsed_seconds:.3f} s. "
                     f"Primary result: {final_bdf.name}; preview: {preview_path.name}"
+                    + (f"; OpenFOAM case: {openfoam['case_directory']}" if openfoam else "")
                 ),
             )
 
@@ -2490,6 +2634,17 @@ class ScientificApp(PythonHoleInterpolationApp):
                 else:
                     final_bdf = result.volume_bdf
 
+                openfoam = None
+                if openfoam_settings is not None:
+                    openfoam = export_summary(
+                        export_workdir(
+                            workdir,
+                            openfoam_settings,
+                            python_mesh=result.mesh,
+                            log=thread_log,
+                        )
+                    )
+
                 elapsed_seconds = time.perf_counter() - started
                 report = {
                     "backend": "python_only",
@@ -2510,6 +2665,7 @@ class ScientificApp(PythonHoleInterpolationApp):
                     "preview_png": result.preview_path.name,
                     "med": result.med_path.name if result.med_path else None,
                     "stl_files": [entry.target.name for entry in stl_exports],
+                    "openfoam": openfoam,
                 }
                 (workdir / "python-mesh-report.json").write_text(
                     json.dumps(report, indent=2) + "\n",
@@ -2524,6 +2680,7 @@ class ScientificApp(PythonHoleInterpolationApp):
                     final_bdf,
                     result.preview_path,
                     elapsed_seconds,
+                    openfoam,
                 ),
             )
 
@@ -2533,6 +2690,38 @@ class ScientificApp(PythonHoleInterpolationApp):
             daemon=True,
         ).start()
         return None
+
+    def _export_openfoam_then_finish(self, workdir: Path, result: Path) -> None:
+        """Export the verified Cast3M mesh to OpenFOAM off the UI thread."""
+
+        settings = self._active_openfoam_settings
+        self._set_status("OpenFOAM export in progress", "running")
+
+        def thread_log(message: str) -> None:
+            self.after(0, lambda value=message: self._log(value))
+
+        def done(summary: dict | None, error: Exception | None) -> None:
+            if error is not None:
+                self._log(f"OpenFOAM export failed: {error}\n")
+                self._finish_operation(False, "OpenFOAM export failed", str(error))
+                messagebox.showerror("OpenFOAM export", str(error))
+                return
+            self._finish_operation(
+                True,
+                "Mesh run verified",
+                f"Fresh expected outputs verified. Primary result: {result.name}; "
+                f"OpenFOAM case: {summary['case_directory']}",
+            )
+
+        def worker() -> None:
+            try:
+                summary = export_summary(export_workdir(workdir, settings, log=thread_log))
+            except Exception as exc:
+                self.after(0, lambda error=exc: done(None, error))
+                return
+            self.after(0, lambda: done(summary, None))
+
+        threading.Thread(target=worker, name="openfoam-export", daemon=True).start()
 
     def _run_fiss(self) -> None:
         self._materialize_surface_inputs()
@@ -2588,6 +2777,9 @@ class ScientificApp(PythonHoleInterpolationApp):
                     except Exception as exc:
                         self._log(f"Gmsh could not be opened: {exc}\n")
                         messagebox.showwarning("Gmsh", str(exc))
+                if self._active_openfoam_settings is not None:
+                    self._export_openfoam_then_finish(Path(cwd), result)
+                    return
                 self._finish_operation(True, "Mesh run verified", f"Fresh expected outputs verified. Primary result: {result.name}")
             else:
                 self._finish_operation(True, "FISS run completed", f"Cast3M returned 0 for FISS. Review results under {Path(cwd).name}.")

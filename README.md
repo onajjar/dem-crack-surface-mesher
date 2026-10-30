@@ -57,6 +57,9 @@ GitHub-compatible citation metadata are provided in
 - Creates a crack volume mesh and named boundary-surface meshes in NASTRAN BDF format.
 - Supports zero, one, or multiple through-holes. The scientific mode accepts circles, rotated rectangles, rotated equilateral triangles, and regular polygons with any integer side count ≥ 3.
 - Optionally exports MED/STL, combines volume and boundary BDF cards, and opens the selected mesh in Gmsh.
+- Optionally exports any mesh as a ready-to-run OpenFOAM case (OpenFOAM.com or
+  OpenFOAM.org): polyMesh with named patches and zones, laminar incompressible or
+  compressible setup, flow-rate monitors and an `Allrun` script.
 - Runs a separate, optional `FISS` flow calculation from the same canonical surface grids and post-processes solver text results into plots or HDF5.
 
 ## Workflow
@@ -367,6 +370,28 @@ starting Cast3M, or `operation = characterize_and_mesh` to run the optional
 stage and then mesh the unchanged `SurfaceGrid`. The `[characterization]` and
 `[synthetic]` sections in `examples/scientific-run.ini` document every option.
 
+### OpenFOAM case export
+
+Tick **Export an OpenFOAM case** on the Mesh tab, or set
+`export_openfoam = true` in `[mesh]` with an optional `[openfoam]` section, and
+every successful mesh run also writes `openfoam_case\` in the working
+directory. An existing run directory or merged BDF can be exported from the
+command line:
+
+```powershell
+python openfoam_export.py path\to\run_directory --solver rhoSimpleFoam --openfoam-version org
+python castem_pipeline_gui_scientific.py --headless examples\openfoam\run.ini
+```
+
+The case is written natively on Windows and run with OpenFOAM in WSL or Docker
+(`wsl sh ./Allrun` from the case folder). The exporter merges coincident nodes,
+splits only the warped thin hexahedra that would fail OpenFOAM's face-pyramid
+test, maps the crack, hole and chamber boundaries to `inlet`, `outlet`,
+`lowerWall`, `upperWall`, `sideWalls`, `holeN` and chamber-wall patches, and
+writes `simpleFoam`/`rhoSimpleFoam` (OpenFOAM.com) or `foamRun` (OpenFOAM.org)
+cases. See the [OpenFOAM export guide](docs/openfoam-export.md) and
+[`examples/openfoam/`](examples/openfoam/README.md).
+
 ## Requirements
 
 | Component | Requirement | Purpose |
@@ -563,6 +588,7 @@ writes the same named mesh family:
 | `combined_ti...bdf` | Optional merged volume and boundary BDF. |
 | `castem_mesh_v.med` | Optional MED volume mesh. |
 | `castem_mesh_surf_*.stl` | Optional triangulated surface exports. |
+| `openfoam_case\` | Optional OpenFOAM case (`constant\polyMesh`, `0`, `system`, `Allrun`, `openfoam_export.json`). |
 
 The combined file is a NASTRAN BDF assembled by the GUI's `merge_bdfs()` function. It is intended to simplify downstream CFD import, but this baseline does not automate or validate import into Ansys CFX and does not perform mesh-quality checks.
 
@@ -592,6 +618,7 @@ The template builds lines through the crack, derives local opening and extent, a
 ├── python_hole_interpolation.py         # bulk inflated fill generation
 ├── python_volume_mesher.py              # source-free HEXA8 backend and exports
 ├── chamber_geometry.py                  # shared chamber values and validation
+├── openfoam_export.py                   # OpenFOAM polyMesh and case export (also a CLI)
 ├── surface_generation.py                # CSV, self-affine, and planar surface sources
 ├── castem_pipeline_gui_t13.py           # unchanged baseline GUI
 ├── bpm_cfx.ico                  # unchanged GUI icon
@@ -602,12 +629,14 @@ The template builds lines through the crack, derives local opening and extent, a
 │   ├── scientific-run.ini       # complete headless configuration
 │   ├── chambers/                # GUI/headless chamber example and validation
 │   ├── python-only-chambers/    # source-free equivalent and exact comparison
+│   ├── openfoam/                # mesh plus OpenFOAM case export
 │   ├── shaped-holes/            # circle/rectangle/triangle/polygon gallery
 │   ├── surfaces/                # legacy/advanced fractal and constant examples
 │   └── multiple-holes/          # verified two-hole configuration/output
 ├── docs/
 │   ├── assets/                  # authentic screenshots and diagrams
 │   ├── headless-runner.md
+│   ├── openfoam-export.md
 │   ├── provisional-verification.md
 │   ├── python-hole-interpolation.md
 │   ├── python-only-meshing.md
